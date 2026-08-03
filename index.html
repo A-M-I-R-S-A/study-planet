@@ -59,6 +59,10 @@
   .lang{height:44px;padding:0 15px;border-radius:99px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.14);color:var(--white);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;flex:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
   .lang svg{width:17px;height:17px}
   .lang:hover{background:rgba(255,255,255,.22)}
+  .acct{height:44px;padding:0 14px;border-radius:99px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.14);color:var(--white);font-size:13.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;flex:none;text-decoration:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);max-width:170px}
+  .acct:hover{background:rgba(255,255,255,.24)}
+  .acct .av{font-size:17px;line-height:1}
+  .acct span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .gear{width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.14);color:var(--white);font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 
   /* hero */
@@ -197,6 +201,7 @@
         <div class="clock mono" id="clock">--:--</div>
         <div class="date" id="date"></div>
       </div>
+      <a class="acct hidden" id="acct" href="/dashboard"></a>
       <button class="lang" id="langBtn" title="Language">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18"/></svg>
         <span id="langLabel">فارسی</span>
@@ -307,12 +312,38 @@
 </div>
 
 <script>
-(function(){
+(async function(){
   "use strict";
   const $=s=>document.querySelector(s);
   const store={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
   const pad=n=>String(n).padStart(2,"0");
   const dayStr=d=>d.toDateString();
+
+  /* ---- cloud sync: active when served by server.py; silently falls back to local (guest / file://) ---- */
+  const Cloud={enabled:false,served:false,user:null,stats:null};
+  try{
+    const r=await fetch("/api/me",{credentials:"same-origin"});
+    if(r.ok){ Cloud.served=true; const j=await r.json();
+      if(j&&j.user){ Cloud.enabled=true; Cloud.user=j.user; Cloud.stats=j.stats;
+        const s=j.settings||{};
+        if(s.cfg)localStorage.setItem("ff_cfg",JSON.stringify(s.cfg));
+        if(s.prefs)localStorage.setItem("ff_prefs",JSON.stringify(s.prefs));
+        if(s.bg)localStorage.setItem("ff_bg",JSON.stringify(s.bg));
+        if(typeof s.volume==="number")localStorage.setItem("ff_volume",JSON.stringify(s.volume));
+        localStorage.setItem("ff_tasks",JSON.stringify(j.tasks||[]));
+        if(j.stats){const tds=new Date().toDateString();
+          localStorage.setItem("ff_stats",JSON.stringify({date:tds,sessions:j.stats.today.sessions,mins:j.stats.today.minutes}));
+          localStorage.setItem("ff_streak",JSON.stringify({lastDate:tds,count:j.stats.streak}));}
+      }
+    }
+  }catch(e){/* no server reachable -> guest mode */}
+  let _sT=null,_tT=null;
+  function _cloudSettings(){return {cfg:store.get("ff_cfg",{}),prefs:store.get("ff_prefs",{}),bg:store.get("ff_bg",{}),volume:store.get("ff_volume",45)};}
+  Cloud.pushSettings=function(){if(!Cloud.enabled)return;clearTimeout(_sT);_sT=setTimeout(()=>{fetch("/api/settings",{method:"PUT",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({settings:_cloudSettings()})}).catch(()=>{});},600);};
+  Cloud.pushTasks=function(){if(!Cloud.enabled)return;clearTimeout(_tT);_tT=setTimeout(()=>{fetch("/api/tasks",{method:"PUT",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({tasks:store.get("ff_tasks",[])})}).catch(()=>{});},500);};
+  Cloud.sessionComplete=function(mins){if(!Cloud.enabled)return Promise.resolve(null);return fetch("/api/session-complete",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({minutes:mins})}).then(r=>r.ok?r.json():null).then(j=>j&&j.stats?j.stats:null).catch(()=>null);};
+  const _storeSet=store.set;
+  store.set=function(k,v){_storeSet(k,v);if(k==="ff_tasks")Cloud.pushTasks();else if(k==="ff_cfg"||k==="ff_prefs"||k==="ff_bg"||k==="ff_volume")Cloud.pushSettings();};
 
   /* ---- i18n ---- */
   const I18N={
@@ -329,7 +360,7 @@
       phase_focus:"Focus session",phase_short:"Short break",phase_long:"Long break",
       streak_suffix:"-day streak",toast_focus:"Focus complete — take a break.",toast_break:"Break's over — back to it.",
       confirm_reset:"Reset all settings, tasks, and progress?",img_big:"Image is large — it'll show now but may not persist.",
-      am:"AM",pm:"PM",lang_switch:"English"},
+      am:"AM",pm:"PM",lang_switch:"English",sign_in:"Sign in",dashboard:"Dashboard"},
     fa:{brand:"تمرکز",mode_focus:"تمرکز",mode_short:"کوتاه",mode_long:"بلند",
       tasks:"کارها",music:"موسیقی",stats:"آمار",ambient:"صدای محیط",
       rain:"باران",ocean:"اقیانوس",wind:"باد",forest:"جنگل",
@@ -343,7 +374,7 @@
       phase_focus:"جلسهٔ تمرکز",phase_short:"استراحت کوتاه",phase_long:"استراحت بلند",
       streak_suffix:" روز پیاپی",toast_focus:"تمرکز کامل شد — کمی استراحت کنید.",toast_break:"استراحت تمام شد — به کار برگردید.",
       confirm_reset:"همهٔ تنظیمات، کارها و پیشرفت بازنشانی شود؟",img_big:"تصویر بزرگ است — اکنون نمایش داده می‌شود اما شاید ذخیره نشود.",
-      am:"ق.ظ",pm:"ب.ظ",lang_switch:"فارسی"}
+      am:"ق.ظ",pm:"ب.ظ",lang_switch:"فارسی",sign_in:"ورود",dashboard:"داشبورد"}
   };
   const QUOTES={
     en:[
@@ -466,6 +497,7 @@
       stats.sessions++; stats.mins+=cfg.focusMin; store.set("ff_stats",stats);
       const today=dayStr(new Date()), yest=dayStr(new Date(Date.now()-864e5));
       if(streak.lastDate!==today){streak.count=(streak.lastDate===yest)?streak.count+1:1;streak.lastDate=today;store.set("ff_streak",streak);}
+      if(Cloud.enabled){Cloud.sessionComplete(cfg.focusMin).then(srv=>{if(srv){stats.sessions=srv.today.sessions;stats.mins=srv.today.minutes;streak.count=srv.streak;streak.lastDate=dayStr(new Date());store.set("ff_stats",stats);store.set("ff_streak",streak);renderStats();}});}
     }
     const next=isFocus()?(stats.sessions%4===0?"long":"short"):"focus";
     if(prefs.chime) chime();
@@ -570,6 +602,14 @@
   $("#resetAll").onclick=()=>{if(confirm(T.confirm_reset)){["ff_cfg","ff_prefs","ff_bg","ff_tasks","ff_stats","ff_streak","ff_volume"].forEach(k=>localStorage.removeItem(k));location.reload();}};
   document.addEventListener("keydown",e=>{if(e.key==="Escape")closeSettings();});
 
+  /* ---- account chip ---- */
+  function initAccount(){
+    const a=$("#acct");
+    if(Cloud.enabled){a.href="/dashboard";a.innerHTML='<span class="av">'+(Cloud.user.avatar||"🦊")+'</span><span>'+(Cloud.user.name||T.dashboard)+'</span>';a.classList.remove("hidden");}
+    else if(Cloud.served){a.href="/login";a.textContent=T.sign_in;a.classList.remove("hidden");}
+    else{a.classList.add("hidden");}
+  }
+
   /* ---- language ---- */
   function applyLang(){
     T=I18N[lang];
@@ -581,6 +621,7 @@
     $("#langLabel").textContent=T.lang_switch;
     renderClock();renderTimer();renderQuote();renderTasks();renderStats();renderCfg();renderMusicNow();
     $("#dimVal").textContent=L(bg.dim)+"%";
+    initAccount();
   }
   $("#langBtn").onclick=()=>{lang=(lang==="en")?"fa":"en";prefs.lang=lang;store.set("ff_prefs",prefs);applyLang();};
 

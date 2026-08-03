@@ -1,0 +1,8 @@
+# local database (created at runtime)
+focus.db
+focus.db-journal
+focus.db-wal
+
+# python
+__pycache__/
+*.pyc
