@@ -12,7 +12,7 @@
   *{box-sizing:border-box}
   html,body{height:100%}
   body{margin:0;font-family:'Instrument Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:var(--ink);
-    background:linear-gradient(180deg,#887326EB,#382C1F,#1F2838) fixed,#16303a;min-height:100vh;-webkit-font-smoothing:antialiased}
+    background:#16303a;min-height:100vh;-webkit-font-smoothing:antialiased}
   .mono{font-family:'DM Mono',ui-monospace,monospace}
   .wrap{max-width:920px;margin:0 auto;padding:clamp(18px,4vw,40px)}
 
@@ -66,10 +66,34 @@
   .save{height:44px;padding:0 22px;border:none;border-radius:12px;background:var(--accent);color:var(--accent-ink);font-size:14px;font-weight:700;cursor:pointer}
   .save.saved{background:#2e7d46;color:#fff}
 
+  /* calendar */
+  .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .cal-head .mlabel{font-size:15px;font-weight:600;color:var(--ink)}
+  .cal-nav{display:flex;gap:6px}
+  .cal-nav button{width:32px;height:32px;border-radius:9px;border:1px solid rgba(0,0,0,.12);background:var(--cream2);cursor:pointer;font-size:16px;color:var(--ink);line-height:1}
+  .cal-nav button:hover{background:#e7dfd1}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+  .cal-dow{font-size:10.5px;color:var(--muted);text-align:center;text-transform:uppercase;letter-spacing:.04em;padding-bottom:2px}
+  .cal-cell{aspect-ratio:1;border-radius:10px;background:var(--cream2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;position:relative;border:1.5px solid transparent}
+  .cal-cell.empty{background:transparent}
+  .cal-cell.has{cursor:pointer}
+  .cal-cell.has:hover{filter:brightness(1.04)}
+  .cal-cell.today{border-color:var(--accent)}
+  .cal-cell.sel{box-shadow:0 0 0 2px var(--ink)}
+  .cal-cell .dn{font-size:12px;color:var(--ink)}
+  .cal-cell.dim .dn{color:#b9b1a4}
+  .cal-cell .cm{font-size:9px;color:var(--accent-ink);font-family:'DM Mono',monospace;font-weight:500}
+  .cal-day-detail{margin-top:16px;background:var(--cream2);border-radius:14px;padding:16px}
+  .cal-day-detail h3{margin:0 0 10px;font-size:14px}
+  .cal-day-detail .topic{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;padding:7px 0;border-top:1px solid rgba(0,0,0,.06)}
+  .cal-day-detail .topic:first-of-type{border-top:none}
+  .cal-day-detail .topic .b{color:var(--accent)}
+  .cal-day-detail .none{color:var(--muted);font-size:13px}
   .loading{color:rgba(255,255,255,.8);text-align:center;padding:80px 0;font-size:15px}
 </style>
 </head>
 <body>
+<script src="/theme.js"></script>
 <div class="wrap" id="wrap">
   <div class="loading" id="loading">Loading your dashboard…</div>
   <div id="content" style="display:none">
@@ -83,6 +107,7 @@
       </div>
       <div class="hbtns">
         <a class="hbtn" href="/">⏱ Timer</a>
+        <a class="hbtn" href="/rooms">👥 Rooms</a>
         <button class="hbtn" id="logout">Sign out</button>
       </div>
     </header>
@@ -92,6 +117,16 @@
     <div class="section">
       <h2>Last 14 days · focus minutes</h2>
       <div id="chart"></div>
+    </div>
+
+    <div class="section">
+      <h2>Study calendar</h2>
+      <div class="cal-head">
+        <div class="mlabel" id="calLabel">—</div>
+        <div class="cal-nav"><button id="calPrev" aria-label="Previous month">‹</button><button id="calNext" aria-label="Next month">›</button></div>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-day-detail" id="calDetail"><div class="none">Pick a day to see what you studied.</div></div>
     </div>
 
     <div class="section">
@@ -201,6 +236,7 @@
       {l:"End chime", v:(prefs.chime===false?"Off":"On")}
     ];
     $("#items").innerHTML=items.map(i=>'<div class="item"><div class="il">'+i.l+'</div><div class="iv">'+i.v+'</div></div>').join("");
+    loadCalendar(ymNow());
   }
 
   $("#saveProfile").onclick=async ()=>{
@@ -219,6 +255,49 @@
     try{ await fetch("/api/logout",{method:"POST",credentials:"same-origin"}); }catch(e){}
     location.href="/login";
   };
+
+  /* ---------- study calendar ---------- */
+  var calMonth=null, calData={}, calSel=null;
+  function ymNow(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+  function shiftMonth(ym,delta){ var p=(ym||ymNow()).split('-'); var d=new Date(+p[0],+p[1]-1+delta,1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+  function loadCalendar(month){ calMonth=month;
+    fetch('/api/calendar?month='+month,{credentials:'same-origin'}).then(function(r){return r.ok?r.json():{days:[]};}).then(function(j){
+      calData={}; (j.days||[]).forEach(function(d){calData[d.day]=d;}); renderCalendar();
+    }).catch(function(){});
+  }
+  function renderCalendar(){
+    var p=calMonth.split('-'), y=+p[0], m=+p[1];
+    $("#calLabel").textContent=new Date(y,m-1,1).toLocaleDateString(undefined,{month:'long',year:'numeric'});
+    var first=new Date(y,m-1,1).getDay(), dim=new Date(y,m,0).getDate();
+    var maxMin=1; Object.keys(calData).forEach(function(k){maxMin=Math.max(maxMin,calData[k].minutes);});
+    var todayISO=new Date().toISOString().slice(0,10);
+    var g=$("#calGrid"); g.innerHTML='';
+    ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(function(d){var e=document.createElement('div');e.className='cal-dow';e.textContent=d;g.appendChild(e);});
+    for(var i=0;i<first;i++){var e=document.createElement('div');e.className='cal-cell empty';g.appendChild(e);}
+    for(var day=1;day<=dim;day++){
+      var iso=y+'-'+String(m).padStart(2,'0')+'-'+String(day).padStart(2,'0'), cell=calData[iso];
+      var el=document.createElement('div');
+      el.className='cal-cell'+(cell?' has':' dim')+(iso===todayISO?' today':'')+(iso===calSel?' sel':'');
+      el.dataset.iso=iso;
+      if(cell){var pct=Math.round(cell.minutes/maxMin*70)+12; el.style.background='color-mix(in oklch, var(--accent) '+pct+'%, var(--cream2))';}
+      el.innerHTML='<span class="dn">'+day+'</span>'+(cell?'<span class="cm">'+cell.minutes+'m</span>':'');
+      if(cell) el.onclick=(function(x){return function(){selectDay(x);};})(iso);
+      g.appendChild(el);
+    }
+    if(calSel && calData[calSel]) selectDay(calSel);
+  }
+  function selectDay(iso){
+    calSel=iso;
+    document.querySelectorAll('.cal-cell').forEach(function(c){c.classList.toggle('sel',c.dataset.iso===iso);});
+    var d=calData[iso], det=$("#calDetail");
+    var lbl=new Date(iso+'T00:00').toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+    if(!d){det.innerHTML='<div class="none">Nothing on '+lbl+'.</div>';return;}
+    det.innerHTML='<h3>'+lbl+' · '+d.minutes+'m · '+d.sessions+' session'+(d.sessions===1?'':'s')+'</h3>';
+    if(d.topics&&d.topics.length){ d.topics.forEach(function(t){var row=document.createElement('div');row.className='topic';var b=document.createElement('span');b.className='b';b.textContent='▸';var s=document.createElement('span');s.textContent=t;row.appendChild(b);row.appendChild(s);det.appendChild(row);}); }
+    else { det.insertAdjacentHTML('beforeend','<div class="none">No study notes recorded this day.</div>'); }
+  }
+  $("#calPrev").onclick=function(){ loadCalendar(shiftMonth(calMonth,-1)); };
+  $("#calNext").onclick=function(){ loadCalendar(shiftMonth(calMonth,1)); };
 })();
 </script>
 </body>

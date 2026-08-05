@@ -82,6 +82,9 @@
   .play{min-width:140px;height:56px;border-radius:99px;border:none;cursor:pointer;font-size:16px;font-weight:700;background:var(--accent);color:var(--accent-ink);box-shadow:0 6px 20px rgba(0,0,0,.22)}
   .reset{width:56px;height:56px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.14);color:var(--white);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 
+  .topic{width:min(360px,80vw);text-align:center;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:var(--white);border-radius:99px;padding:10px 16px;font-size:14px;outline:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  .topic::placeholder{color:rgba(255,255,255,.6)}
+  .topic:focus{border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.18)}
   .quote{margin-top:10px;max-width:min(480px,86vw);cursor:pointer;text-align:center}
   .quote .qt{font-size:17px;line-height:1.55;font-style:italic;color:rgba(255,255,255,.9)}
   .quote .qby{margin-top:12px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.5)}
@@ -201,6 +204,7 @@
         <div class="clock mono" id="clock">--:--</div>
         <div class="date" id="date"></div>
       </div>
+      <a class="gear hidden" id="roomsBtn" href="/rooms" title="Rooms" style="text-decoration:none">👥</a>
       <a class="acct hidden" id="acct" href="/dashboard"></a>
       <button class="lang" id="langBtn" title="Language">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18"/></svg>
@@ -228,6 +232,8 @@
       <button class="play" id="play">Start</button>
       <button class="reset" id="reset" title="Reset">↻</button>
     </div>
+
+    <input class="topic" id="topicInput" type="text" placeholder="What are you studying?" maxlength="200">
 
     <div class="quote" id="quote" title="New quote">
       <div class="qt" id="quoteText">…</div>
@@ -341,7 +347,8 @@
   function _cloudSettings(){return {cfg:store.get("ff_cfg",{}),prefs:store.get("ff_prefs",{}),bg:store.get("ff_bg",{}),volume:store.get("ff_volume",45)};}
   Cloud.pushSettings=function(){if(!Cloud.enabled)return;clearTimeout(_sT);_sT=setTimeout(()=>{fetch("/api/settings",{method:"PUT",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({settings:_cloudSettings()})}).catch(()=>{});},600);};
   Cloud.pushTasks=function(){if(!Cloud.enabled)return;clearTimeout(_tT);_tT=setTimeout(()=>{fetch("/api/tasks",{method:"PUT",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({tasks:store.get("ff_tasks",[])})}).catch(()=>{});},500);};
-  Cloud.sessionComplete=function(mins){if(!Cloud.enabled)return Promise.resolve(null);return fetch("/api/session-complete",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({minutes:mins})}).then(r=>r.ok?r.json():null).then(j=>j&&j.stats?j.stats:null).catch(()=>null);};
+  Cloud.sessionComplete=function(mins,topic){if(!Cloud.enabled)return Promise.resolve(null);return fetch("/api/session-complete",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({minutes:mins,topic:topic||""})}).then(r=>r.ok?r.json():null).then(j=>j&&j.stats?j.stats:null).catch(()=>null);};
+  Cloud.heartbeat=function(focusing){if(!Cloud.enabled)return;fetch("/api/heartbeat",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({focusing:!!focusing})}).catch(()=>{});};
   const _storeSet=store.set;
   store.set=function(k,v){_storeSet(k,v);if(k==="ff_tasks")Cloud.pushTasks();else if(k==="ff_cfg"||k==="ff_prefs"||k==="ff_bg"||k==="ff_volume")Cloud.pushSettings();};
 
@@ -360,7 +367,7 @@
       phase_focus:"Focus session",phase_short:"Short break",phase_long:"Long break",
       streak_suffix:"-day streak",toast_focus:"Focus complete — take a break.",toast_break:"Break's over — back to it.",
       confirm_reset:"Reset all settings, tasks, and progress?",img_big:"Image is large — it'll show now but may not persist.",
-      am:"AM",pm:"PM",lang_switch:"English",sign_in:"Sign in",dashboard:"Dashboard"},
+      am:"AM",pm:"PM",lang_switch:"English",sign_in:"Sign in",dashboard:"Dashboard",studying:"What are you studying?"},
     fa:{brand:"تمرکز",mode_focus:"تمرکز",mode_short:"کوتاه",mode_long:"بلند",
       tasks:"کارها",music:"موسیقی",stats:"آمار",ambient:"صدای محیط",
       rain:"باران",ocean:"اقیانوس",wind:"باد",forest:"جنگل",
@@ -374,7 +381,7 @@
       phase_focus:"جلسهٔ تمرکز",phase_short:"استراحت کوتاه",phase_long:"استراحت بلند",
       streak_suffix:" روز پیاپی",toast_focus:"تمرکز کامل شد — کمی استراحت کنید.",toast_break:"استراحت تمام شد — به کار برگردید.",
       confirm_reset:"همهٔ تنظیمات، کارها و پیشرفت بازنشانی شود؟",img_big:"تصویر بزرگ است — اکنون نمایش داده می‌شود اما شاید ذخیره نشود.",
-      am:"ق.ظ",pm:"ب.ظ",lang_switch:"فارسی",sign_in:"ورود",dashboard:"داشبورد"}
+      am:"ق.ظ",pm:"ب.ظ",lang_switch:"فارسی",sign_in:"ورود",dashboard:"داشبورد",studying:"چه می‌خوانی؟"}
   };
   const QUOTES={
     en:[
@@ -489,7 +496,7 @@
     document.title=(running?mmss+" · ":"")+T.brand;
   }
   function selectMode(m){mode=m;secondsLeft=durFor(m);running=false;applyAccent();renderTimer();}
-  function toggle(){running=!running;renderTimer();}
+  function toggle(){running=!running;renderTimer();if(Cloud.enabled)Cloud.heartbeat(running);}
   function reset(){running=false;secondsLeft=durFor(mode);renderTimer();}
   function finish(){
     running=false;
@@ -497,7 +504,7 @@
       stats.sessions++; stats.mins+=cfg.focusMin; store.set("ff_stats",stats);
       const today=dayStr(new Date()), yest=dayStr(new Date(Date.now()-864e5));
       if(streak.lastDate!==today){streak.count=(streak.lastDate===yest)?streak.count+1:1;streak.lastDate=today;store.set("ff_streak",streak);}
-      if(Cloud.enabled){Cloud.sessionComplete(cfg.focusMin).then(srv=>{if(srv){stats.sessions=srv.today.sessions;stats.mins=srv.today.minutes;streak.count=srv.streak;streak.lastDate=dayStr(new Date());store.set("ff_stats",stats);store.set("ff_streak",streak);renderStats();}});}
+      if(Cloud.enabled){Cloud.heartbeat(false);Cloud.sessionComplete(cfg.focusMin,($("#topicInput")&&$("#topicInput").value.trim())||"").then(srv=>{if(srv){stats.sessions=srv.today.sessions;stats.mins=srv.today.minutes;streak.count=srv.streak;streak.lastDate=dayStr(new Date());store.set("ff_stats",stats);store.set("ff_streak",streak);renderStats();}});}
     }
     const next=isFocus()?(stats.sessions%4===0?"long":"short"):"focus";
     if(prefs.chime) chime();
@@ -509,6 +516,7 @@
   $("#reset").onclick=reset;
   document.querySelectorAll(".mode-btn").forEach(b=>b.onclick=()=>selectMode(b.dataset.mode));
   setInterval(()=>{renderClock();if(running){if(secondsLeft<=1){secondsLeft=0;renderTimer();finish();}else{secondsLeft--;renderTimer();}}},1000);
+  setInterval(()=>{if(Cloud.enabled)Cloud.heartbeat(running);},30000);
 
   function chime(){try{const c=new (window.AudioContext||window.webkitAudioContext)();[0,.18,.36].forEach(t=>{const o=c.createOscillator(),g=c.createGain();o.type="sine";o.frequency.value=760;o.connect(g);g.connect(c.destination);g.gain.setValueAtTime(.0001,c.currentTime+t);g.gain.exponentialRampToValueAtTime(.35,c.currentTime+t+.02);g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+t+.16);o.start(c.currentTime+t);o.stop(c.currentTime+t+.17);});}catch(e){}}
   function toast(msg){const n=document.createElement("div");n.className="toast";n.textContent=msg;document.body.appendChild(n);setTimeout(()=>{n.style.transition="opacity .4s";n.style.opacity="0";setTimeout(()=>n.remove(),400);},4000);}
@@ -604,7 +612,8 @@
 
   /* ---- account chip ---- */
   function initAccount(){
-    const a=$("#acct");
+    const a=$("#acct"), rb=$("#roomsBtn");
+    if(rb)rb.classList.toggle("hidden",!Cloud.enabled);
     if(Cloud.enabled){a.href="/dashboard";a.innerHTML='<span class="av">'+(Cloud.user.avatar||"🦊")+'</span><span>'+(Cloud.user.name||T.dashboard)+'</span>';a.classList.remove("hidden");}
     else if(Cloud.served){a.href="/login";a.textContent=T.sign_in;a.classList.remove("hidden");}
     else{a.classList.add("hidden");}
@@ -617,6 +626,7 @@
     document.documentElement.dir=(lang==="fa")?"rtl":"ltr";
     document.querySelectorAll("[data-i18n]").forEach(el=>{el.textContent=T[el.dataset.i18n];});
     $("#taskInput").placeholder=T.add_task;
+    if($("#topicInput"))$("#topicInput").placeholder=T.studying;
     $("#uploadLabel").textContent=T.upload;
     $("#langLabel").textContent=T.lang_switch;
     renderClock();renderTimer();renderQuote();renderTasks();renderStats();renderCfg();renderMusicNow();
@@ -628,6 +638,7 @@
   /* ---- init ---- */
   $("#chime").checked=prefs.chime;
   $("#dim").value=bg.dim;
+  (function(){const ti=$("#topicInput");if(ti){ti.value=store.get("ff_topic","");ti.addEventListener("input",()=>store.set("ff_topic",ti.value));}})();
   applyAccent();applyBg();buildSwatches();renderFmt();renderDock();
   applyLang();
 })();

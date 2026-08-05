@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Focus — Rooms</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--accent:oklch(0.7 0.12 62);--accent-ink:#16303a;--cream:#faf6ee;--cream2:#efe9de;--ink:#2b2824;--muted:#8a8175;--white:#fbfdfd;--danger:#c0392b;--good:#3a9d5d}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;font-family:'Instrument Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:var(--ink);background:#16303a;min-height:100vh;-webkit-font-smoothing:antialiased}
+  .mono{font-family:'DM Mono',ui-monospace,monospace}
+  .wrap{max-width:820px;margin:0 auto;padding:clamp(18px,4vw,40px)}
+
+  header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:26px;flex-wrap:wrap}
+  header h1{font-size:22px;font-weight:600;color:var(--white);letter-spacing:-.01em;margin:0}
+  .hbtns{display:flex;gap:9px}
+  .hbtn{height:40px;padding:0 15px;border-radius:11px;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.14);color:var(--white);font-size:13.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;text-decoration:none;backdrop-filter:blur(8px)}
+  .hbtn:hover{background:rgba(255,255,255,.24)}
+
+  .section{background:var(--cream);border-radius:22px;padding:20px 20px 18px;box-shadow:0 14px 40px rgba(0,0,0,.26);margin-bottom:18px}
+  .section h2{font-size:12.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 14px;display:flex;align-items:center;justify-content:space-between}
+  .roomlist{display:flex;flex-direction:column;gap:10px}
+  .roomcard{display:flex;align-items:center;gap:13px;background:var(--cream2);border-radius:14px;padding:14px;text-decoration:none;color:var(--ink);border:1px solid transparent;transition:.15s;cursor:pointer}
+  .roomcard:hover{border-color:rgba(0,0,0,.12)}
+  .roomcard .ic{width:44px;height:44px;border-radius:12px;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;font-size:20px;flex:none}
+  .roomcard .info{flex:1;min-width:0}
+  .roomcard .nm{font-size:15.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .roomcard .sub{font-size:12.5px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:8px}
+  .badge{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 7px;border-radius:99px}
+  .badge.pub{background:#dcefe1;color:#2e7d46}
+  .badge.prv{background:#efe1dc;color:#a05a37}
+  .btn{border:none;border-radius:11px;font-weight:700;cursor:pointer;font-size:13.5px;padding:9px 15px}
+  .btn.pri{background:var(--accent);color:var(--accent-ink)}
+  .btn.pri:hover{filter:brightness(1.06)}
+  .btn.ghost{background:var(--cream);border:1px solid rgba(0,0,0,.14);color:var(--ink)}
+  .btn.ghost:hover{background:#fff}
+  .btn.dng{background:none;color:var(--danger);border:1px solid rgba(192,57,43,.35)}
+  .btn:disabled{opacity:.55;cursor:default}
+  .empty{color:var(--muted);font-size:13.5px;text-align:center;padding:16px 0}
+
+  .createbar{display:flex;gap:8px;flex-wrap:wrap}
+  .createbar input[type=text]{flex:1;min-width:160px;border:1px solid rgba(0,0,0,.14);background:#fff;border-radius:11px;padding:11px 13px;font-size:14px;color:var(--ink);outline:none}
+  .createbar input:focus{border-color:var(--accent)}
+  .vis-seg{display:flex;gap:5px;background:var(--cream2);padding:4px;border-radius:11px}
+  .vis-seg button{border:none;background:transparent;color:var(--muted);font-size:13px;font-weight:600;padding:8px 12px;border-radius:8px;cursor:pointer}
+  .vis-seg button.on{background:var(--cream);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+  .joinbar{display:flex;gap:8px}
+  .joinbar input{flex:1;border:1px solid rgba(0,0,0,.14);background:#fff;border-radius:11px;padding:11px 13px;font-size:14px;outline:none}
+
+  /* detail */
+  .member{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:13px;background:var(--cream2);margin-bottom:8px}
+  .member .rank{width:20px;text-align:center;color:var(--muted);font-size:13px}
+  .member .av{width:38px;height:38px;border-radius:11px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;flex:none;position:relative}
+  .member .av .live{position:absolute;right:-2px;bottom:-2px;width:12px;height:12px;border-radius:50%;background:var(--good);border:2px solid var(--cream2);box-shadow:0 0 0 0 rgba(58,157,93,.6);animation:pulse 1.8s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(58,157,93,.5)}70%{box-shadow:0 0 0 7px rgba(58,157,93,0)}100%{box-shadow:0 0 0 0 rgba(58,157,93,0)}}
+  .member .mn{flex:1;min-width:0}
+  .member .mn b{font-size:14.5px}
+  .member .mn .st{font-size:12px;color:var(--muted);margin-top:1px}
+  .member .mins{font-family:'DM Mono',monospace;font-size:16px;color:var(--accent)}
+  .invite{display:flex;gap:8px;align-items:center;background:var(--cream2);border-radius:12px;padding:10px 12px}
+  .invite code{font-family:'DM Mono',monospace;font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .msg{font-size:13px;margin-top:10px;min-height:16px}
+  .msg.err{color:var(--danger)} .msg.ok{color:var(--good)}
+  .loading{color:rgba(255,255,255,.8);text-align:center;padding:80px 0}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+<script src="/theme.js"></script>
+<div class="wrap">
+  <header>
+    <h1 id="title">Rooms</h1>
+    <div class="hbtns">
+      <a class="hbtn" href="/">⏱ Timer</a>
+      <a class="hbtn" href="/dashboard">📊 Dashboard</a>
+    </div>
+  </header>
+  <div id="loading" class="loading">Loading…</div>
+
+  <!-- LIST VIEW -->
+  <div id="listView" class="hidden">
+    <div class="section">
+      <h2>Create a room</h2>
+      <div class="createbar">
+        <input type="text" id="newName" placeholder="Room name (e.g. Finals Grind)" maxlength="60">
+        <div class="vis-seg" id="visSeg">
+          <button data-vis="private" class="on">🔒 Private</button>
+          <button data-vis="public">🌍 Public</button>
+        </div>
+        <button class="btn pri" id="createBtn">Create</button>
+      </div>
+      <div class="msg" id="createMsg"></div>
+    </div>
+
+    <div class="section">
+      <h2>Your rooms</h2>
+      <div class="roomlist" id="myRooms"></div>
+    </div>
+
+    <div class="section">
+      <h2>Discover public rooms</h2>
+      <div class="roomlist" id="pubRooms"></div>
+      <div style="margin-top:14px">
+        <div class="joinbar">
+          <input type="text" id="joinCode" placeholder="Have an invite code? Paste it here" maxlength="40">
+          <button class="btn pri" id="joinBtn">Join</button>
+        </div>
+        <div class="msg" id="joinMsg"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DETAIL VIEW -->
+  <div id="detailView" class="hidden">
+    <a class="hbtn" href="/rooms" style="margin-bottom:16px;display:inline-flex">← All rooms</a>
+    <div class="section">
+      <h2><span id="dName">Room</span><span class="badge" id="dBadge"></span></h2>
+      <div id="members"></div>
+    </div>
+    <div class="section" id="inviteSec">
+      <h2>Invite</h2>
+      <div class="invite">
+        <code id="inviteLink"></code>
+        <button class="btn ghost" id="copyBtn">Copy link</button>
+      </div>
+      <div style="font-size:12.5px;color:var(--muted);margin-top:8px">Anyone with this link can join — even a private room.</div>
+    </div>
+    <div class="section" id="ownerSec">
+      <h2>Room settings <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">owner only</span></h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <div class="vis-seg" id="dVisSeg">
+          <button data-vis="private">🔒 Private</button>
+          <button data-vis="public">🌍 Public</button>
+        </div>
+        <button class="btn dng" id="deleteBtn" style="margin-inline-start:auto">Delete room</button>
+      </div>
+    </div>
+    <div class="section" id="memberSec">
+      <button class="btn dng" id="leaveBtn">Leave room</button>
+    </div>
+    <div class="msg" id="detailMsg"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s);};
+  var qs=new URLSearchParams(location.search);
+  var api=function(url,opt){opt=opt||{};opt.credentials='same-origin';return fetch(url,opt).then(function(r){return r.json().then(function(j){return {ok:r.ok,status:r.status,j:j};});});};
+  var post=function(url,body){return api(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});};
+  var newVis='private';
+
+  // gate on auth
+  api('/api/me').then(function(res){
+    if(!res.j.user){ location.href='/login'; return; }
+    var joinCode=qs.get('join');
+    if(joinCode){ post('/api/rooms/join',{code:joinCode}).then(function(r){ location.href = r.ok ? ('/rooms?room='+r.j.room_id) : '/rooms'; }); return; }
+    var rid=qs.get('room');
+    if(rid){ showDetail(rid); } else { showList(); }
+  });
+
+  /* ---------- LIST ---------- */
+  function showList(){
+    $('#loading').classList.add('hidden'); $('#listView').classList.remove('hidden');
+    $('#visSeg').querySelectorAll('button').forEach(function(b){ b.onclick=function(){ newVis=b.dataset.vis; $('#visSeg').querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b);}); }; });
+    $('#createBtn').onclick=function(){
+      var name=$('#newName').value.trim();
+      if(!name){ msg('#createMsg','Give your room a name.','err'); return; }
+      post('/api/rooms',{name:name,visibility:newVis}).then(function(r){ if(r.ok) location.href='/rooms?room='+r.j.room_id; else msg('#createMsg',r.j.error||'Failed','err'); });
+    };
+    $('#joinBtn').onclick=function(){
+      var c=$('#joinCode').value.trim();
+      if(!c){ msg('#joinMsg','Paste an invite code.','err'); return; }
+      post('/api/rooms/join',{code:c}).then(function(r){ if(r.ok) location.href='/rooms?room='+r.j.room_id; else msg('#joinMsg',r.j.error||'Not found','err'); });
+    };
+    loadMine(); loadPublic();
+  }
+  function loadMine(){
+    api('/api/rooms').then(function(r){
+      var box=$('#myRooms'); var rooms=r.j.rooms||[];
+      if(!rooms.length){ box.innerHTML='<div class="empty">No rooms yet — create one above or join a public room.</div>'; return; }
+      box.innerHTML='';
+      rooms.forEach(function(rm){
+        var a=document.createElement('a'); a.className='roomcard'; a.href='/rooms?room='+rm.id;
+        a.innerHTML='<div class="ic">'+(rm.visibility==='public'?'🌍':'🔒')+'</div>'+
+          '<div class="info"><div class="nm"></div><div class="sub"><span class="badge '+(rm.visibility==='public'?'pub">Public':'prv">Private')+'</span>'+
+          '<span>'+rm.members+' member'+(rm.members===1?'':'s')+'</span>'+(rm.isOwner?'<span>· owner</span>':'')+'</div></div><span class="btn ghost">Open</span>';
+        a.querySelector('.nm').textContent=rm.name;
+        box.appendChild(a);
+      });
+    });
+  }
+  function loadPublic(){
+    api('/api/rooms/public').then(function(r){
+      var box=$('#pubRooms'); var rooms=r.j.rooms||[];
+      if(!rooms.length){ box.innerHTML='<div class="empty">No public rooms yet. Make one public for others to join!</div>'; return; }
+      box.innerHTML='';
+      rooms.forEach(function(rm){
+        var row=document.createElement('div'); row.className='roomcard';
+        row.innerHTML='<div class="ic">🌍</div><div class="info"><div class="nm"></div><div class="sub"><span>'+rm.members+' member'+(rm.members===1?'':'s')+'</span></div></div>';
+        row.querySelector('.nm').textContent=rm.name;
+        var btn=document.createElement('button'); btn.className='btn '+(rm.joined?'ghost':'pri'); btn.textContent=rm.joined?'Open':'Join';
+        btn.onclick=function(){ if(rm.joined){ location.href='/rooms?room='+rm.id; } else { post('/api/rooms/join',{room_id:rm.id}).then(function(x){ if(x.ok) location.href='/rooms?room='+rm.id; }); } };
+        row.appendChild(btn); box.appendChild(row);
+      });
+    });
+  }
+
+  /* ---------- DETAIL ---------- */
+  var curRoom=null, poll=null;
+  function showDetail(rid){
+    $('#loading').classList.add('hidden'); $('#detailView').classList.remove('hidden');
+    load(); if(poll)clearInterval(poll); poll=setInterval(load,15000);
+    function load(){
+      api('/api/rooms/'+rid).then(function(r){
+        if(!r.ok){ $('#detailView').innerHTML='<div class="section"><div class="empty">'+(r.j.error||'Room unavailable')+'</div><a class="btn pri" href="/rooms">Back to rooms</a></div>'; if(poll)clearInterval(poll); return; }
+        curRoom=r.j.room;
+        $('#dName').textContent=curRoom.name;
+        var b=$('#dBadge'); b.textContent=curRoom.visibility==='public'?'Public':'Private'; b.className='badge '+(curRoom.visibility==='public'?'pub':'prv');
+        // members / leaderboard
+        var mbox=$('#members'); mbox.innerHTML='';
+        r.j.members.forEach(function(m,i){
+          var el=document.createElement('div'); el.className='member';
+          el.innerHTML='<div class="rank">'+(i+1)+'</div>'+
+            '<div class="av">'+m.avatar+(m.focusing?'<span class="live"></span>':'')+'</div>'+
+            '<div class="mn"><b></b><div class="st">'+(m.focusing?'focusing now':'idle')+(m.role==='owner'?' · owner':'')+(m.me?' · you':'')+'</div></div>'+
+            '<div class="mins">'+m.todayMinutes+'m</div>';
+          el.querySelector('b').textContent=m.name;
+          mbox.appendChild(el);
+        });
+        // invite
+        $('#inviteLink').textContent=location.origin+'/rooms?join='+curRoom.code;
+        // owner vs member controls
+        $('#ownerSec').classList.toggle('hidden',!curRoom.isOwner);
+        $('#memberSec').classList.toggle('hidden',curRoom.isOwner||!curRoom.isMember);
+        if(curRoom.isOwner){
+          $('#dVisSeg').querySelectorAll('button').forEach(function(x){ x.classList.toggle('on',x.dataset.vis===curRoom.visibility);
+            x.onclick=function(){ post('/api/rooms/'+rid+'/visibility',{visibility:x.dataset.vis}).then(load); }; });
+        }
+      });
+    }
+    $('#copyBtn').onclick=function(){ var t=$('#inviteLink').textContent; navigator.clipboard&&navigator.clipboard.writeText(t); msg('#detailMsg','Invite link copied!','ok'); };
+    $('#deleteBtn').onclick=function(){ if(confirm('Delete this room for everyone?')) api('/api/rooms/'+rid,{method:'DELETE'}).then(function(){ location.href='/rooms'; }); };
+    $('#leaveBtn').onclick=function(){ post('/api/rooms/'+rid+'/leave').then(function(r){ if(r.ok) location.href='/rooms'; else msg('#detailMsg',r.j.error||'Failed','err'); }); };
+  }
+
+  function msg(sel,text,cls){ var e=$(sel); e.textContent=text; e.className='msg '+(cls||''); }
+})();
+</script>
+</body>
+</html>

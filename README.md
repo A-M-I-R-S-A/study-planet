@@ -1,9 +1,9 @@
-# Focus — study timer with accounts
+# Focus — study timer with accounts, rooms & a study calendar
 
 A Pomodoro study timer (timer, live clock, quotes, tasks, ambient sound,
-choosable backgrounds, animated progress, English/Farsi) with a small
-Python backend that adds **user accounts, synced settings, and a stats
-dashboard**.
+choosable backgrounds, animated progress, English/Farsi) plus a Python backend
+with **user accounts, study rooms, synced settings, a stats dashboard, and a
+study calendar**.
 
 ## Run it
 
@@ -13,27 +13,54 @@ You need Python 3 (already installed). From this folder:
 python server.py
 ```
 
-Then open **http://localhost:8000** in your browser.
+Then open **http://localhost:8000**.
 
-- `http://localhost:8000/`          → the timer app
-- `http://localhost:8000/login`     → sign up / sign in
-- `http://localhost:8000/dashboard` → your stats & personalized setup
+- `/`            → the timer app
+- `/login`       → sign up / sign in
+- `/dashboard`   → your stats, study calendar & personalized setup
+- `/rooms`       → create / join study rooms
 
 Set a different port with `PORT=9000 python server.py`.
 
-## How it fits together
+## Features
+
+- **Accounts** — email + password (PBKDF2-hashed), session cookies.
+- **Synced everywhere** — settings, tasks, and stats live on your account; the
+  timer pushes changes up and pulls them down on any device.
+- **Study rooms** — create rooms, set them **public** (discoverable) or
+  **private** (invite-only), and share an **invite link/code**. Each room shows
+  a live focus leaderboard with a "focusing now" indicator.
+- **One theme, all pages** — the background/appearance you pick in the timer is
+  applied to the dashboard, rooms, and login pages too (`theme.js`).
+- **Study calendar** — every finished focus session logs its minutes and a
+  "what are you studying?" note. The dashboard calendar shows a month at a
+  glance; click any day to see exactly what you read/studied.
+
+## Files
 
 | File             | Role |
 |------------------|------|
-| `server.py`      | Backend: static file server + JSON API, SQLite storage, PBKDF2 password hashing, session cookies. No third-party packages. |
-| `index.html`     | The timer app. Works standalone (guest, saves to the browser); when served by `server.py` and signed in, it syncs settings/tasks and records finished focus sessions to your account. |
-| `login.html`     | Email + password sign-up / sign-in. |
-| `dashboard.html` | The user page: streak, total focus time, sessions, a 14-day chart, your personalized setup, and a profile editor. |
-| `focus.db`       | SQLite database, created automatically on first run (git-ignored). |
+| `server.py`      | Backend: static server + JSON API, SQLite, PBKDF2 auth, sessions. No third-party packages. |
+| `index.html`     | The timer app (also works standalone/offline as a guest). |
+| `login.html`     | Sign-up / sign-in. |
+| `dashboard.html` | Stats, 14-day chart, study calendar, personalized setup, profile editor. |
+| `rooms.html`     | Rooms: create, discover, join, room detail with leaderboard + invites. |
+| `theme.js`       | Shared theme applied to every page. |
+| `focus.db`       | SQLite database, created on first run (git-ignored). |
+
+## API summary
+
+Auth: `POST /api/signup` · `POST /api/login` · `POST /api/logout` · `GET /api/me`
+· `PATCH /api/profile`
+Data: `PUT /api/settings` · `PUT /api/tasks` · `POST /api/session-complete` (records
+minutes + topic) · `GET /api/stats` · `GET /api/calendar?month=YYYY-MM`
+Rooms: `POST /api/rooms` · `GET /api/rooms` · `GET /api/rooms/public` ·
+`POST /api/rooms/join` · `GET|DELETE /api/rooms/<id>` · `POST /api/rooms/<id>/leave`
+· `POST /api/rooms/<id>/visibility` · `POST /api/heartbeat` (presence)
 
 ## Notes
 
-- Passwords are stored hashed (PBKDF2-HMAC-SHA256, 200k iterations) — never in plain text.
-- Opening `index.html` directly from disk still works as a guest (no server, saves locally).
-- This runs on `127.0.0.1` for local use. To expose it on your network or the
-  internet you'd put it behind a real web server (e.g. nginx) and enable HTTPS.
+- Passwords are stored hashed (PBKDF2-HMAC-SHA256, 200k iterations) — never plain text.
+- Invites are share-links/codes (no email is sent).
+- Runs on `127.0.0.1` for local use. To expose it publicly you'd put it behind a
+  real web server (nginx etc.) with HTTPS.
