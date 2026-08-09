@@ -32,9 +32,14 @@ Set a different port with `PORT=9000 python server.py`.
   a live focus leaderboard with a "focusing now" indicator.
 - **One theme, all pages** — the background/appearance you pick in the timer is
   applied to the dashboard, rooms, and login pages too (`theme.js`).
-- **Study calendar** — every finished focus session logs its minutes and a
-  "what are you studying?" note. The dashboard calendar shows a month at a
-  glance; click any day to see exactly what you read/studied.
+- **Study calendar** — every finished focus session logs its minutes and the
+  subject. The dashboard calendar shows a month at a glance; click any day to
+  see exactly what you studied.
+- **Timer or stopwatch** — a Pomodoro countdown or a count-up stopwatch.
+  Starting either hides the other controls for a distraction-free view, and
+  **pausing logs your time**, so a partial session is never lost.
+- **Subjects** — create your study subjects on the dashboard; pick one on the
+  timer and each subject shows its focus time for the day next to it.
 
 ## Files
 
@@ -52,8 +57,10 @@ Set a different port with `PORT=9000 python server.py`.
 
 Auth: `POST /api/signup` · `POST /api/login` · `POST /api/logout` · `GET /api/me`
 · `PATCH /api/profile`
-Data: `PUT /api/settings` · `PUT /api/tasks` · `POST /api/session-complete` (records
-minutes + topic) · `GET /api/stats` · `GET /api/calendar?month=YYYY-MM`
+Data: `PUT /api/settings` · `PUT /api/tasks` · `POST /api/log` (records minutes +
+subject; `session:0` on pause, `session:1` on completion) · `GET /api/stats` ·
+`GET /api/calendar?month=YYYY-MM`
+Subjects: `GET /api/subjects` · `POST /api/subjects` · `DELETE /api/subjects/<id>`
 Rooms: `POST /api/rooms` · `GET /api/rooms` · `GET /api/rooms/public` ·
 `POST /api/rooms/join` · `GET|DELETE /api/rooms/<id>` · `POST /api/rooms/<id>/leave`
 · `POST /api/rooms/<id>/visibility` · `POST /api/heartbeat` (presence)

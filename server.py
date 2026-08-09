@@ -96,11 +96,20 @@ def init_db():
           topic      TEXT DEFAULT '',
           created_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS subjects(
+          id         INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          name       TEXT NOT NULL,
+          color      TEXT DEFAULT '#d9a24e',
+          created_at TEXT NOT NULL
+        );
         """
     )
     for col, ddl in (("focusing", "INTEGER DEFAULT 0"), ("last_seen", "REAL DEFAULT 0")):
         if not any(r["name"] == col for r in conn.execute("PRAGMA table_info(users)")):
             conn.execute("ALTER TABLE users ADD COLUMN %s %s" % (col, ddl))
+    if not any(r["name"] == "subject_id" for r in conn.execute("PRAGMA table_info(session_log)")):
+        conn.execute("ALTER TABLE session_log ADD COLUMN subject_id INTEGER")
     conn.commit()
     conn.close()
 
@@ -167,6 +176,21 @@ def get_tasks(uid):
     ).fetchall()
     conn.close()
     return [{"id": r["id"], "text": r["text"], "done": bool(r["done"])} for r in rows]
+
+
+def subjects_for(uid):
+    conn = db()
+    today = date.today().isoformat()
+    rows = conn.execute("SELECT id,name,color FROM subjects WHERE user_id=? ORDER BY id", (uid,)).fetchall()
+    out = []
+    for r in rows:
+        tm = conn.execute(
+            "SELECT COALESCE(SUM(minutes),0) AS m FROM session_log WHERE user_id=? AND day=? AND subject_id=?",
+            (uid, today, r["id"]),
+        ).fetchone()
+        out.append({"id": r["id"], "name": r["name"], "color": r["color"], "todayMinutes": tm["m"]})
+    conn.close()
+    return out
 
 
 def compute_streak(by):
@@ -312,7 +336,15 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.heartbeat()
             if p == "/api/calendar" and m == "GET":
                 return self.calendar()
+            if p == "/api/log" and m == "POST":
+                return self.log_focus()
+            if p == "/api/subjects" and m == "GET":
+                return self.subjects_list()
+            if p == "/api/subjects" and m == "POST":
+                return self.subject_create()
             seg = [x for x in p.split("/") if x]
+            if len(seg) == 3 and seg[0] == "api" and seg[1] == "subjects" and seg[2].isdigit() and m == "DELETE":
+                return self.subject_delete(int(seg[2]))
             if len(seg) >= 3 and seg[0] == "api" and seg[1] == "rooms" and seg[2].isdigit():
                 rid = int(seg[2])
                 if len(seg) == 3 and m == "GET":
@@ -385,6 +417,7 @@ class Handler(SimpleHTTPRequestHandler):
             "settings": json.loads(u["settings"] or "{}"),
             "tasks": get_tasks(u["id"]),
             "stats": stats_summary(u["id"]),
+            "subjects": subjects_for(u["id"]),
         })
 
     def get_stats(self):
@@ -660,6 +693,69 @@ class Handler(SimpleHTTPRequestHandler):
                 cell["topics"].append(r["topic"])
         conn.close()
         return self._json(200, {"month": month, "days": list(days.values())})
+
+    # ---- subjects + focus logging ----
+    def subjects_list(self):
+        u = self._user()
+        if not u:
+            return self._json(401, {"error": "Not signed in."})
+        return self._json(200, {"subjects": subjects_for(u["id"])})
+
+    def subject_create(self):
+        u = self._user()
+        if not u:
+            return self._json(401, {"error": "Not signed in."})
+        d = self._read_json()
+        name = (d.get("name") or "").strip()[:40]
+        if not name:
+            return self._json(400, {"error": "Give the subject a name."})
+        color = (d.get("color") or "").strip()[:16] or "#d9a24e"
+        conn = db()
+        conn.execute(
+            "INSERT INTO subjects(user_id,name,color,created_at) VALUES(?,?,?,?)",
+            (u["id"], name, color, now_iso()),
+        )
+        conn.commit()
+        conn.close()
+        return self._json(200, {"ok": True, "subjects": subjects_for(u["id"])})
+
+    def subject_delete(self, sid):
+        u = self._user()
+        if not u:
+            return self._json(401, {"error": "Not signed in."})
+        conn = db()
+        conn.execute("DELETE FROM subjects WHERE id=? AND user_id=?", (sid, u["id"]))
+        conn.execute("UPDATE session_log SET subject_id=NULL WHERE subject_id=? AND user_id=?", (sid, u["id"]))
+        conn.commit()
+        conn.close()
+        return self._json(200, {"ok": True, "subjects": subjects_for(u["id"])})
+
+    def log_focus(self):
+        u = self._user()
+        if not u:
+            return self._json(401, {"error": "Not signed in."})
+        d = self._read_json()
+        minutes = max(0, min(600, int(d.get("minutes") or 0)))
+        session = 1 if d.get("session") else 0
+        sid = d.get("subject_id")
+        sid = int(sid) if sid else None
+        topic = (d.get("topic") or "").strip()[:200]
+        if minutes <= 0 and not session:
+            return self._json(200, {"ok": True, "stats": stats_summary(u["id"]), "subjects": subjects_for(u["id"])})
+        today = date.today().isoformat()
+        conn = db()
+        conn.execute(
+            "INSERT INTO stat_days(user_id,day,sessions,minutes) VALUES(?,?,?,?) "
+            "ON CONFLICT(user_id,day) DO UPDATE SET sessions=sessions+?, minutes=minutes+?",
+            (u["id"], today, session, minutes, session, minutes),
+        )
+        conn.execute(
+            "INSERT INTO session_log(user_id,day,minutes,topic,subject_id,created_at) VALUES(?,?,?,?,?,?)",
+            (u["id"], today, minutes, topic, sid, now_iso()),
+        )
+        conn.commit()
+        conn.close()
+        return self._json(200, {"ok": True, "stats": stats_summary(u["id"]), "subjects": subjects_for(u["id"])})
 
 
 def main():

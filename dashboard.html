@@ -66,6 +66,21 @@
   .save{height:44px;padding:0 22px;border:none;border-radius:12px;background:var(--accent);color:var(--accent-ink);font-size:14px;font-weight:700;cursor:pointer}
   .save.saved{background:#2e7d46;color:#fff}
 
+  /* subjects */
+  .subj-add{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .subj-add input{flex:1;min-width:150px;border:1px solid rgba(0,0,0,.14);background:#fff;border-radius:11px;padding:11px 13px;font-size:14px;color:var(--ink);outline:none}
+  .subj-add input:focus{border-color:var(--accent)}
+  .color-pick{display:flex;gap:5px}
+  .color-pick button{width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
+  .color-pick button.on{border-color:var(--ink)}
+  .subj-list{display:flex;flex-direction:column;gap:8px}
+  .subj-row{display:flex;align-items:center;gap:11px;background:var(--cream2);border-radius:12px;padding:12px 14px}
+  .subj-row .cdot{width:12px;height:12px;border-radius:50%;flex:none}
+  .subj-row .snm{flex:1;font-size:14.5px;font-weight:600}
+  .subj-row .stime{font-size:15px;color:var(--accent)}
+  .subj-row .del{border:none;background:none;color:#a89e8f;font-size:18px;cursor:pointer;padding:0 4px;line-height:1}
+  .subj-row .del:hover{color:var(--danger)}
+  .subj-empty{color:var(--muted);font-size:13.5px;text-align:center;padding:12px 0}
   /* calendar */
   .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
   .cal-head .mlabel{font-size:15px;font-weight:600;color:var(--ink)}
@@ -113,6 +128,16 @@
     </header>
 
     <div class="grid" id="statGrid"></div>
+
+    <div class="section">
+      <h2>Subjects <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">· focus time today</span></h2>
+      <div class="subj-add">
+        <input type="text" id="subjName" placeholder="Add a subject (e.g. Calculus)" maxlength="40">
+        <div class="color-pick" id="colorPick"></div>
+        <button class="save" id="addSubj">Add</button>
+      </div>
+      <div class="subj-list" id="subjList"></div>
+    </div>
 
     <div class="section">
       <h2>Last 14 days · focus minutes</h2>
@@ -237,6 +262,7 @@
     ];
     $("#items").innerHTML=items.map(i=>'<div class="item"><div class="il">'+i.l+'</div><div class="iv">'+i.v+'</div></div>').join("");
     loadCalendar(ymNow());
+    renderSubjects(j.subjects||[]);
   }
 
   $("#saveProfile").onclick=async ()=>{
@@ -298,6 +324,29 @@
   }
   $("#calPrev").onclick=function(){ loadCalendar(shiftMonth(calMonth,-1)); };
   $("#calNext").onclick=function(){ loadCalendar(shiftMonth(calMonth,1)); };
+
+  /* ---------- subjects ---------- */
+  var SUBJ_COLORS=["#d9a24e","#5b8def","#3a9d5d","#c05fd6","#e0685a","#4bb3c4"];
+  var pickColor=SUBJ_COLORS[0];
+  function renderColorPick(){ var w=$("#colorPick"); w.innerHTML=""; SUBJ_COLORS.forEach(function(c){var b=document.createElement("button");b.type="button";b.style.background=c;b.className=(c===pickColor?"on":"");b.onclick=function(){pickColor=c;renderColorPick();};w.appendChild(b);}); }
+  function renderSubjects(list){
+    var box=$("#subjList"); if(!box) return;
+    if(!list||!list.length){ box.innerHTML='<div class="subj-empty">No subjects yet — add your first above, then pick it on the timer.</div>'; return; }
+    box.innerHTML="";
+    list.forEach(function(s){
+      var row=document.createElement("div"); row.className="subj-row";
+      row.innerHTML='<span class="cdot" style="background:'+s.color+'"></span><span class="snm"></span><span class="stime mono">'+s.todayMinutes+'m</span><button class="del" title="Delete">×</button>';
+      row.querySelector(".snm").textContent=s.name;
+      row.querySelector(".del").onclick=function(){ if(confirm('Delete subject "'+s.name+'"? Past sessions keep their history.')) fetch("/api/subjects/"+s.id,{method:"DELETE",credentials:"same-origin"}).then(function(r){return r.json();}).then(function(j){renderSubjects(j.subjects);}); };
+      box.appendChild(row);
+    });
+  }
+  $("#addSubj").onclick=function(){
+    var name=$("#subjName").value.trim(); if(!name) return;
+    fetch("/api/subjects",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:name,color:pickColor})}).then(function(r){return r.json();}).then(function(j){ if(j.subjects){renderSubjects(j.subjects);$("#subjName").value="";} });
+  };
+  $("#subjName").addEventListener("keydown",function(e){ if(e.key==="Enter"){e.preventDefault();$("#addSubj").click();} });
+  renderColorPick();
 })();
 </script>
 </body>

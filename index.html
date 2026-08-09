@@ -85,6 +85,23 @@
   .topic{width:min(360px,80vw);text-align:center;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:var(--white);border-radius:99px;padding:10px 16px;font-size:14px;outline:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
   .topic::placeholder{color:rgba(255,255,255,.6)}
   .topic:focus{border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.18)}
+  .tabs2{display:inline-flex;gap:4px;background:rgba(255,255,255,.12);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:4px;border-radius:11px}
+  .tabs2 button{border:none;background:transparent;color:rgba(255,255,255,.7);font-size:13px;font-weight:600;padding:7px 15px;border-radius:8px;cursor:pointer;transition:.15s}
+  .tabs2 button.on{background:var(--white);color:#0d4455}
+  .subjectbar{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:min(520px,90vw);min-height:20px}
+  .subj{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:var(--white);border-radius:99px;padding:8px 14px;font-size:13.5px;cursor:pointer;transition:.15s;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  .subj:hover{background:rgba(255,255,255,.18)}
+  .subj.on{border-color:var(--sc);background:color-mix(in oklch,var(--sc) 32%,transparent)}
+  .subj .dot{width:9px;height:9px;border-radius:50%;background:var(--sc);flex:none}
+  .subj .sm{font-family:'DM Mono',ui-monospace,monospace;font-size:12px;opacity:.85}
+  .subj-hint{color:rgba(255,255,255,.72);font-size:13px;text-decoration:none;border:1px dashed rgba(255,255,255,.3);padding:9px 16px;border-radius:99px}
+  .subj-hint:hover{color:var(--white)}
+  main.is-running .modes,
+  main.is-running .reset,
+  main.is-running #typeSwitch,
+  main.is-running #subjectBar{display:none!important}
+  main.stopwatch .modes,
+  main.stopwatch .prog{display:none!important}
   .quote{margin-top:10px;max-width:min(480px,86vw);cursor:pointer;text-align:center}
   .quote .qt{font-size:17px;line-height:1.55;font-style:italic;color:rgba(255,255,255,.9)}
   .quote .qby{margin-top:12px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.5)}
@@ -215,6 +232,10 @@
   </header>
 
   <main>
+    <div class="tabs2" id="typeSwitch">
+      <button data-type="timer" class="on"><span data-i18n="timer_mode">Timer</span></button>
+      <button data-type="stopwatch"><span data-i18n="stopwatch">Stopwatch</span></button>
+    </div>
     <div class="modes" id="modes">
       <button class="mode-btn active" data-mode="focus" data-i18n="mode_focus">Focus</button>
       <button class="mode-btn" data-mode="short" data-i18n="mode_short">Short</button>
@@ -233,7 +254,7 @@
       <button class="reset" id="reset" title="Reset">↻</button>
     </div>
 
-    <input class="topic" id="topicInput" type="text" placeholder="What are you studying?" maxlength="200">
+    <div class="subjectbar" id="subjectBar"></div>
 
     <div class="quote" id="quote" title="New quote">
       <div class="qt" id="quoteText">…</div>
@@ -330,7 +351,7 @@
   try{
     const r=await fetch("/api/me",{credentials:"same-origin"});
     if(r.ok){ Cloud.served=true; const j=await r.json();
-      if(j&&j.user){ Cloud.enabled=true; Cloud.user=j.user; Cloud.stats=j.stats;
+      if(j&&j.user){ Cloud.enabled=true; Cloud.user=j.user; Cloud.stats=j.stats; Cloud.subjects=j.subjects||[];
         const s=j.settings||{};
         if(s.cfg)localStorage.setItem("ff_cfg",JSON.stringify(s.cfg));
         if(s.prefs)localStorage.setItem("ff_prefs",JSON.stringify(s.prefs));
@@ -347,7 +368,7 @@
   function _cloudSettings(){return {cfg:store.get("ff_cfg",{}),prefs:store.get("ff_prefs",{}),bg:store.get("ff_bg",{}),volume:store.get("ff_volume",45)};}
   Cloud.pushSettings=function(){if(!Cloud.enabled)return;clearTimeout(_sT);_sT=setTimeout(()=>{fetch("/api/settings",{method:"PUT",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({settings:_cloudSettings()})}).catch(()=>{});},600);};
   Cloud.pushTasks=function(){if(!Cloud.enabled)return;clearTimeout(_tT);_tT=setTimeout(()=>{fetch("/api/tasks",{method:"PUT",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({tasks:store.get("ff_tasks",[])})}).catch(()=>{});},500);};
-  Cloud.sessionComplete=function(mins,topic){if(!Cloud.enabled)return Promise.resolve(null);return fetch("/api/session-complete",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({minutes:mins,topic:topic||""})}).then(r=>r.ok?r.json():null).then(j=>j&&j.stats?j.stats:null).catch(()=>null);};
+  Cloud.log=function(mins,subjectId,topic,session){if(!Cloud.enabled)return Promise.resolve(null);return fetch("/api/log",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({minutes:mins,subject_id:subjectId,topic:topic||"",session:session})}).then(r=>r.ok?r.json():null).catch(()=>null);};
   Cloud.heartbeat=function(focusing){if(!Cloud.enabled)return;fetch("/api/heartbeat",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({focusing:!!focusing})}).catch(()=>{});};
   const _storeSet=store.set;
   store.set=function(k,v){_storeSet(k,v);if(k==="ff_tasks")Cloud.pushTasks();else if(k==="ff_cfg"||k==="ff_prefs"||k==="ff_bg"||k==="ff_volume")Cloud.pushSettings();};
@@ -367,7 +388,8 @@
       phase_focus:"Focus session",phase_short:"Short break",phase_long:"Long break",
       streak_suffix:"-day streak",toast_focus:"Focus complete — take a break.",toast_break:"Break's over — back to it.",
       confirm_reset:"Reset all settings, tasks, and progress?",img_big:"Image is large — it'll show now but may not persist.",
-      am:"AM",pm:"PM",lang_switch:"English",sign_in:"Sign in",dashboard:"Dashboard",studying:"What are you studying?"},
+      am:"AM",pm:"PM",lang_switch:"English",sign_in:"Sign in",dashboard:"Dashboard",studying:"What are you studying?",
+      timer_mode:"Timer",stopwatch:"Stopwatch",add_subjects:"＋ Create subjects on your dashboard",sign_in_subjects:"Sign in to track subjects"},
     fa:{brand:"تمرکز",mode_focus:"تمرکز",mode_short:"کوتاه",mode_long:"بلند",
       tasks:"کارها",music:"موسیقی",stats:"آمار",ambient:"صدای محیط",
       rain:"باران",ocean:"اقیانوس",wind:"باد",forest:"جنگل",
@@ -381,7 +403,8 @@
       phase_focus:"جلسهٔ تمرکز",phase_short:"استراحت کوتاه",phase_long:"استراحت بلند",
       streak_suffix:" روز پیاپی",toast_focus:"تمرکز کامل شد — کمی استراحت کنید.",toast_break:"استراحت تمام شد — به کار برگردید.",
       confirm_reset:"همهٔ تنظیمات، کارها و پیشرفت بازنشانی شود؟",img_big:"تصویر بزرگ است — اکنون نمایش داده می‌شود اما شاید ذخیره نشود.",
-      am:"ق.ظ",pm:"ب.ظ",lang_switch:"فارسی",sign_in:"ورود",dashboard:"داشبورد",studying:"چه می‌خوانی؟"}
+      am:"ق.ظ",pm:"ب.ظ",lang_switch:"فارسی",sign_in:"ورود",dashboard:"داشبورد",studying:"چه می‌خوانی؟",
+      timer_mode:"تایمر",stopwatch:"کرنومتر",add_subjects:"＋ موضوع‌ها را در داشبورد بسازید",sign_in_subjects:"برای موضوع‌ها وارد شوید"}
   };
   const QUOTES={
     en:[
@@ -439,6 +462,8 @@
 
   const BOUNDS={focusMin:[1,90],shortMin:[1,30],longMin:[1,60]};
   let mode="focus", secondsLeft=cfg.focusMin*60, running=false, openPanel="tasks";
+  let timerType=prefs.timerType||"timer", elapsedSec=0, pendingSec=store.get("ff_pending",0)||0, blockActive=false;
+  let subjects=Cloud.subjects||[], curSubject=store.get("ff_subject",null);
   let quoteIdx=Math.floor(Date.now()/86400000)%QUOTES.en.length;
   const durFor=m=>({focus:cfg.focusMin,short:cfg.shortMin,long:cfg.longMin}[m])*60;
   const isFocus=()=>mode==="focus";
@@ -483,39 +508,100 @@
     $("#date").textContent=d.toLocaleDateString(lang==="fa"?"fa-IR":undefined,{weekday:"long",month:"long",day:"numeric"});
   }
 
-  /* ---- timer ---- */
+  /* ---- timer + stopwatch ---- */
+  function fmtClock(sec){sec=Math.max(0,Math.floor(sec));const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return h>0?(h+":"+pad(m)+":"+pad(s)):(pad(m)+":"+pad(s));}
+  function isFocusBlock(){return timerType==="stopwatch"||mode==="focus";}
   function renderTimer(){
-    const mmss=pad(Math.floor(secondsLeft/60))+":"+pad(secondsLeft%60);
-    $("#time").textContent=L(mmss);
-    $("#phase").textContent=T["phase_"+mode];
-    const total=durFor(mode);
-    $("#progFill").style.width=((1-secondsLeft/total)*100)+"%";
+    const sw=timerType==="stopwatch";
+    const shown=sw?elapsedSec:secondsLeft;
+    $("#time").textContent=L(fmtClock(shown));
+    $("#phase").textContent=sw?T.stopwatch:((curSubject&&mode==="focus")?curSubject.name:T["phase_"+mode]);
+    if(!sw){const total=durFor(mode);$("#progFill").style.width=((1-secondsLeft/total)*100)+"%";}
     $("#play").textContent=running?T.pause:T.start;
     $("#dot").classList.toggle("run",running);
     document.querySelectorAll(".mode-btn").forEach(b=>b.classList.toggle("active",b.dataset.mode===mode));
-    document.title=(running?mmss+" · ":"")+T.brand;
+    document.querySelectorAll("#typeSwitch button").forEach(b=>b.classList.toggle("on",b.dataset.type===timerType));
+    const main=document.querySelector("main");
+    main.classList.toggle("is-running",running);
+    main.classList.toggle("stopwatch",sw);
+    document.title=(running?fmtClock(shown)+" · ":"")+T.brand;
   }
-  function selectMode(m){mode=m;secondsLeft=durFor(m);running=false;applyAccent();renderTimer();}
-  function toggle(){running=!running;renderTimer();if(Cloud.enabled)Cloud.heartbeat(running);}
-  function reset(){running=false;secondsLeft=durFor(mode);renderTimer();}
-  function finish(){
-    running=false;
-    if(isFocus()){
-      stats.sessions++; stats.mins+=cfg.focusMin; store.set("ff_stats",stats);
-      const today=dayStr(new Date()), yest=dayStr(new Date(Date.now()-864e5));
+  function setType(t){if(running)return;timerType=t;prefs.timerType=t;store.set("ff_prefs",prefs);elapsedSec=0;if(t==="timer")secondsLeft=durFor(mode);renderTimer();}
+  function selectMode(m){if(running)return;mode=m;secondsLeft=durFor(m);applyAccent();renderTimer();}
+  function curSubjectId(){return curSubject&&curSubject.id?curSubject.id:null;}
+
+  /* flush accumulated focus time -> local stats + account (so a pause never loses time) */
+  function flushFocus(countSession){
+    const mins=Math.floor(pendingSec/60);
+    if(mins<=0 && !(countSession&&blockActive)) return;
+    if(mins>0){ stats.mins+=mins; pendingSec-=mins*60; store.set("ff_pending",pendingSec); }
+    if(countSession&&blockActive){
+      stats.sessions++;
+      const today=dayStr(new Date()),yest=dayStr(new Date(Date.now()-864e5));
       if(streak.lastDate!==today){streak.count=(streak.lastDate===yest)?streak.count+1:1;streak.lastDate=today;store.set("ff_streak",streak);}
-      if(Cloud.enabled){Cloud.heartbeat(false);Cloud.sessionComplete(cfg.focusMin,($("#topicInput")&&$("#topicInput").value.trim())||"").then(srv=>{if(srv){stats.sessions=srv.today.sessions;stats.mins=srv.today.minutes;streak.count=srv.streak;streak.lastDate=dayStr(new Date());store.set("ff_stats",stats);store.set("ff_streak",streak);renderStats();}});}
+      blockActive=false;
     }
-    const next=isFocus()?(stats.sessions%4===0?"long":"short"):"focus";
-    if(prefs.chime) chime();
-    toast(isFocus()?T.toast_focus:T.toast_break);
-    mode=next; secondsLeft=durFor(next);
-    applyAccent();renderTimer();renderStats();
+    store.set("ff_stats",stats); renderStats();
+    if(Cloud.enabled){
+      Cloud.log(mins,curSubjectId(),curSubject?curSubject.name:"",countSession?1:0).then(res=>{
+        if(res&&res.stats){stats.sessions=res.stats.today.sessions;stats.mins=res.stats.today.minutes;streak.count=res.stats.streak;streak.lastDate=dayStr(new Date());store.set("ff_stats",stats);store.set("ff_streak",streak);renderStats();}
+        if(res&&res.subjects){subjects=res.subjects;renderSubjects();}
+      });
+    }
   }
+
+  function toggle(){
+    running=!running;
+    if(!running) flushFocus(false);            // pause -> log time, session stays open
+    renderTimer();
+    if(Cloud.enabled)Cloud.heartbeat(running);
+  }
+  function reset(){
+    if(running||pendingSec>0) flushFocus(true); // ending the block counts a session
+    running=false; elapsedSec=0; secondsLeft=durFor(mode);
+    renderTimer(); if(Cloud.enabled)Cloud.heartbeat(false);
+  }
+  function finish(){                             // countdown reached 0
+    running=false;
+    const wasFocus=isFocus();
+    flushFocus(true);
+    const next=wasFocus?((stats.sessions%4===0)?"long":"short"):"focus";
+    if(prefs.chime) chime();
+    toast(wasFocus?T.toast_focus:T.toast_break);
+    mode=next; secondsLeft=durFor(next); elapsedSec=0;
+    applyAccent(); renderTimer(); renderStats();
+    if(Cloud.enabled)Cloud.heartbeat(false);
+  }
+
+  function renderSubjects(){
+    const bar=$("#subjectBar"); if(!bar) return;
+    if(!Cloud.enabled){ bar.innerHTML='<a class="subj-hint" href="/login">'+T.sign_in_subjects+'</a>'; return; }
+    if(!subjects.length){ bar.innerHTML='<a class="subj-hint" href="/dashboard">'+T.add_subjects+'</a>'; return; }
+    if(curSubject && !subjects.some(s=>s.id===curSubject.id)){ curSubject=null; store.set("ff_subject",null); }
+    bar.innerHTML="";
+    subjects.forEach(s=>{
+      const b=document.createElement("button");
+      b.className="subj"+(curSubject&&curSubject.id===s.id?" on":"");
+      b.style.setProperty("--sc",s.color||"#d9a24e");
+      b.innerHTML='<span class="dot"></span><span class="sn"></span><span class="sm mono">'+L(s.todayMinutes)+'m</span>';
+      b.querySelector(".sn").textContent=s.name;
+      b.onclick=()=>{curSubject=(curSubject&&curSubject.id===s.id)?null:{id:s.id,name:s.name,color:s.color};store.set("ff_subject",curSubject);renderSubjects();renderTimer();};
+      bar.appendChild(b);
+    });
+  }
+
   $("#play").onclick=toggle;
   $("#reset").onclick=reset;
   document.querySelectorAll(".mode-btn").forEach(b=>b.onclick=()=>selectMode(b.dataset.mode));
-  setInterval(()=>{renderClock();if(running){if(secondsLeft<=1){secondsLeft=0;renderTimer();finish();}else{secondsLeft--;renderTimer();}}},1000);
+  document.querySelectorAll("#typeSwitch button").forEach(b=>b.onclick=()=>setType(b.dataset.type));
+  setInterval(()=>{
+    renderClock();
+    if(!running) return;
+    if(isFocusBlock()){ pendingSec++; blockActive=true; store.set("ff_pending",pendingSec); }
+    if(timerType==="stopwatch"){ elapsedSec++; renderTimer(); }
+    else if(secondsLeft<=1){ secondsLeft=0; renderTimer(); finish(); }
+    else { secondsLeft--; renderTimer(); }
+  },1000);
   setInterval(()=>{if(Cloud.enabled)Cloud.heartbeat(running);},30000);
 
   function chime(){try{const c=new (window.AudioContext||window.webkitAudioContext)();[0,.18,.36].forEach(t=>{const o=c.createOscillator(),g=c.createGain();o.type="sine";o.frequency.value=760;o.connect(g);g.connect(c.destination);g.gain.setValueAtTime(.0001,c.currentTime+t);g.gain.exponentialRampToValueAtTime(.35,c.currentTime+t+.02);g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+t+.16);o.start(c.currentTime+t);o.stop(c.currentTime+t+.17);});}catch(e){}}
@@ -626,7 +712,7 @@
     document.documentElement.dir=(lang==="fa")?"rtl":"ltr";
     document.querySelectorAll("[data-i18n]").forEach(el=>{el.textContent=T[el.dataset.i18n];});
     $("#taskInput").placeholder=T.add_task;
-    if($("#topicInput"))$("#topicInput").placeholder=T.studying;
+    renderSubjects();
     $("#uploadLabel").textContent=T.upload;
     $("#langLabel").textContent=T.lang_switch;
     renderClock();renderTimer();renderQuote();renderTasks();renderStats();renderCfg();renderMusicNow();
@@ -638,9 +724,9 @@
   /* ---- init ---- */
   $("#chime").checked=prefs.chime;
   $("#dim").value=bg.dim;
-  (function(){const ti=$("#topicInput");if(ti){ti.value=store.get("ff_topic","");ti.addEventListener("input",()=>store.set("ff_topic",ti.value));}})();
   applyAccent();applyBg();buildSwatches();renderFmt();renderDock();
   applyLang();
+  if(Cloud.enabled && pendingSec>=60) flushFocus(false);   // recover time from a previous unfinished session
 })();
 </script>
 </body>
