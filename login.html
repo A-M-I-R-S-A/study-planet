@@ -2,19 +2,28 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16303a">
 <title>Focus — Sign in</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{--accent:oklch(0.7 0.12 62);--accent-ink:#16303a;--cream:#faf6ee;--cream2:#efe9de;--ink:#2b2824;--muted:#8a8175;--white:#fbfdfd;--danger:#c0392b}
   *{box-sizing:border-box}
+  /* Kill the grey/blue rectangle Android's WebView flashes over anything tapped, and the
+     focus ring left behind after a tap. :focus-visible keeps the ring for keyboard users. */
+  html{-webkit-tap-highlight-color:transparent}
+  :focus:not(:focus-visible){outline:none}
   html,body{height:100%}
   body{margin:0;font-family:'Instrument Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:var(--ink);
     background:#16303a;min-height:100vh;
-    display:flex;align-items:center;justify-content:center;padding:24px;-webkit-font-smoothing:antialiased}
+    display:flex;align-items:center;justify-content:center;-webkit-font-smoothing:antialiased;
+    padding:calc(24px + env(safe-area-inset-top)) max(24px,env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left))}
   .mono{font-family:'DM Mono',ui-monospace,monospace}
+  html[lang="fa"] body{font-family:'Vazirmatn','Segoe UI',Tahoma,sans-serif}
+  .langsw{display:block;margin:10px auto 0;border:none;background:transparent;color:var(--muted);font-family:inherit;font-size:12.5px;cursor:pointer;padding:4px 8px;border-radius:8px}
+  .langsw:hover{color:var(--ink);background:var(--cream2)}
   .card{width:100%;max-width:400px;background:var(--cream);border-radius:24px;padding:34px 30px 28px;box-shadow:0 24px 70px rgba(0,0,0,.4)}
   .brand{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:6px}
   .brand .dot{width:12px;height:12px;border-radius:50%;background:var(--accent)}
@@ -41,45 +50,54 @@
 </head>
 <body>
   <script src="/theme.js"></script>
+  <script src="/i18n.js"></script>
   <form class="card" id="form" autocomplete="on">
     <div class="brand"><span class="dot"></span><b>Focus</b></div>
-    <div class="tag">Your sessions, streaks &amp; settings — saved to your account.</div>
+    <div class="tag" data-i18n="login_tag">Your sessions, streaks &amp; settings — saved to your account.</div>
 
     <div class="seg">
-      <button type="button" id="tabLogin" class="active">Sign in</button>
-      <button type="button" id="tabSignup">Create account</button>
+      <button type="button" id="tabLogin" class="active" data-i18n="sign_in">Sign in</button>
+      <button type="button" id="tabSignup" data-i18n="create_account">Create account</button>
     </div>
 
     <div class="field row-hidden" id="nameField">
-      <label for="name">Name</label>
-      <input id="name" name="name" type="text" placeholder="What should we call you?" maxlength="60">
+      <label for="name" data-i18n="name">Name</label>
+      <input id="name" name="name" type="text" data-i18n-ph="name_ph" placeholder="What should we call you?" maxlength="60">
     </div>
     <div class="field">
-      <label for="email">Email</label>
+      <label for="email" data-i18n="email">Email</label>
       <input id="email" name="email" type="email" placeholder="you@example.com" required autocomplete="username">
     </div>
     <div class="field">
-      <label for="password">Password</label>
+      <label for="password" data-i18n="password">Password</label>
       <input id="password" name="password" type="password" placeholder="••••••••" required autocomplete="current-password" minlength="6">
     </div>
 
-    <button class="submit" id="submit" type="submit">Sign in</button>
+    <button class="submit" id="submit" type="submit" data-i18n="sign_in">Sign in</button>
     <div class="msg" id="msg"></div>
-    <div class="foot"><a href="/">← Back to the timer</a></div>
+    <div class="foot">
+      <a href="/" data-i18n="back_timer">← Back to the timer</a>
+      <button type="button" class="langsw" id="langBtn">🌐 English</button>
+    </div>
   </form>
 
 <script>
 (function(){
   const $=s=>document.querySelector(s);
+  const I=window.FocusI18n;
   let mode="login";
   const msg=$("#msg");
+
+  document.title=I.t("login_title");
+  $("#langBtn").textContent="🌐 "+I.t("lang_switch");
+  $("#langBtn").onclick=()=>I.toggle();
 
   function setMode(m){
     mode=m;
     $("#tabLogin").classList.toggle("active",m==="login");
     $("#tabSignup").classList.toggle("active",m==="signup");
     $("#nameField").classList.toggle("row-hidden",m!=="signup");
-    $("#submit").textContent = m==="login" ? "Sign in" : "Create account";
+    $("#submit").textContent = I.t(m==="login" ? "sign_in" : "create_account");
     $("#password").setAttribute("autocomplete", m==="login" ? "current-password" : "new-password");
     msg.textContent=""; msg.className="msg";
   }
@@ -110,7 +128,7 @@
       const r = await fetch(url,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({email,password,name})});
       const j = await r.json();
-      if(!r.ok){ msg.textContent=j.error||"Something went wrong."; msg.className="msg err"; $("#submit").disabled=false; return; }
+      if(!r.ok){ msg.textContent=j.error?I.serverError(j.error):I.t("generic_error"); msg.className="msg err"; $("#submit").disabled=false; return; }
       if(mode==="signup"){
         // seed the fresh account with whatever the guest had locally
         const g=guestData();
@@ -119,10 +137,10 @@
           if(g.tasks&&g.tasks.length) await fetch("/api/tasks",{method:"PUT",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({tasks:g.tasks})});
         }catch(_){}
       }
-      msg.textContent="Success — taking you in…"; msg.className="msg ok";
+      msg.textContent=I.t("signing_in"); msg.className="msg ok";
       location.href="/dashboard";
     }catch(err){
-      msg.textContent="Couldn't reach the server."; msg.className="msg err"; $("#submit").disabled=false;
+      msg.textContent=I.t("no_server"); msg.className="msg err"; $("#submit").disabled=false;
     }
   });
 })();

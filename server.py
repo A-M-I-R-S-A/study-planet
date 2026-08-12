@@ -23,11 +23,14 @@ import os, json, time, base64, hmac, hashlib, secrets, sqlite3, traceback, threa
 from datetime import datetime, timezone, date, timedelta
 from http import cookies
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse, parse_qs, unquote
+from urllib.parse import urlparse, parse_qs, unquote, urlencode
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(ROOT, "focus.db")
 PORT = int(os.environ.get("PORT", "8000"))
+# Bind address. Defaults to loopback so the server is not exposed by accident; set
+# HOST=0.0.0.0 to reach it from other devices on the LAN (e.g. the Android app in dev).
+HOST = os.environ.get("HOST", "127.0.0.1")
 PBKDF_ITER = 200_000
 SESSION_DAYS = 30
 ROOM_MAX = 10  # max members per room; a user may be in only one room at a time
@@ -36,6 +39,86 @@ MAX_BODY = 8 * 1024 * 1024   # cap request bodies (bytes): stops memory-exhausti
 MAX_PW = 128                 # cap password length so PBKDF2 hashing cost stays bounded
 # Set SECURE_COOKIES=1 when serving over HTTPS so the session cookie gets the Secure flag.
 SECURE_COOKIES = os.environ.get("SECURE_COOKIES", "").lower() in ("1", "true", "yes", "on")
+# "Study day" boundary. Days (streaks, calendar, per-day stats) are bucketed on UTC shifted
+# by DAY_OFFSET_MIN minutes, so behaviour is the same wherever the server runs. 0 = UTC;
+# e.g. 210 for Iran (UTC+3:30), 60 for CET, -480 for US Pacific. Set it to your users' zone.
+DAY_OFFSET_MIN = int(os.environ.get("DAY_OFFSET_MIN", "0"))
+MAX_DAY_SECONDS = 24 * 3600   # per-user daily ceiling on logged focus time (anti-inflation sanity cap)
+
+# --- quotes (api-ninjas) ------------------------------------------------------------
+# The key stays server-side: the browser calls /api/quotes here, never api-ninjas directly.
+# Putting it in page JS would publish it to every visitor, and the page's own CSP
+# (connect-src 'self') blocks off-origin calls anyway.
+# Set QUOTES_API_KEY, or drop the key in quotes_api_key.txt next to this file (gitignored).
+QUOTES_API_KEY = os.environ.get("QUOTES_API_KEY", "").strip()
+if not QUOTES_API_KEY:
+    try:
+        with open(os.path.join(ROOT, "quotes_api_key.txt"), "r", encoding="utf-8") as fh:
+            QUOTES_API_KEY = fh.read().strip()
+    except OSError:
+        pass
+QUOTES_URL = "https://api.api-ninjas.com/v2/quotes"
+# On the free tier each call returns exactly ONE quote, the "limit" param is premium-only,
+# and repeating a call with the same categories returns the identical quote. Variety
+# therefore has to come from varying the category -- one request per category, deduped.
+QUOTES_CATEGORIES = [c.strip() for c in os.environ.get(
+    "QUOTES_CATEGORIES",
+    "success,wisdom,motivational,education,learning,knowledge,time,work,perseverance,discipline"
+).split(",") if c.strip()]
+QUOTES_TTL = 6 * 3600   # refresh the pool at most this often (≈40 calls/day)
+_quotes = {"at": 0.0, "items": []}
+_quotes_lock = threading.Lock()
+
+
+def fetch_quotes():
+    """One quote per category. Returns [] on failure -- callers fall back to the cache."""
+    import urllib.request
+    out, seen = [], set()
+    for cat in QUOTES_CATEGORIES:
+        req = urllib.request.Request(
+            QUOTES_URL + "?" + urlencode({"categories": cat}),
+            headers={"X-Api-Key": QUOTES_API_KEY},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=5) as r:
+                data = json.loads(r.read().decode("utf-8"))
+        except Exception:
+            continue   # a bad category or a network hiccup shouldn't sink the whole batch
+        # v2 returns a list; tolerate a {"quotes": [...]} envelope in case that changes
+        if isinstance(data, dict):
+            data = data.get("quotes") or data.get("data") or []
+        for q in data if isinstance(data, list) else []:
+            text = " ".join((q.get("quote") or "").split())   # source data has ragged whitespace
+            author = " ".join((q.get("author") or "").split()) or "unknown"
+            # a few entries glue the attribution on after a stray closing quote, e.g.
+            # 'ceaseless perseverance.”Baron Manfred von Richthofen (1892-1918); Pilot'
+            if "”" in text:
+                head = text.split("”", 1)[0].strip()
+                if len(head) >= 20:
+                    text = head
+            text = text.strip("“”\"' ")
+            # the hero area is built for one or two lines; skip anything that would overflow it
+            if text and len(text) <= 200 and text not in seen:
+                seen.add(text)
+                out.append({"t": text, "by": author})
+    return out
+
+
+def quotes_cached():
+    """Pool of quotes, refreshed at most every QUOTES_TTL. Never raises."""
+    now = time.time()
+    with _quotes_lock:
+        fresh = (now - _quotes["at"]) < QUOTES_TTL and _quotes["items"]
+        if fresh or not QUOTES_API_KEY:
+            return _quotes["items"]
+        got = fetch_quotes()
+        if got:
+            _quotes["items"] = got
+            _quotes["at"] = now
+        else:
+            # keep serving the stale pool, but retry sooner than a full TTL
+            _quotes["at"] = now - QUOTES_TTL + 300
+        return _quotes["items"]
 
 # Sent on every response. 'unsafe-inline' is unavoidable (the pages use inline <script>/<style>),
 # but the remaining directives still block framing, plugins, <base> hijacking and off-origin form
@@ -153,6 +236,15 @@ def now_iso():
     return datetime.now(timezone.utc).isoformat()
 
 
+def today_date():
+    """Current 'study day' as a date — UTC shifted by DAY_OFFSET_MIN (0 = UTC)."""
+    return (datetime.now(timezone.utc) + timedelta(minutes=DAY_OFFSET_MIN)).date()
+
+
+def today_str():
+    return today_date().isoformat()
+
+
 # ------------------------------------------------- rate limiting + upkeep ----
 # Set TRUST_PROXY=1 only when behind a reverse proxy you control, so the client
 # IP is read from X-Forwarded-For instead of the (proxy's) socket address.
@@ -261,7 +353,7 @@ def get_tasks(uid):
 
 def subjects_for(uid):
     conn = db()
-    today = date.today().isoformat()
+    today = today_str()
     rows = conn.execute("SELECT id,name,color FROM subjects WHERE user_id=? ORDER BY id", (uid,)).fetchall()
     out = []
     for r in rows:
@@ -277,7 +369,7 @@ def subjects_for(uid):
 
 def compute_streak(by):
     streak = 0
-    d = date.today()
+    d = today_date()
     if by.get(d.isoformat(), {}).get("sessions", 0) == 0:
         d = d - timedelta(days=1)  # today still pending -> count from yesterday
     while by.get(d.isoformat(), {}).get("sessions", 0) > 0:
@@ -293,10 +385,10 @@ def stats_summary(uid):
     ).fetchall()
     conn.close()
     by = {r["day"]: {"sessions": r["sessions"], "seconds": r["seconds"] or 0} for r in rows}
-    today = date.today().isoformat()
+    today = today_str()
     history = []
     for i in range(13, -1, -1):
-        d = (date.today() - timedelta(days=i)).isoformat()
+        d = (today_date() - timedelta(days=i)).isoformat()
         cell = by.get(d, {})
         secs = cell.get("seconds", 0)
         history.append(
@@ -328,6 +420,12 @@ class Handler(SimpleHTTPRequestHandler):
     def end_headers(self):
         for k, v in SECURITY_HEADERS:
             self.send_header(k, v)
+        # Without this the pages carry only Last-Modified, so clients (notably the Android
+        # WebView) invent a heuristic freshness window and serve a stale copy for hours --
+        # deployed changes silently never arrive. "no-cache" still allows conditional
+        # requests, so unchanged files come back as a cheap 304 rather than a full re-download.
+        # It also keeps per-user HTML (dashboard, rooms) out of shared caches.
+        self.send_header("Cache-Control", "no-cache")
         super().end_headers()
 
     def list_directory(self, path):
@@ -429,6 +527,9 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.me()
             if p == "/api/stats" and m == "GET":
                 return self.get_stats()
+            if p == "/api/quotes" and m == "GET":
+                # open to guests too: the timer shows quotes whether or not you're signed in
+                return self._json(200, {"quotes": quotes_cached()})
             if p == "/api/settings" and m == "PUT":
                 return self.save_settings()
             if p == "/api/tasks" and m == "PUT":
@@ -589,8 +690,13 @@ class Handler(SimpleHTTPRequestHandler):
         mins = max(0, min(600, int(d.get("minutes") or 0)))
         secs = mins * 60
         topic = (d.get("topic") or "").strip()[:200]
-        today = date.today().isoformat()
+        today = today_str()
         conn = db()
+        have = conn.execute(
+            "SELECT COALESCE(seconds,0) AS s FROM stat_days WHERE user_id=? AND day=?", (u["id"], today)
+        ).fetchone()
+        secs = min(secs, max(0, MAX_DAY_SECONDS - (have["s"] if have else 0)))  # a day can't exceed 24h
+        mins = secs // 60
         conn.execute(
             "INSERT INTO stat_days(user_id,day,sessions,seconds) VALUES(?,?,1,?) "
             "ON CONFLICT(user_id,day) DO UPDATE SET sessions=sessions+1, seconds=seconds+?",
@@ -633,7 +739,7 @@ class Handler(SimpleHTTPRequestHandler):
     def _members_payload(self, conn, u, room):
         """Build the {room, members[]} view for a room, ranked by today's focus time."""
         rid = room["id"]
-        today = date.today().isoformat()
+        today = today_str()
         rows = conn.execute(
             "SELECT u.id,u.name,u.email,u.avatar,u.focusing,u.last_seen,mm.role "
             "FROM room_members mm JOIN users u ON u.id=mm.user_id WHERE mm.room_id=?",
@@ -858,7 +964,7 @@ class Handler(SimpleHTTPRequestHandler):
         if not u:
             return self._json(401, {"error": "Not signed in."})
         q = parse_qs(urlparse(self.path).query)
-        month = (q.get("month", [None])[0]) or date.today().strftime("%Y-%m")
+        month = (q.get("month", [None])[0]) or today_date().strftime("%Y-%m")
         conn = db()
         rows = conn.execute(
             "SELECT day,minutes,topic FROM session_log WHERE user_id=? AND day LIKE ? ORDER BY created_at",
@@ -926,8 +1032,15 @@ class Handler(SimpleHTTPRequestHandler):
         topic = (d.get("topic") or "").strip()[:200]
         if secs <= 0 and not session:
             return self._json(200, {"ok": True, "stats": stats_summary(u["id"]), "subjects": subjects_for(u["id"])})
-        today = date.today().isoformat()
+        today = today_str()
         conn = db()
+        have = conn.execute(
+            "SELECT COALESCE(seconds,0) AS s FROM stat_days WHERE user_id=? AND day=?", (u["id"], today)
+        ).fetchone()
+        secs = min(secs, max(0, MAX_DAY_SECONDS - (have["s"] if have else 0)))  # a day can't exceed 24h
+        if secs <= 0 and not session:
+            conn.close()
+            return self._json(200, {"ok": True, "stats": stats_summary(u["id"]), "subjects": subjects_for(u["id"])})
         conn.execute(
             "INSERT INTO stat_days(user_id,day,sessions,seconds) VALUES(?,?,?,?) "
             "ON CONFLICT(user_id,day) DO UPDATE SET sessions=sessions+?, seconds=seconds+?",
@@ -948,9 +1061,11 @@ def main():
     purge_expired()  # clear anything already expired, then keep it tidy hourly
     threading.Thread(target=cleanup_loop, daemon=True).start()
     print("Focus server running:  http://localhost:%d" % PORT)
+    if HOST not in ("127.0.0.1", "localhost"):
+        print("Listening on:          %s:%d  (reachable from the LAN)" % (HOST, PORT))
     print("Database:              %s" % DB_PATH)
     print("Press Ctrl+C to stop.")
-    ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
+    ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
 
 
 if __name__ == "__main__":

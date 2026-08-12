@@ -1,0 +1,21 @@
+{
+  "name": "focus-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Capacitor Android wrapper for the Focus study timer",
+  "scripts": {
+    "copy": "node copy-www.mjs",
+    "sync": "node copy-www.mjs && cap sync android",
+    "open": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.6.8",
+    "@capacitor/app": "^7.1.2",
+    "@capacitor/cli": "^7.6.8",
+    "@capacitor/core": "^7.6.8",
+    "@capacitor/local-notifications": "^7.0.7",
+    "@capacitor/splash-screen": "^7.0.5",
+    "@capacitor/status-bar": "^7.0.6"
+  }
+}

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug-only manifest overlay. Android 9+ blocks plaintext HTTP by default, which stops
+  the debug build from loading the dev server over the LAN (server.url in
+  capacitor.config.json). This allows it for debug builds ONLY - release builds keep
+  cleartext blocked, so a shipped APK still requires HTTPS.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application android:usesCleartextTraffic="true"
+        tools:replace="android:usesCleartextTraffic" />
+
+</manifest>

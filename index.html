@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16303a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Focus</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,6 +22,10 @@
     --white:#fbfdfd;
   }
   *{box-sizing:border-box}
+  /* Kill the grey/blue rectangle Android's WebView flashes over anything tapped, and the
+     focus ring left behind after a tap. :focus-visible keeps the ring for keyboard users. */
+  html{-webkit-tap-highlight-color:transparent}
+  :focus:not(:focus-visible){outline:none}
   html,body{height:100%}
   body{
     margin:0;
@@ -43,7 +51,7 @@
   #bg{position:fixed;inset:0;z-index:-2;background:linear-gradient(180deg,#887326EB,#382C1F,#1F2838),#16303a;background-size:cover;background-position:center}
   #scrim{position:fixed;inset:0;z-index:-1;background:#000;opacity:0;transition:opacity .3s}
 
-  .app{min-height:100vh;padding:clamp(20px,4vw,44px);display:flex;flex-direction:column}
+  .app{min-height:100vh;padding:calc(clamp(20px,4vw,44px) + env(safe-area-inset-top)) max(clamp(20px,4vw,44px),env(safe-area-inset-right)) clamp(20px,4vw,44px) max(clamp(20px,4vw,44px),env(safe-area-inset-left));display:flex;flex-direction:column}
 
   /* header */
   header{display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-between}
@@ -56,17 +64,30 @@
   .clock-box{text-align:end;line-height:1.1;color:var(--white)}
   .clock{font-size:26px;letter-spacing:-.01em}
   .date{font-size:12.5px;color:rgba(255,255,255,.72);margin-top:2px}
-  .lang{height:44px;padding:0 15px;border-radius:99px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.14);color:var(--white);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;flex:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-  .lang svg{width:17px;height:17px}
-  .lang:hover{background:rgba(255,255,255,.22)}
+  /* header overflow menu: keeps the top bar to two controls (account + menu) */
+  .menu-wrap{position:relative;flex:none}
+  .menu{position:absolute;inset-inline-end:0;top:calc(100% + 9px);z-index:60;min-width:196px;padding:6px;display:flex;flex-direction:column;gap:2px;
+    border-radius:17px;border:1px solid rgba(255,255,255,.22);background:rgba(20,28,34,.88);box-shadow:0 20px 46px rgba(0,0,0,.45);
+    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);animation:rise .16s ease-out}
+  .menu-item{display:flex;align-items:center;gap:11px;width:100%;height:44px;padding:0 12px;flex:none;
+    border:none;border-radius:11px;background:transparent;color:var(--white);font-family:inherit;font-size:14.5px;font-weight:600;
+    text-align:start;text-decoration:none;cursor:pointer}
+  .menu-item:hover,.menu-item:focus-visible{background:rgba(255,255,255,.15)}
+  .menu-item .mi{width:20px;flex:none;display:flex;align-items:center;justify-content:center;font-size:17px;line-height:1}
+  .menu-item .mi svg{width:18px;height:18px}
   .acct{height:44px;padding:0 14px;border-radius:99px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.14);color:var(--white);font-size:13.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;flex:none;text-decoration:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);max-width:170px}
   .acct:hover{background:rgba(255,255,255,.24)}
   .acct .av{font-size:17px;line-height:1}
   .acct span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .gear{width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.14);color:var(--white);font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  .gear svg{width:21px;height:21px}
+  .gear:hover,.gear.open{background:rgba(255,255,255,.26)}
 
   /* hero */
-  main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(18px,3vh,30px);padding:10px 0 168px;text-align:center}
+  /* The dock is fixed to the bottom and grows when a panel opens, so the space main
+     reserves for it is measured at runtime into --dock-space (see syncDockSpace).
+     The literal here is only the pre-measurement fallback. */
+  main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(18px,3vh,30px);padding:10px 0 var(--dock-space,168px);text-align:center}
   .modes{display:flex;gap:8px;background:rgba(255,255,255,.15);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:5px;border-radius:13px}
   .mode-btn{border:none;border-radius:9px;padding:9px 17px;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;background:transparent;color:rgba(255,255,255,.78)}
   .mode-btn.active{background:var(--white);color:#0d4455;box-shadow:0 1px 4px rgba(0,0,0,.2)}
@@ -107,7 +128,7 @@
   .quote .qby{margin-top:12px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.5)}
 
   /* dock */
-  .dock{position:fixed;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;gap:14px;padding:0 16px 22px;z-index:40;pointer-events:none}
+  .dock{position:fixed;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;gap:14px;padding:0 16px calc(22px + env(safe-area-inset-bottom));z-index:40;pointer-events:none}
   .panel{pointer-events:auto;width:min(440px,92vw);animation:rise .22s ease}
   .panel.light{background:var(--cream);border:1px solid rgba(0,0,0,.06);border-radius:22px;box-shadow:0 18px 52px rgba(0,0,0,.32)}
   .hidden{display:none!important}
@@ -123,6 +144,8 @@
   .tk{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:7px;min-height:48px}
   .tk::-webkit-scrollbar{width:6px}
   .tk::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:99px}
+  .show-done{flex:none;margin-top:10px;align-self:center;border:none;background:transparent;color:var(--muted);font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;padding:6px 12px;border-radius:9px}
+  .show-done:hover{color:var(--ink);background:var(--cream2)}
   .task{display:flex;align-items:center;gap:11px;padding:10px 11px;border-radius:12px;background:var(--cream2)}
   .task .check{width:20px;height:20px;flex:none;border-radius:6px;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;background:var(--cream);border:1px solid rgba(0,0,0,.18);color:transparent}
   .task.done .check{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
@@ -231,23 +254,21 @@
 
   /* ---- responsive: tablets & phones ---- */
   @media(max-width:640px){
-    .app{padding:16px 14px}
+    .app{padding:calc(16px + env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) 16px max(14px,env(safe-area-inset-left))}
     header{gap:12px}
     .head-right{flex-wrap:wrap;justify-content:flex-end;gap:8px}
     .streak{display:none}
     .clock{font-size:22px}
     .acct{max-width:140px}
-    main{gap:16px;padding-bottom:154px}
+    main{gap:16px;padding-bottom:var(--dock-space,154px)}
     .panel{width:min(440px,94vw)}
-    .dock{gap:10px;padding:0 12px 16px}
+    .dock{gap:10px;padding:0 12px calc(16px + env(safe-area-inset-bottom))}
     .dock-btns{gap:4px;padding:6px}
     .dbtn{padding:9px 13px;font-size:13px;gap:5px}
   }
   @media(max-width:400px){
     .dbtn span[data-i18n]{display:none}   /* icon-only dock on very small screens */
     .dbtn{padding:10px 12px}
-    .lang #langLabel{display:none}         /* globe only */
-    .lang{padding:0 13px}
     .acct .av{font-size:16px}
     .modes .mode-btn{padding:8px 13px}
   }
@@ -270,13 +291,24 @@
         <div class="clock mono" id="clock">--:--</div>
         <div class="date" id="date"></div>
       </div>
-      <a class="gear hidden" id="roomsBtn" href="/rooms" title="Rooms" style="text-decoration:none">👥</a>
       <a class="acct hidden" id="acct" href="/dashboard"></a>
-      <button class="lang" id="langBtn" title="Language">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18"/></svg>
-        <span id="langLabel">فارسی</span>
-      </button>
-      <button class="gear" id="openSettings" title="Settings" aria-label="Settings">⚙</button>
+      <div class="menu-wrap">
+        <button class="gear" id="menuBtn" title="Menu" aria-label="Menu" aria-haspopup="true" aria-expanded="false" aria-controls="headMenu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+        <div class="menu hidden" id="headMenu" role="menu">
+          <a class="menu-item hidden" id="roomsBtn" href="/rooms" role="menuitem">
+            <span class="mi">👥</span><span data-i18n="room_tab">Room</span>
+          </a>
+          <button class="menu-item" id="langBtn" role="menuitem">
+            <span class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18"/></svg></span>
+            <span id="langLabel">فارسی</span>
+          </button>
+          <button class="menu-item" id="openSettings" role="menuitem">
+            <span class="mi">⚙</span><span data-i18n="settings">Settings</span>
+          </button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -320,6 +352,7 @@
         <button type="submit" aria-label="Add">+</button>
       </form>
       <div class="tk" id="taskList"></div>
+      <button type="button" class="show-done hidden" id="toggleDone"></button>
     </div>
 
     <!-- MUSIC -->
@@ -398,7 +431,7 @@
 (async function(){
   "use strict";
   const $=s=>document.querySelector(s);
-  const store={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
+  const store={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true;}catch(e){return false;}}};
   const pad=n=>String(n).padStart(2,"0");
   const dayStr=d=>d.toDateString();
 
@@ -421,14 +454,14 @@
     }
   }catch(e){/* no server reachable -> guest mode */}
   let _sT=null,_tT=null;
-  function _cloudSettings(){return {cfg:store.get("ff_cfg",{}),prefs:store.get("ff_prefs",{}),bg:store.get("ff_bg",{}),volume:store.get("ff_volume",45)};}
+  function _cloudSettings(){return {cfg:store.get("ff_cfg",{}),prefs:store.get("ff_prefs",{}),bg:bg,volume:store.get("ff_volume",45)};}
   Cloud.pushSettings=function(){if(!Cloud.enabled)return;clearTimeout(_sT);_sT=setTimeout(()=>{fetch("/api/settings",{method:"PUT",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({settings:_cloudSettings()})}).catch(()=>{});},600);};
   Cloud.pushTasks=function(){if(!Cloud.enabled)return;clearTimeout(_tT);_tT=setTimeout(()=>{fetch("/api/tasks",{method:"PUT",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({tasks:store.get("ff_tasks",[])})}).catch(()=>{});},500);};
   Cloud.log=function(secs,subjectId,topic,session){if(!Cloud.enabled)return Promise.resolve(null);return fetch("/api/log",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({seconds:secs,subject_id:subjectId,topic:topic||"",session:session})}).then(r=>r.ok?r.json():null).catch(()=>null);};
   Cloud.heartbeat=function(focusing){if(!Cloud.enabled)return;fetch("/api/heartbeat",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({focusing:!!focusing})}).catch(()=>{});};
   Cloud.currentRoom=function(){if(!Cloud.enabled)return Promise.resolve(null);return fetch("/api/rooms/current",{credentials:"same-origin"}).then(r=>r.ok?r.json():null).catch(()=>null);};
   const _storeSet=store.set;
-  store.set=function(k,v){_storeSet(k,v);if(k==="ff_tasks")Cloud.pushTasks();else if(k==="ff_cfg"||k==="ff_prefs"||k==="ff_bg"||k==="ff_volume")Cloud.pushSettings();};
+  store.set=function(k,v){const okk=_storeSet(k,v);if(k==="ff_tasks")Cloud.pushTasks();else if(k==="ff_cfg"||k==="ff_prefs"||k==="ff_bg"||k==="ff_volume")Cloud.pushSettings();return okk;};
 
   /* ---- i18n ---- */
   const I18N={
@@ -441,6 +474,7 @@
       clock_format:"Clock format",h12:"12-hour",h24:"24-hour",
       sound:"Sound",chime:"Chime when timer ends",done:"Done",reset_all:"Reset everything",
       add_task:"Add a task…",empty:"Nothing yet — add one above.",
+      all_done:"All done — nice work.",show_done:"Show completed",hide_done:"Hide completed",
       start:"Start",pause:"Pause",off:"off",loop:"loop",left:"left",
       phase_focus:"Focus session",phase_short:"Short break",phase_long:"Long break",
       streak_suffix:"-day streak",toast_focus:"Focus complete — take a break.",toast_break:"Break's over — back to it.",
@@ -457,6 +491,7 @@
       clock_format:"قالب ساعت",h12:"۱۲-ساعته",h24:"۲۴-ساعته",
       sound:"صدا",chime:"زنگ در پایان تایمر",done:"تمام",reset_all:"بازنشانی همه",
       add_task:"افزودن کار…",empty:"هنوز کاری نیست — یکی اضافه کنید.",
+      all_done:"همه انجام شد — عالی بود.",show_done:"نمایش انجام‌شده‌ها",hide_done:"پنهان کردن انجام‌شده‌ها",
       start:"شروع",pause:"توقف",off:"خاموش",loop:"تکرار",left:"باقی‌مانده",
       phase_focus:"جلسهٔ تمرکز",phase_short:"استراحت کوتاه",phase_long:"استراحت بلند",
       streak_suffix:" روز پیاپی",toast_focus:"تمرکز کامل شد — کمی استراحت کنید.",toast_break:"استراحت تمام شد — به کار برگردید.",
@@ -508,7 +543,14 @@
   const ACCENT={focus:"oklch(0.7 0.12 62)",brk:"oklch(0.72 0.09 175)"};
 
   /* ---- state ---- */
-  const cfg=store.get("ff_cfg",{focusMin:25,shortMin:5,longMin:15});
+  const CFG_DEF={focusMin:25,shortMin:5,longMin:15};
+  // Durations come back from localStorage or the cloud, where a key can be missing or -- if a
+  // NaN ever reached JSON.stringify -- have been written out as null. Either one turns every
+  // duration read into NaN and paints the clock as "NaN:NaN", so coerce each to a finite
+  // number here. Writing the repaired values back also heals an already-corrupted account.
+  const cfg=Object.assign({},CFG_DEF,store.get("ff_cfg",{})||{});
+  let _cfgRepaired=false;
+  for(const k in CFG_DEF){const n=Number(cfg[k]);const ok=Number.isFinite(n)&&n>0;if(!ok||n!==cfg[k])_cfgRepaired=true;cfg[k]=ok?n:CFG_DEF[k];}
   const prefs=store.get("ff_prefs",{clock24:false,chime:true,lang:"en"});
   let lang=prefs.lang||"en";
   let T=I18N[lang];
@@ -520,13 +562,16 @@
   if(stats.secs==null) stats.secs=(stats.mins||0)*60;   // migrate older minute-only records
   let streak=store.get("ff_streak",{lastDate:"",count:0});
   let roomInfo=null;   // {id,name,members:[{id,name,avatar,focusing,sec,me}]} when signed in and in a room
-  let roomShown=false, roomPicked=false;   // auto-open the co-focus panel once when you're in a room
 
   const BOUNDS={focusMin:[1,90],shortMin:[1,30],longMin:[1,60]};
-  let mode="focus", secondsLeft=cfg.focusMin*60, running=false, openPanel="tasks";
+  // no dock panel on launch -- the timer opens clean and you pick a panel yourself
+  let mode="focus", secondsLeft=cfg.focusMin*60, running=false, openPanel=null;
   let timerType=prefs.timerType||"timer", elapsedSec=0, pendingSec=store.get("ff_pending",0)||0, blockActive=false;
+  let showDone=!!prefs.showDone;   // completed tasks stay hidden until you ask for them
+  let lastTickTs=Date.now();   // wall-clock anchor so the timer survives mobile background-throttling
   let subjects=Cloud.subjects||[], curSubject=store.get("ff_subject",null);
   let quoteIdx=Math.floor(Date.now()/86400000)%QUOTES.en.length;
+  let liveQuotes=[];   // filled from /api/quotes; empty means "use the built-in list"
   const durFor=m=>({focus:cfg.focusMin,short:cfg.shortMin,long:cfg.longMin}[m])*60;
   const isFocus=()=>mode==="focus";
 
@@ -551,9 +596,24 @@
   $("#bgUpload").addEventListener("change",e=>{
     const f=e.target.files[0]; if(!f) return;
     const rd=new FileReader();
-    rd.onload=()=>{const dim=bg.dim<25?40:bg.dim;bg={type:"image",value:rd.result,dim};
-      try{store.set("ff_bg",bg);}catch(err){alert(T.img_big);}
-      $("#dim").value=dim;$("#dimVal").textContent=L(dim)+"%";applyBg();buildSwatches();};
+    rd.onload=()=>{
+      const img=new Image();
+      img.onload=()=>{
+        // Downscale so any photo fits browser storage and syncs to the account reliably;
+        // a full-screen background needs no more than ~1920px on its longest side.
+        const scale=Math.min(1,1920/Math.max(img.width,img.height));
+        const cw=Math.max(1,Math.round(img.width*scale)),ch=Math.max(1,Math.round(img.height*scale));
+        const cv=document.createElement("canvas");cv.width=cw;cv.height=ch;
+        cv.getContext("2d").drawImage(img,0,0,cw,ch);
+        let url;try{url=cv.toDataURL("image/jpeg",0.82);}catch(_){url=rd.result;}
+        const dim=bg.dim<25?40:bg.dim;bg={type:"image",value:url,dim};
+        const saved=store.set("ff_bg",bg);   // saved to localStorage (guest) and pushed to the account (signed in)
+        if(!saved && !Cloud.enabled) alert(T.img_big);
+        $("#dim").value=dim;$("#dimVal").textContent=L(dim)+"%";applyBg();buildSwatches();
+      };
+      img.onerror=()=>alert(T.img_big);
+      img.src=rd.result;
+    };
     rd.readAsDataURL(f);
   });
   $("#dim").addEventListener("input",e=>{bg.dim=+e.target.value;$("#dimVal").textContent=L(bg.dim)+"%";store.set("ff_bg",bg);applyBg();});
@@ -571,14 +631,15 @@
   }
 
   /* ---- timer + stopwatch ---- */
-  function fmtClock(sec){sec=Math.max(0,Math.floor(sec));const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return h>0?(h+":"+pad(m)+":"+pad(s)):(pad(m)+":"+pad(s));}
+  /* a non-finite duration renders as 00:00 rather than "NaN:NaN" */
+  function fmtClock(sec){sec=Number.isFinite(sec)?Math.max(0,Math.floor(sec)):0;const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return h>0?(h+":"+pad(m)+":"+pad(s)):(pad(m)+":"+pad(s));}
   function isFocusBlock(){return timerType==="stopwatch"||mode==="focus";}
   function renderTimer(){
     const sw=timerType==="stopwatch";
     const shown=sw?elapsedSec:secondsLeft;
     $("#time").textContent=L(fmtClock(shown));
     $("#phase").textContent=sw?T.stopwatch:((curSubject&&mode==="focus")?curSubject.name:T["phase_"+mode]);
-    if(!sw){const total=durFor(mode);$("#progFill").style.width=((1-secondsLeft/total)*100)+"%";}
+    if(!sw){const total=durFor(mode)||1;$("#progFill").style.width=((1-secondsLeft/total)*100)+"%";}   // ||1 guards against a 0 total
     $("#play").textContent=running?T.pause:T.start;
     $("#dot").classList.toggle("run",running);
     document.querySelectorAll(".mode-btn").forEach(b=>b.classList.toggle("active",b.dataset.mode===mode));
@@ -617,7 +678,8 @@
 
   function toggle(){
     running=!running;
-    if(!running) flushFocus(false);            // pause -> log time, session stays open
+    if(running){ lastTickTs=Date.now(); if(timerType==="timer") Native.scheduleEnd(secondsLeft); }
+    else { flushFocus(false); Native.cancelEnd(); }   // pause -> log time, session stays open
     renderTimer();
     if(Cloud.enabled){
       Cloud.heartbeat(running);
@@ -627,11 +689,11 @@
   }
   function reset(){
     if(running||pendingSec>0) flushFocus(true); // ending the block counts a session
-    running=false; elapsedSec=0; secondsLeft=durFor(mode);
+    running=false; Native.cancelEnd(); elapsedSec=0; secondsLeft=durFor(mode);
     renderTimer(); if(Cloud.enabled){Cloud.heartbeat(false);refreshRoom();}
   }
   function finish(){                             // countdown reached 0
-    running=false;
+    running=false; Native.cancelEnd();
     const wasFocus=isFocus();
     flushFocus(true);
     const next=wasFocus?((stats.sessions%4===0)?"long":"short"):"focus";
@@ -663,15 +725,30 @@
   $("#reset").onclick=reset;
   document.querySelectorAll(".mode-btn").forEach(b=>b.onclick=()=>selectMode(b.dataset.mode));
   document.querySelectorAll("#typeSwitch button").forEach(b=>b.onclick=()=>setType(b.dataset.type));
-  setInterval(()=>{
-    renderClock();
-    if(roomInfo){ let any=false; roomInfo.members.forEach(m=>{if(m.focusing){m.sec++;any=true;}}); if(any)tickRoomTimes(); }
+  // Accumulate *real* elapsed time (dt) since the last tick rather than assuming exactly 1s.
+  // Mobile browsers throttle/suspend setInterval when backgrounded; measuring from the wall
+  // clock means the timer catches up correctly the moment the app returns to the foreground.
+  function syncTimer(){
+    const now=Date.now();
+    let dt=(now-lastTickTs)/1000; lastTickTs=now;
+    if(dt<0) dt=0;                                    // ignore backward clock jumps
+    if(roomInfo){ let any=false; roomInfo.members.forEach(m=>{if(m.focusing){m.sec+=dt;any=true;}}); if(any)tickRoomTimes(); }
     if(!running) return;
-    if(isFocusBlock()){ pendingSec++; blockActive=true; store.set("ff_pending",pendingSec); }
-    if(timerType==="stopwatch"){ elapsedSec++; renderTimer(); }
-    else if(secondsLeft<=1){ secondsLeft=0; renderTimer(); finish(); }
-    else { secondsLeft--; renderTimer(); }
-  },1000);
+    const focusing=isFocusBlock();
+    if(timerType==="stopwatch"){
+      elapsedSec+=dt;
+      if(focusing){ pendingSec+=dt; blockActive=true; store.set("ff_pending",pendingSec); }
+      renderTimer();
+    }else{
+      const applied=Math.min(dt,secondsLeft);        // never log or count past the end of the block
+      secondsLeft-=applied;
+      if(focusing&&applied>0){ pendingSec+=applied; blockActive=true; store.set("ff_pending",pendingSec); }
+      if(secondsLeft<=0){ secondsLeft=0; renderTimer(); finish(); }
+      else renderTimer();
+    }
+  }
+  setInterval(()=>{ renderClock(); syncTimer(); },1000);
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ renderClock(); syncTimer(); } });
   // heartbeat + push my accumulating focus time so co-focusers see it; keep the room fresh
   setInterval(()=>{if(!Cloud.enabled)return;Cloud.heartbeat(running);if(running)flushFocus(false);refreshRoom();},30000);
   setInterval(()=>{if(Cloud.enabled&&roomInfo&&(running||openPanel==="room"))refreshRoom();},10000);
@@ -679,16 +756,49 @@
   function chime(){try{const c=new (window.AudioContext||window.webkitAudioContext)();[0,.18,.36].forEach(t=>{const o=c.createOscillator(),g=c.createGain();o.type="sine";o.frequency.value=760;o.connect(g);g.connect(c.destination);g.gain.setValueAtTime(.0001,c.currentTime+t);g.gain.exponentialRampToValueAtTime(.35,c.currentTime+t+.02);g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+t+.16);o.start(c.currentTime+t);o.stop(c.currentTime+t+.17);});}catch(e){}}
   function toast(msg){const n=document.createElement("div");n.className="toast";n.textContent=msg;document.body.appendChild(n);setTimeout(()=>{n.style.transition="opacity .4s";n.style.opacity="0";setTimeout(()=>n.remove(),400);},4000);}
 
-  /* ---- quote ---- */
-  function renderQuote(){const q=QUOTES[lang][quoteIdx];$("#quoteText").textContent="“"+q.t+"”";$("#quoteBy").textContent=q.by;}
-  $("#quote").onclick=()=>{quoteIdx=(quoteIdx+1)%QUOTES[lang].length;renderQuote();};
+  /* ---- native session-end notification (Capacitor LocalNotifications) ----
+     No-op on the plain web (window.Capacitor is undefined). Inside the Android app it
+     schedules the "time's up" alert at the block's end time, so it fires even if the OS
+     has suspended the WebView while backgrounded — which JS timers alone can't guarantee. */
+  const Native={
+    ln(){return (window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.LocalNotifications)||null;},
+    async init(){const p=this.ln(); if(p){try{await p.requestPermissions();}catch(e){}}},
+    async scheduleEnd(secs){const p=this.ln(); if(!p||!(secs>0))return; try{
+      await p.cancel({notifications:[{id:7}]});
+      await p.schedule({notifications:[{id:7,title:T.brand,body:(isFocus()?T.toast_focus:T.toast_break),schedule:{at:new Date(Date.now()+Math.round(secs*1000))}}]});
+    }catch(e){}},
+    async cancelEnd(){const p=this.ln(); if(!p)return; try{await p.cancel({notifications:[{id:7}]});}catch(e){}}
+  };
+  Native.init();
+
+  /* ---- quote ----
+     English quotes come from api-ninjas via our own /api/quotes proxy (the key stays on the
+     server, and the page's CSP only allows same-origin calls). The list above stays as the
+     offline/guest fallback, and is what Farsi always uses -- the API is English-only. */
+  function quotePool(){return (lang==="en"&&liveQuotes.length)?liveQuotes:QUOTES[lang];}
+  function renderQuote(){const pool=quotePool();const q=pool[quoteIdx%pool.length];$("#quoteText").textContent="“"+q.t+"”";$("#quoteBy").textContent=q.by;}
+  $("#quote").onclick=()=>{quoteIdx=(quoteIdx+1)%quotePool().length;renderQuote();};
+  fetch("/api/quotes",{credentials:"same-origin"})
+    .then(r=>r.ok?r.json():null)
+    .then(j=>{
+      const list=(j&&j.quotes||[]).filter(q=>q&&q.t);
+      if(!list.length)return;                      // empty pool: keep the built-in quotes
+      liveQuotes=list;
+      quoteIdx=Math.floor(Date.now()/86400000)%liveQuotes.length;   // same quote all day
+      renderQuote();
+    })
+    .catch(()=>{});                                 // offline: the built-in list already showed
 
   /* ---- tasks ---- */
   function saveTasks(){store.set("ff_tasks",tasks);}
   function renderTasks(){
     const list=$("#taskList"); list.innerHTML="";
+    // ticking a task takes it out of the list; the toggle below brings the done ones back
+    const doneCount=tasks.filter(t=>t.done).length;
+    const shown=showDone?tasks:tasks.filter(t=>!t.done);
     if(!tasks.length){list.innerHTML='<div class="empty-tasks">'+T.empty+'</div>';}
-    else tasks.forEach(t=>{
+    else if(!shown.length){list.innerHTML='<div class="empty-tasks">'+T.all_done+'</div>';}
+    else shown.forEach(t=>{
       const row=document.createElement("div"); row.className="task"+(t.done?" done":"");
       row.innerHTML='<button class="check">✓</button><span class="txt"></span><button class="rm" title="Remove">×</button>';
       row.querySelector(".txt").textContent=t.text;
@@ -696,12 +806,16 @@
       row.querySelector(".rm").onclick=()=>{tasks=tasks.filter(x=>x.id!==t.id);saveTasks();renderTasks();};
       list.appendChild(row);
     });
+    const tog=$("#toggleDone");
+    tog.classList.toggle("hidden",doneCount===0);
+    tog.textContent=(showDone?T.hide_done:T.show_done)+" ("+L(doneCount)+")";
     const remaining=tasks.filter(t=>!t.done).length;
     $("#taskMeta").textContent=tasks.length?L(remaining)+" "+T.left:"";
     const badge=$("#taskBadge");
     if(remaining>0){badge.textContent=L(remaining);badge.classList.remove("hidden");}else badge.classList.add("hidden");
   }
   $("#taskForm").addEventListener("submit",e=>{e.preventDefault();const inp=$("#taskInput");const v=inp.value.trim();if(!v)return;tasks.push({id:Date.now(),text:v,done:false});saveTasks();renderTasks();inp.value="";inp.focus();});
+  $("#toggleDone").onclick=()=>{showDone=!showDone;prefs.showDone=showDone;store.set("ff_prefs",prefs);renderTasks();};
 
   /* ---- stats ---- */
   function displayStreak(){const today=dayStr(new Date()),yest=dayStr(new Date(Date.now()-864e5));return(streak.lastDate===today||streak.lastDate===yest)?streak.count:0;}
@@ -751,7 +865,21 @@
     $("#roomDockBtn").classList.toggle("active",openPanel==="room");
     $("#roomPanel").classList.toggle("hidden",!(inRoom&&openPanel==="room"));
   }
-  document.querySelectorAll(".dbtn").forEach(b=>b.onclick=()=>{const p=b.dataset.panel;roomPicked=true;openPanel=(openPanel===p)?null:p;renderDock();});
+  document.querySelectorAll(".dbtn").forEach(b=>b.onclick=()=>{const p=b.dataset.panel;openPanel=(openPanel===p)?null:p;renderDock();});
+
+  /* The dock is fixed to the bottom, and a panel is already open on load, so anything at the
+     end of main (the quote) would sit underneath it -- and the page doesn't scroll, so those
+     lines were unreachable. Publish the dock's real height and let main reserve exactly that.
+     A ResizeObserver covers every way it changes: panel open/close, tasks added, rotation. */
+  (function(){
+    const dockEl=document.querySelector(".dock");
+    if(!dockEl)return;
+    const sync=()=>document.documentElement.style.setProperty(
+      "--dock-space",(Math.ceil(dockEl.getBoundingClientRect().height)+18)+"px");
+    if(window.ResizeObserver) new ResizeObserver(sync).observe(dockEl);
+    else window.addEventListener("resize",sync);
+    sync();
+  })();
 
   /* ---- co-focus: room members' avatars + live focus time ---- */
   function renderRoom(){
@@ -797,8 +925,7 @@
         else if(prev[m.id]!=null) sec=Math.max(sec,prev[m.id]); // never let a live time jump backward
         return {id:m.id,name:m.name,avatar:m.avatar,focusing:m.me?running:!!m.focusing,sec:sec,me:!!m.me};
       })};
-      if(!roomShown){ roomShown=true; if(!roomPicked) openPanel="room"; }   // show co-focusers on first arrival, online or not
-      renderDock(); renderRoom();
+      renderDock(); renderRoom();   // the Room button lights up; the panel stays shut until you open it
     });
   }
 
@@ -806,7 +933,8 @@
   function renderCfg(){["focusMin","shortMin","longMin"].forEach(k=>$("#v-"+k).textContent=L(cfg[k]));}
   document.querySelectorAll("[data-dur]").forEach(b=>b.onclick=()=>{
     const k=b.dataset.dur,d=+b.dataset.d,[mn,mx]=BOUNDS[k];
-    cfg[k]=Math.min(mx,Math.max(mn,cfg[k]+d));store.set("ff_cfg",cfg);renderCfg();
+    const cur=Number.isFinite(Number(cfg[k]))?Number(cfg[k]):CFG_DEF[k];   // never step off a NaN
+    cfg[k]=Math.min(mx,Math.max(mn,cur+d));store.set("ff_cfg",cfg);renderCfg();
     if(!running && {focus:"focusMin",short:"shortMin",long:"longMin"}[mode]===k){secondsLeft=cfg[k]*60;renderTimer();}
   });
   function renderFmt(){$("#fmt12").classList.toggle("active",!prefs.clock24);$("#fmt24").classList.toggle("active",prefs.clock24);}
@@ -817,6 +945,18 @@
   function openSettings(){$("#overlay").classList.remove("hidden");}
   function closeSettings(){$("#overlay").classList.add("hidden");}
   $("#openSettings").onclick=openSettings;
+
+  /* ---- header overflow menu (room / language / settings) ---- */
+  const menuBtn=$("#menuBtn"), headMenu=$("#headMenu");
+  function setMenu(open){
+    headMenu.classList.toggle("hidden",!open);
+    menuBtn.classList.toggle("open",open);
+    menuBtn.setAttribute("aria-expanded",open?"true":"false");
+  }
+  menuBtn.onclick=e=>{e.stopPropagation();setMenu(headMenu.classList.contains("hidden"));};
+  headMenu.addEventListener("click",e=>{if(e.target.closest(".menu-item"))setMenu(false);});
+  document.addEventListener("click",e=>{if(!e.target.closest(".menu-wrap"))setMenu(false);});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape")setMenu(false);});
   $("#closeSettings").onclick=closeSettings;
   $("#doneBtn").onclick=closeSettings;
   $("#overlay").onclick=e=>{if(e.target===$("#overlay"))closeSettings();};
@@ -853,6 +993,7 @@
   $("#dim").value=bg.dim;
   applyAccent();applyBg();buildSwatches();renderFmt();renderDock();
   applyLang();
+  if(_cfgRepaired) store.set("ff_cfg",cfg);   // push the repaired durations back so the stored/cloud copy stops being broken
   if(Cloud.enabled && pendingSec>=60) flushFocus(false);   // recover time from a previous unfinished session
   if(Cloud.enabled) refreshRoom();                          // load co-focusers if already in a room
 })();

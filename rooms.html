@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16303a">
 <title>Focus — Rooms</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --accent:oklch(0.72 0.13 62);--accent-2:oklch(0.66 0.11 220);--accent-ink:#16303a;
@@ -15,6 +16,12 @@
     --shadow:0 18px 46px rgba(0,0,0,.30);--radius:22px;
   }
   *{box-sizing:border-box}
+  /* Kill the grey/blue rectangle Android's WebView flashes over anything tapped, and the
+     focus ring left behind after a tap. :focus-visible keeps the ring for keyboard users. */
+  html{-webkit-tap-highlight-color:transparent}
+  :focus:not(:focus-visible){outline:none}
+  html[lang="fa"] body{font-family:'Vazirmatn','Segoe UI',Tahoma,sans-serif}
+  html[lang="fa"] h1,html[lang="fa"] h2,html[lang="fa"] .lead-title{letter-spacing:normal;text-transform:none}
   html,body{height:100%}
   body{margin:0;font-family:'Instrument Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:var(--ink);background:#16303a;min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
   /* ambient warmth over the shared theme background */
@@ -23,7 +30,7 @@
   body::after{content:"";position:fixed;bottom:-22%;right:-16%;width:58vw;height:58vw;border-radius:50%;
     background:radial-gradient(circle,oklch(0.66 0.11 220 / .22),transparent 68%);z-index:0;pointer-events:none}
   .mono{font-family:'DM Mono',ui-monospace,monospace}
-  .wrap{position:relative;z-index:1;max-width:840px;margin:0 auto;padding:clamp(18px,4vw,42px)}
+  .wrap{position:relative;z-index:1;max-width:840px;margin:0 auto;padding:calc(clamp(18px,4vw,42px) + env(safe-area-inset-top)) max(clamp(18px,4vw,42px),env(safe-area-inset-right)) calc(clamp(18px,4vw,42px) + env(safe-area-inset-bottom)) max(clamp(18px,4vw,42px),env(safe-area-inset-left))}
 
   /* ---------- header ---------- */
   header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:26px;flex-wrap:wrap}
@@ -149,7 +156,7 @@
   @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
   .hidden{display:none!important}
   @media(max-width:560px){
-    .wrap{padding:16px 14px}
+    .wrap{padding:calc(16px + env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
     .hbtn span{display:none}
     .roomcard .go{display:none}
     .panel{padding:16px 15px 14px;border-radius:18px}
@@ -167,48 +174,50 @@
 </head>
 <body>
 <script src="/theme.js"></script>
+<script src="/i18n.js"></script>
 <div class="wrap">
   <header>
     <div class="brand">
       <div class="brand-badge">👥</div>
       <div>
-        <h1 id="title">Study Rooms</h1>
-        <div class="tagline">Focus together · climb the leaderboard</div>
+        <h1 id="title" data-i18n="study_rooms">Study Rooms</h1>
+        <div class="tagline" data-i18n="rooms_tagline">Focus together · climb the leaderboard</div>
       </div>
     </div>
     <div class="hbtns">
-      <a class="hbtn" href="/">⏱ <span>Timer</span></a>
-      <a class="hbtn" href="/dashboard">📊 <span>Dashboard</span></a>
+      <a class="hbtn" href="/">⏱ <span data-i18n="timer">Timer</span></a>
+      <a class="hbtn" href="/dashboard">📊 <span data-i18n="dashboard">Dashboard</span></a>
+      <button class="hbtn" id="langBtn">🌐 <span id="langLabel">English</span></button>
     </div>
   </header>
-  <div id="loading" class="loading"><div class="spinner"></div>Loading rooms…</div>
+  <div id="loading" class="loading"><div class="spinner"></div><span data-i18n="loading_rooms">Loading rooms…</span></div>
 
   <!-- LIST VIEW -->
   <div id="listView" class="hidden">
     <section class="panel">
-      <div class="panel-head"><h2>Create a room</h2><span class="hint">up to 10 people · one room at a time</span></div>
+      <div class="panel-head"><h2 data-i18n="create_room">Create a room</h2><span class="hint" data-i18n="create_hint">up to 10 people · one room at a time</span></div>
       <div class="createbar">
-        <input type="text" id="newName" placeholder="Name your room — e.g. Finals Grind" maxlength="60">
+        <input type="text" id="newName" data-i18n-ph="room_name_ph" placeholder="Name your room — e.g. Finals Grind" maxlength="60">
         <div class="vis-seg" id="visSeg">
-          <button data-vis="private" class="on">🔒 Private</button>
-          <button data-vis="public">🌍 Public</button>
+          <button data-vis="private" class="on">🔒 <span data-i18n="private">Private</span></button>
+          <button data-vis="public">🌍 <span data-i18n="public">Public</span></button>
         </div>
-        <button class="btn pri" id="createBtn">＋ Create</button>
+        <button class="btn pri" id="createBtn" data-i18n="create">＋ Create</button>
       </div>
       <div class="msg" id="createMsg"></div>
     </section>
 
     <section class="panel">
-      <div class="panel-head"><h2>Your rooms</h2></div>
+      <div class="panel-head"><h2 data-i18n="your_rooms">Your rooms</h2></div>
       <div class="roomlist" id="myRooms"></div>
     </section>
 
     <section class="panel">
-      <div class="panel-head"><h2>Discover public rooms</h2></div>
+      <div class="panel-head"><h2 data-i18n="discover">Discover public rooms</h2></div>
       <div class="roomlist" id="pubRooms"></div>
       <div class="joinbar">
-        <input type="text" id="joinCode" placeholder="Have an invite code? Paste it here" maxlength="40">
-        <button class="btn pri" id="joinBtn">Join</button>
+        <input type="text" id="joinCode" data-i18n-ph="code_ph" placeholder="Have an invite code? Paste it here" maxlength="40">
+        <button class="btn pri" id="joinBtn" data-i18n="join">Join</button>
       </div>
       <div class="msg" id="joinMsg"></div>
     </section>
@@ -216,7 +225,7 @@
 
   <!-- DETAIL VIEW -->
   <div id="detailView" class="hidden">
-    <a class="hbtn back" href="/rooms">← All rooms</a>
+    <a class="hbtn back" href="/rooms" data-i18n="all_rooms">← All rooms</a>
     <section class="panel">
       <div class="room-hero">
         <div class="room-hero-ic" id="dIcon">🔒</div>
@@ -225,30 +234,30 @@
           <div class="room-meta" id="dMeta"></div>
         </div>
       </div>
-      <div class="lead-head"><span class="lead-title">Today's leaderboard</span><span class="lead-sub">by focus minutes</span></div>
+      <div class="lead-head"><span class="lead-title" data-i18n="leaderboard">Today's leaderboard</span><span class="lead-sub" data-i18n="by_minutes">by focus minutes</span></div>
       <div id="members"></div>
     </section>
     <section class="panel" id="inviteSec">
-      <div class="panel-head"><h2>Invite</h2></div>
+      <div class="panel-head"><h2 data-i18n="invite">Invite</h2></div>
       <div class="invite">
         <span class="invite-ic">🔗</span>
         <code id="inviteLink"></code>
-        <button class="btn ghost" id="copyBtn">Copy link</button>
+        <button class="btn ghost" id="copyBtn" data-i18n="copy_link">Copy link</button>
       </div>
-      <div class="fine">Anyone with this link can join — even a private room.</div>
+      <div class="fine" data-i18n="invite_fine">Anyone with this link can join — even a private room.</div>
     </section>
     <section class="panel" id="ownerSec">
-      <div class="panel-head"><h2>Room settings</h2><span class="hint">owner only</span></div>
+      <div class="panel-head"><h2 data-i18n="room_settings">Room settings</h2><span class="hint" data-i18n="owner_only">owner only</span></div>
       <div class="owner-row">
         <div class="vis-seg" id="dVisSeg">
-          <button data-vis="private">🔒 Private</button>
-          <button data-vis="public">🌍 Public</button>
+          <button data-vis="private">🔒 <span data-i18n="private">Private</span></button>
+          <button data-vis="public">🌍 <span data-i18n="public">Public</span></button>
         </div>
-        <button class="btn dng" id="deleteBtn">Delete room</button>
+        <button class="btn dng" id="deleteBtn" data-i18n="delete_room">Delete room</button>
       </div>
     </section>
     <section class="panel" id="memberSec">
-      <button class="btn dng wide" id="leaveBtn">Leave room</button>
+      <button class="btn dng wide" id="leaveBtn" data-i18n="leave_room">Leave room</button>
     </section>
     <div class="msg" id="detailMsg"></div>
   </div>
@@ -257,8 +266,11 @@
 <script>
 (function(){
   var $=function(s){return document.querySelector(s);};
+  var I=window.FocusI18n, t=function(k){return I.t(k);}, N=function(v){return I.num(v);};
   var qs=new URLSearchParams(location.search);
   var CAP=10;
+  $('#langLabel').textContent=t('lang_switch');
+  $('#langBtn').onclick=function(){I.toggle();};
   var api=function(url,opt){opt=opt||{};opt.credentials='same-origin';return fetch(url,opt).then(function(r){return r.json().then(function(j){return {ok:r.ok,status:r.status,j:j};});});};
   var post=function(url,body){return api(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});};
   var newVis='private';
@@ -278,13 +290,13 @@
     $('#visSeg').querySelectorAll('button').forEach(function(b){ b.onclick=function(){ newVis=b.dataset.vis; $('#visSeg').querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b);}); }; });
     $('#createBtn').onclick=function(){
       var name=$('#newName').value.trim();
-      if(!name){ msg('#createMsg','Give your room a name.','err'); return; }
-      post('/api/rooms',{name:name,visibility:newVis}).then(function(r){ if(r.ok) location.href='/rooms?room='+r.j.room_id; else msg('#createMsg',r.j.error||'Failed','err'); });
+      if(!name){ msg('#createMsg',t('name_your_room'),'err'); return; }
+      post('/api/rooms',{name:name,visibility:newVis}).then(function(r){ if(r.ok) location.href='/rooms?room='+r.j.room_id; else msg('#createMsg',r.j.error?I.serverError(r.j.error):t('failed'),'err'); });
     };
     $('#joinBtn').onclick=function(){
       var c=$('#joinCode').value.trim();
-      if(!c){ msg('#joinMsg','Paste an invite code.','err'); return; }
-      post('/api/rooms/join',{code:c}).then(function(r){ if(r.ok) location.href='/rooms?room='+r.j.room_id; else msg('#joinMsg',r.j.error||'Not found','err'); });
+      if(!c){ msg('#joinMsg',t('paste_code'),'err'); return; }
+      post('/api/rooms/join',{code:c}).then(function(r){ if(r.ok) location.href='/rooms?room='+r.j.room_id; else msg('#joinMsg',r.j.error?I.serverError(r.j.error):t('not_found'),'err'); });
     };
     loadMine(); loadPublic();
   }
@@ -294,7 +306,7 @@
   function loadMine(){
     api('/api/rooms').then(function(r){
       var box=$('#myRooms'); var rooms=r.j.rooms||[];
-      if(!rooms.length){ box.innerHTML='<div class="empty"><span class="big">🪑</span>No rooms yet — create one above, or join a public room below.</div>'; return; }
+      if(!rooms.length){ box.innerHTML='<div class="empty"><span class="big">🪑</span><span class="etx"></span></div>'; box.querySelector('.etx').textContent=t('no_rooms'); return; }
       box.innerHTML='';
       rooms.forEach(function(rm,i){
         var pub=rm.visibility==='public';
@@ -302,10 +314,10 @@
         a.innerHTML=
           '<div class="ic '+(pub?'pub':'prv')+'">'+(pub?'🌍':'🔒')+'</div>'+
           '<div class="info"><div class="nm"></div>'+
-            '<div class="sub"><span class="badge '+(pub?'pub':'prv')+'">'+(pub?'Public':'Private')+'</span>'+
-              (rm.isOwner?'<span class="chip owner">★ owner</span>':'')+'</div>'+
+            '<div class="sub"><span class="badge '+(pub?'pub':'prv')+'">'+t(pub?'public':'private')+'</span>'+
+              (rm.isOwner?'<span class="chip owner">'+t('owner_chip')+'</span>':'')+'</div>'+
             meter(rm.members)+'</div>'+
-          '<div class="side"><div class="count"><b>'+rm.members+'</b>/'+CAP+'</div><div class="go">Open →</div></div>';
+          '<div class="side"><div class="count"><b>'+N(rm.members)+'</b>/'+N(CAP)+'</div><div class="go">'+t('open_arrow')+'</div></div>';
         a.querySelector('.nm').textContent=rm.name;
         box.appendChild(a);
       });
@@ -315,7 +327,7 @@
   function loadPublic(){
     api('/api/rooms/public').then(function(r){
       var box=$('#pubRooms'); var rooms=r.j.rooms||[];
-      if(!rooms.length){ box.innerHTML='<div class="empty"><span class="big">🌍</span>No public rooms yet. Make one public for others to find!</div>'; return; }
+      if(!rooms.length){ box.innerHTML='<div class="empty"><span class="big">🌍</span><span class="etx"></span></div>'; box.querySelector('.etx').textContent=t('no_public'); return; }
       box.innerHTML='';
       rooms.forEach(function(rm,i){
         var full=rm.members>=CAP && !rm.joined;
@@ -323,12 +335,12 @@
         row.innerHTML=
           '<div class="ic pub">🌍</div>'+
           '<div class="info"><div class="nm"></div>'+
-            '<div class="sub"><span class="badge pub">Public</span>'+(full?'<span class="chip full">Full</span>':(rm.joined?'<span class="chip">joined</span>':''))+'</div>'+
+            '<div class="sub"><span class="badge pub">'+t('public')+'</span>'+(full?'<span class="chip full">'+t('full')+'</span>':(rm.joined?'<span class="chip">'+t('joined')+'</span>':''))+'</div>'+
             meter(rm.members)+'</div>'+
-          '<div class="side"><div class="count"><b>'+rm.members+'</b>/'+CAP+'</div></div>';
+          '<div class="side"><div class="count"><b>'+N(rm.members)+'</b>/'+N(CAP)+'</div></div>';
         row.querySelector('.nm').textContent=rm.name;
-        var btn=document.createElement('button'); btn.className='btn '+(rm.joined?'ghost':'pri'); btn.textContent=rm.joined?'Open':(full?'Full':'Join'); btn.disabled=full;
-        btn.onclick=function(){ if(rm.joined){ location.href='/rooms?room='+rm.id; } else { post('/api/rooms/join',{room_id:rm.id}).then(function(x){ if(x.ok) location.href='/rooms?room='+rm.id; else msg('#joinMsg',x.j.error||'Could not join.','err'); }); } };
+        var btn=document.createElement('button'); btn.className='btn '+(rm.joined?'ghost':'pri'); btn.textContent=t(rm.joined?'open':(full?'full':'join')); btn.disabled=full;
+        btn.onclick=function(){ if(rm.joined){ location.href='/rooms?room='+rm.id; } else { post('/api/rooms/join',{room_id:rm.id}).then(function(x){ if(x.ok) location.href='/rooms?room='+rm.id; else msg('#joinMsg',x.j.error?I.serverError(x.j.error):t('could_not_join'),'err'); }); } };
         row.querySelector('.side').appendChild(btn);
         box.appendChild(row);
       });
@@ -342,15 +354,15 @@
     load(); if(poll)clearInterval(poll); poll=setInterval(load,15000);
     function load(){
       api('/api/rooms/'+rid).then(function(r){
-        if(!r.ok){ $('#detailView').innerHTML='<a class="hbtn back" href="/rooms">← All rooms</a><section class="panel"><div class="empty"><span class="big">🚪</span>'+(r.j.error||'Room unavailable')+'</div></section>'; if(poll)clearInterval(poll); return; }
+        if(!r.ok){ $('#detailView').innerHTML='<a class="hbtn back" href="/rooms">'+t('all_rooms')+'</a><section class="panel"><div class="empty"><span class="big">🚪</span><span class="etx"></span></div></section>'; $('#detailView').querySelector('.etx').textContent=r.j.error?I.serverError(r.j.error):t('room_unavailable'); if(poll)clearInterval(poll); return; }
         curRoom=r.j.room; var pub=curRoom.visibility==='public';
         $('#dName').textContent=curRoom.name;
-        var b=$('#dBadge'); b.textContent=pub?'Public':'Private'; b.className='badge '+(pub?'pub':'prv');
+        var b=$('#dBadge'); b.textContent=t(pub?'public':'private'); b.className='badge '+(pub?'pub':'prv');
         var ic=$('#dIcon'); ic.textContent=pub?'🌍':'🔒'; ic.className='room-hero-ic'+(pub?' pub':'');
         // meta line: capacity + live focus count
         var mem=r.j.members||[]; var focusing=mem.filter(function(m){return m.focusing;}).length;
-        $('#dMeta').innerHTML='<span>👥 '+mem.length+' / '+CAP+' here</span>'+
-          (focusing?'<span class="live-count"><span class="dot"></span>'+focusing+' focusing now</span>':'<span>· nobody focusing yet</span>');
+        $('#dMeta').innerHTML='<span>👥 '+N(mem.length)+' / '+N(CAP)+' '+t('here')+'</span>'+
+          (focusing?'<span class="live-count"><span class="dot"></span>'+N(focusing)+' '+t('focusing_now')+'</span>':'<span>'+t('nobody_focusing')+'</span>');
         // leaderboard
         var mbox=$('#members'); mbox.innerHTML='';
         var maxMin=mem.reduce(function(a,m){return Math.max(a,m.todayMinutes);},0)||1;
@@ -358,13 +370,13 @@
           var medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
           var el=document.createElement('div'); el.className='member'+(m.me?' me':''); el.style.animationDelay=(i*50)+'ms';
           el.innerHTML=
-            '<div class="rank'+(medal?' medal':'')+'">'+(medal||(i+1))+'</div>'+
+            '<div class="rank'+(medal?' medal':'')+'">'+(medal||N(i+1))+'</div>'+
             '<div class="av"><span class="ava-e"></span>'+(m.focusing?'<span class="live"></span>':'')+'</div>'+
             '<div class="mn"><b></b>'+
               '<div class="track"><div class="trackfill'+(m.focusing?' on':'')+'"></div></div>'+
-              '<div class="st'+(m.focusing?' live-st':'')+'">'+(m.focusing?'focusing now':'idle')+(m.role==='owner'?' · owner':'')+(m.me?' · you':'')+'</div>'+
+              '<div class="st'+(m.focusing?' live-st':'')+'">'+t(m.focusing?'focusing_now':'idle')+(m.role==='owner'?' · '+t('owner'):'')+(m.me?' · '+t('you'):'')+'</div>'+
             '</div>'+
-            '<div class="mins">'+m.todayMinutes+'<small>m</small></div>';
+            '<div class="mins">'+N(m.todayMinutes)+'<small>m</small></div>';
           el.querySelector('.ava-e').textContent=m.avatar;
           el.querySelector('b').textContent=m.name;
           mbox.appendChild(el);
@@ -383,9 +395,9 @@
         }
       });
     }
-    $('#copyBtn').onclick=function(){ var t=$('#inviteLink').textContent; if(navigator.clipboard) navigator.clipboard.writeText(t); var b=$('#copyBtn'); b.textContent='Copied ✓'; b.classList.add('ok'); msg('#detailMsg','Invite link copied!','ok'); setTimeout(function(){ b.textContent='Copy link'; b.classList.remove('ok'); },1600); };
-    $('#deleteBtn').onclick=function(){ if(confirm('Delete this room for everyone?')) api('/api/rooms/'+rid,{method:'DELETE'}).then(function(){ location.href='/rooms'; }); };
-    $('#leaveBtn').onclick=function(){ post('/api/rooms/'+rid+'/leave').then(function(r){ if(r.ok) location.href='/rooms'; else msg('#detailMsg',r.j.error||'Failed','err'); }); };
+    $('#copyBtn').onclick=function(){ var link=$('#inviteLink').textContent; if(navigator.clipboard) navigator.clipboard.writeText(link); var b=$('#copyBtn'); b.textContent=t('copied'); b.classList.add('ok'); msg('#detailMsg',t('copied_msg'),'ok'); setTimeout(function(){ b.textContent=t('copy_link'); b.classList.remove('ok'); },1600); };
+    $('#deleteBtn').onclick=function(){ if(confirm(t('confirm_del_room'))) api('/api/rooms/'+rid,{method:'DELETE'}).then(function(){ location.href='/rooms'; }); };
+    $('#leaveBtn').onclick=function(){ post('/api/rooms/'+rid+'/leave').then(function(r){ if(r.ok) location.href='/rooms'; else msg('#detailMsg',r.j.error?I.serverError(r.j.error):t('failed'),'err'); }); };
   }
 
   function msg(sel,text,cls){ var e=$(sel); e.textContent=text; e.className='msg '+(cls||''); }

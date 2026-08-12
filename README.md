@@ -76,4 +76,10 @@ Rooms: `POST /api/rooms` · `GET /api/rooms` · `GET /api/rooms/public` ·
 - Security headers (CSP, `X-Frame-Options`, `X-Content-Type-Options`,
   `Referrer-Policy`) are sent on every response; request bodies are capped at 8 MB
   and passwords at 128 chars; dotfiles/`.git`/`__pycache__` and directory listings
-  are never served.
+  are never served. Login/sign-up are rate-limited per IP (set `TRUST_PROXY=1`
+  behind a proxy so the real client IP is used).
+- **Days & time zone** — streaks, the calendar and per-day stats are bucketed on
+  UTC by default, so behaviour doesn't depend on where the server runs. Set
+  `DAY_OFFSET_MIN` to your users' UTC offset in minutes to move the day boundary
+  (e.g. `DAY_OFFSET_MIN=210` for Iran, `60` for CET, `-480` for US Pacific).
+  Logged focus time is capped at 24 h per day as a sanity guard.

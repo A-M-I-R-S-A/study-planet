@@ -3,6 +3,15 @@ focus.db
 focus.db-journal
 focus.db-wal
 
+# secrets — the api-ninjas key the quotes proxy reads (never commit this)
+quotes_api_key.txt
+
 # python
 __pycache__/
 *.pyc
+
+# Capacitor / Node (mobile wrapper)
+mobile/node_modules/
+mobile/www/
+# Uncomment the next line if you don't want the generated native project tracked:
+# mobile/android/

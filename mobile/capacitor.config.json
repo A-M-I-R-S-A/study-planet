@@ -1,0 +1,10 @@
+{
+  "appId": "com.focus.app",
+  "appName": "Focus",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "url": "http://10.234.179.169:8000",
+    "cleartext": true
+  }
+}
