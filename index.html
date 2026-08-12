@@ -153,6 +153,31 @@
   .stat .v{font-size:30px;line-height:1;color:var(--accent)}
   .stat .l{margin-top:8px;font-size:12px;color:var(--muted)}
 
+  /* co-focus (room) panel */
+  .room-panel{padding:18px 18px 14px;display:flex;flex-direction:column;max-height:56vh}
+  .cofocus{display:flex;flex-direction:column;gap:8px;overflow-y:auto;min-height:44px}
+  .cofocus::-webkit-scrollbar{width:6px}
+  .cofocus::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:99px}
+  .co{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:12px;background:var(--cream2)}
+  .co.me{background:linear-gradient(90deg,color-mix(in oklch,var(--accent) 17%,var(--cream2)),var(--cream2));box-shadow:inset 0 0 0 1.5px color-mix(in oklch,var(--accent) 45%,transparent)}
+  .co-rank{width:18px;text-align:center;font-size:12px;color:var(--muted);flex:none}
+  .co-av{width:36px;height:36px;border-radius:11px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:19px;flex:none;position:relative;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+  .co-av .co-live{position:absolute;right:-3px;bottom:-3px;width:12px;height:12px;border-radius:50%;background:#3a9d5d;border:2.5px solid var(--cream2);animation:copulse 1.8s infinite}
+  .co.me .co-av .co-live{border-color:#f3ecdd}
+  .co-main{flex:1;min-width:0}
+  .co-nm{font-size:14px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .co-bar{height:5px;border-radius:99px;background:rgba(0,0,0,.06);overflow:hidden;margin-top:6px}
+  .co-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),#e08a3c);width:0;transition:width .6s cubic-bezier(.2,.7,.2,1)}
+  .co-fill.on{background:linear-gradient(90deg,#3a9d5d,#5ec488)}
+  .co-side{display:flex;flex-direction:column;align-items:flex-end;gap:1px;flex:none}
+  .co-time{font-family:'DM Mono',ui-monospace,monospace;font-size:15px;color:var(--accent);flex:none;font-variant-numeric:tabular-nums;line-height:1.15}
+  .co-st{font-size:10.5px;color:var(--muted);letter-spacing:.02em}
+  .co-st.on{color:#3a9d5d;font-weight:600}
+  .co.off .co-av{filter:grayscale(.25);opacity:.9}
+  .co.off .co-time{color:var(--muted)}
+  @keyframes copulse{0%{box-shadow:0 0 0 0 rgba(58,157,93,.5)}70%{box-shadow:0 0 0 6px rgba(58,157,93,0)}100%{box-shadow:0 0 0 0 rgba(58,157,93,0)}}
+  .acct.locked,#roomsBtn.locked{opacity:.4;pointer-events:none;filter:grayscale(.35)}
+
   /* dock buttons */
   .dock-btns{pointer-events:auto;display:flex;gap:6px;background:rgba(255,255,255,.16);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.26);padding:7px;border-radius:99px;box-shadow:0 8px 28px rgba(0,0,0,.18)}
   .dbtn{display:flex;align-items:center;gap:7px;border:none;border-radius:99px;padding:10px 17px;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;background:transparent;color:rgba(255,255,255,.85)}
@@ -203,6 +228,30 @@
   .reset-all{display:block;width:100%;margin-top:12px;background:none;border:none;color:#c0392b;font-size:12.5px;cursor:pointer}
 
   .toast{position:fixed;top:22px;left:50%;transform:translateX(-50%);background:var(--accent);color:var(--accent-ink);padding:13px 22px;border-radius:12px;font-weight:600;font-size:14px;z-index:99;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+
+  /* ---- responsive: tablets & phones ---- */
+  @media(max-width:640px){
+    .app{padding:16px 14px}
+    header{gap:12px}
+    .head-right{flex-wrap:wrap;justify-content:flex-end;gap:8px}
+    .streak{display:none}
+    .clock{font-size:22px}
+    .acct{max-width:140px}
+    main{gap:16px;padding-bottom:154px}
+    .panel{width:min(440px,94vw)}
+    .dock{gap:10px;padding:0 12px 16px}
+    .dock-btns{gap:4px;padding:6px}
+    .dbtn{padding:9px 13px;font-size:13px;gap:5px}
+  }
+  @media(max-width:400px){
+    .dbtn span[data-i18n]{display:none}   /* icon-only dock on very small screens */
+    .dbtn{padding:10px 12px}
+    .lang #langLabel{display:none}         /* globe only */
+    .lang{padding:0 13px}
+    .acct .av{font-size:16px}
+    .modes .mode-btn{padding:8px 13px}
+  }
+  @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
 </head>
 <body>
@@ -296,10 +345,17 @@
       <div class="stat"><div class="v mono" id="stStreak">0</div><div class="l" data-i18n="day_streak">day streak</div></div>
     </div>
 
+    <!-- ROOM (co-focus) -->
+    <div class="panel light room-panel hidden" id="roomPanel">
+      <div class="panel-head"><b data-i18n="focus_together">Focusing together</b><span class="meta" id="roomMeta"></span></div>
+      <div class="cofocus" id="coList"></div>
+    </div>
+
     <div class="dock-btns">
       <button class="dbtn active" data-panel="tasks"><span>✓</span><span data-i18n="tasks">Tasks</span><span class="badge hidden" id="taskBadge">0</span></button>
       <button class="dbtn" data-panel="music"><span>♫</span><span data-i18n="music">Music</span></button>
       <button class="dbtn" data-panel="stats"><span>◷</span><span data-i18n="stats">Stats</span></button>
+      <button class="dbtn hidden" data-panel="room" id="roomDockBtn"><span>👥</span><span data-i18n="room_tab">Room</span><span class="badge hidden" id="roomLiveBadge">0</span></button>
     </div>
   </div>
 </div>
@@ -359,7 +415,7 @@
         if(typeof s.volume==="number")localStorage.setItem("ff_volume",JSON.stringify(s.volume));
         localStorage.setItem("ff_tasks",JSON.stringify(j.tasks||[]));
         if(j.stats){const tds=new Date().toDateString();
-          localStorage.setItem("ff_stats",JSON.stringify({date:tds,sessions:j.stats.today.sessions,mins:j.stats.today.minutes}));
+          localStorage.setItem("ff_stats",JSON.stringify({date:tds,sessions:j.stats.today.sessions,mins:j.stats.today.minutes,secs:(j.stats.today.seconds!=null?j.stats.today.seconds:j.stats.today.minutes*60)}));
           localStorage.setItem("ff_streak",JSON.stringify({lastDate:tds,count:j.stats.streak}));}
       }
     }
@@ -368,8 +424,9 @@
   function _cloudSettings(){return {cfg:store.get("ff_cfg",{}),prefs:store.get("ff_prefs",{}),bg:store.get("ff_bg",{}),volume:store.get("ff_volume",45)};}
   Cloud.pushSettings=function(){if(!Cloud.enabled)return;clearTimeout(_sT);_sT=setTimeout(()=>{fetch("/api/settings",{method:"PUT",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({settings:_cloudSettings()})}).catch(()=>{});},600);};
   Cloud.pushTasks=function(){if(!Cloud.enabled)return;clearTimeout(_tT);_tT=setTimeout(()=>{fetch("/api/tasks",{method:"PUT",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({tasks:store.get("ff_tasks",[])})}).catch(()=>{});},500);};
-  Cloud.log=function(mins,subjectId,topic,session){if(!Cloud.enabled)return Promise.resolve(null);return fetch("/api/log",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({minutes:mins,subject_id:subjectId,topic:topic||"",session:session})}).then(r=>r.ok?r.json():null).catch(()=>null);};
+  Cloud.log=function(secs,subjectId,topic,session){if(!Cloud.enabled)return Promise.resolve(null);return fetch("/api/log",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({seconds:secs,subject_id:subjectId,topic:topic||"",session:session})}).then(r=>r.ok?r.json():null).catch(()=>null);};
   Cloud.heartbeat=function(focusing){if(!Cloud.enabled)return;fetch("/api/heartbeat",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({focusing:!!focusing})}).catch(()=>{});};
+  Cloud.currentRoom=function(){if(!Cloud.enabled)return Promise.resolve(null);return fetch("/api/rooms/current",{credentials:"same-origin"}).then(r=>r.ok?r.json():null).catch(()=>null);};
   const _storeSet=store.set;
   store.set=function(k,v){_storeSet(k,v);if(k==="ff_tasks")Cloud.pushTasks();else if(k==="ff_cfg"||k==="ff_prefs"||k==="ff_bg"||k==="ff_volume")Cloud.pushSettings();};
 
@@ -389,7 +446,8 @@
       streak_suffix:"-day streak",toast_focus:"Focus complete — take a break.",toast_break:"Break's over — back to it.",
       confirm_reset:"Reset all settings, tasks, and progress?",img_big:"Image is large — it'll show now but may not persist.",
       am:"AM",pm:"PM",lang_switch:"English",sign_in:"Sign in",dashboard:"Dashboard",studying:"What are you studying?",
-      timer_mode:"Timer",stopwatch:"Stopwatch",add_subjects:"＋ Create subjects on your dashboard",sign_in_subjects:"Sign in to track subjects"},
+      timer_mode:"Timer",stopwatch:"Stopwatch",add_subjects:"＋ Create subjects on your dashboard",sign_in_subjects:"Sign in to track subjects",
+      focus_together:"Focusing together",room_tab:"Room",room_empty:"No one else here yet — invite a friend from the room.",you:"you",locked_hint:"Finish or pause your session to leave the timer.",focusing_now:"focusing now",idle:"idle"},
     fa:{brand:"تمرکز",mode_focus:"تمرکز",mode_short:"کوتاه",mode_long:"بلند",
       tasks:"کارها",music:"موسیقی",stats:"آمار",ambient:"صدای محیط",
       rain:"باران",ocean:"اقیانوس",wind:"باد",forest:"جنگل",
@@ -404,7 +462,8 @@
       streak_suffix:" روز پیاپی",toast_focus:"تمرکز کامل شد — کمی استراحت کنید.",toast_break:"استراحت تمام شد — به کار برگردید.",
       confirm_reset:"همهٔ تنظیمات، کارها و پیشرفت بازنشانی شود؟",img_big:"تصویر بزرگ است — اکنون نمایش داده می‌شود اما شاید ذخیره نشود.",
       am:"ق.ظ",pm:"ب.ظ",lang_switch:"فارسی",sign_in:"ورود",dashboard:"داشبورد",studying:"چه می‌خوانی؟",
-      timer_mode:"تایمر",stopwatch:"کرنومتر",add_subjects:"＋ موضوع‌ها را در داشبورد بسازید",sign_in_subjects:"برای موضوع‌ها وارد شوید"}
+      timer_mode:"تایمر",stopwatch:"کرنومتر",add_subjects:"＋ موضوع‌ها را در داشبورد بسازید",sign_in_subjects:"برای موضوع‌ها وارد شوید",
+      focus_together:"تمرکز باهم",room_tab:"روم",room_empty:"هنوز کسی اینجا نیست — از روم یک دوست را دعوت کن.",you:"شما",locked_hint:"برای خروج از تایمر، جلسه را تمام یا متوقف کن.",focusing_now:"در حال تمرکز",idle:"آرام"}
   };
   const QUOTES={
     en:[
@@ -456,9 +515,12 @@
   let bg=store.get("ff_bg",{type:"preset",value:"warm",dim:0});
   if(bg.type==="preset" && !BGS[bg.value]) bg={type:"preset",value:"warm",dim:0};
   let tasks=(store.get("ff_tasks",[])||[]).map(t=>({id:t.id||(Date.now()+Math.floor(Math.random()*1e6)),text:t.text,done:!!t.done}));
-  let stats=store.get("ff_stats",{date:dayStr(new Date()),sessions:0,mins:0});
-  if(stats.date!==dayStr(new Date())) stats={date:dayStr(new Date()),sessions:0,mins:0};
+  let stats=store.get("ff_stats",{date:dayStr(new Date()),sessions:0,mins:0,secs:0});
+  if(stats.date!==dayStr(new Date())) stats={date:dayStr(new Date()),sessions:0,mins:0,secs:0};
+  if(stats.secs==null) stats.secs=(stats.mins||0)*60;   // migrate older minute-only records
   let streak=store.get("ff_streak",{lastDate:"",count:0});
+  let roomInfo=null;   // {id,name,members:[{id,name,avatar,focusing,sec,me}]} when signed in and in a room
+  let roomShown=false, roomPicked=false;   // auto-open the co-focus panel once when you're in a room
 
   const BOUNDS={focusMin:[1,90],shortMin:[1,30],longMin:[1,60]};
   let mode="focus", secondsLeft=cfg.focusMin*60, running=false, openPanel="tasks";
@@ -525,6 +587,9 @@
     main.classList.toggle("is-running",running);
     main.classList.toggle("stopwatch",sw);
     document.title=(running?fmtClock(shown)+" · ":"")+T.brand;
+    // while focusing, stay put — both the dashboard and rooms links are disabled
+    const acct=$("#acct"); if(acct){acct.classList.toggle("locked",running);acct.title=running?T.locked_hint:"";}
+    const rb=$("#roomsBtn"); if(rb){rb.classList.toggle("locked",running);rb.title=running?T.locked_hint:"";}
   }
   function setType(t){if(running)return;timerType=t;prefs.timerType=t;store.set("ff_prefs",prefs);elapsedSec=0;if(t==="timer")secondsLeft=durFor(mode);renderTimer();}
   function selectMode(m){if(running)return;mode=m;secondsLeft=durFor(m);applyAccent();renderTimer();}
@@ -532,9 +597,9 @@
 
   /* flush accumulated focus time -> local stats + account (so a pause never loses time) */
   function flushFocus(countSession){
-    const mins=Math.floor(pendingSec/60);
-    if(mins<=0 && !(countSession&&blockActive)) return;
-    if(mins>0){ stats.mins+=mins; pendingSec-=mins*60; store.set("ff_pending",pendingSec); }
+    const secs=Math.floor(pendingSec);
+    if(secs<=0 && !(countSession&&blockActive)) return;
+    if(secs>0){ stats.secs=(stats.secs||0)+secs; stats.mins=Math.floor(stats.secs/60); pendingSec=0; store.set("ff_pending",0); }
     if(countSession&&blockActive){
       stats.sessions++;
       const today=dayStr(new Date()),yest=dayStr(new Date(Date.now()-864e5));
@@ -543,8 +608,8 @@
     }
     store.set("ff_stats",stats); renderStats();
     if(Cloud.enabled){
-      Cloud.log(mins,curSubjectId(),curSubject?curSubject.name:"",countSession?1:0).then(res=>{
-        if(res&&res.stats){stats.sessions=res.stats.today.sessions;stats.mins=res.stats.today.minutes;streak.count=res.stats.streak;streak.lastDate=dayStr(new Date());store.set("ff_stats",stats);store.set("ff_streak",streak);renderStats();}
+      Cloud.log(secs,curSubjectId(),curSubject?curSubject.name:"",countSession?1:0).then(res=>{
+        if(res&&res.stats){stats.sessions=res.stats.today.sessions;stats.mins=res.stats.today.minutes;if(res.stats.today.seconds!=null)stats.secs=res.stats.today.seconds;streak.count=res.stats.streak;streak.lastDate=dayStr(new Date());store.set("ff_stats",stats);store.set("ff_streak",streak);renderStats();}
         if(res&&res.subjects){subjects=res.subjects;renderSubjects();}
       });
     }
@@ -554,12 +619,16 @@
     running=!running;
     if(!running) flushFocus(false);            // pause -> log time, session stays open
     renderTimer();
-    if(Cloud.enabled)Cloud.heartbeat(running);
+    if(Cloud.enabled){
+      Cloud.heartbeat(running);
+      if(running && roomInfo){ openPanel="room"; renderDock(); }  // surface co-focusers on start
+      refreshRoom();
+    }
   }
   function reset(){
     if(running||pendingSec>0) flushFocus(true); // ending the block counts a session
     running=false; elapsedSec=0; secondsLeft=durFor(mode);
-    renderTimer(); if(Cloud.enabled)Cloud.heartbeat(false);
+    renderTimer(); if(Cloud.enabled){Cloud.heartbeat(false);refreshRoom();}
   }
   function finish(){                             // countdown reached 0
     running=false;
@@ -570,7 +639,7 @@
     toast(wasFocus?T.toast_focus:T.toast_break);
     mode=next; secondsLeft=durFor(next); elapsedSec=0;
     applyAccent(); renderTimer(); renderStats();
-    if(Cloud.enabled)Cloud.heartbeat(false);
+    if(Cloud.enabled){Cloud.heartbeat(false);refreshRoom();}
   }
 
   function renderSubjects(){
@@ -596,13 +665,16 @@
   document.querySelectorAll("#typeSwitch button").forEach(b=>b.onclick=()=>setType(b.dataset.type));
   setInterval(()=>{
     renderClock();
+    if(roomInfo){ let any=false; roomInfo.members.forEach(m=>{if(m.focusing){m.sec++;any=true;}}); if(any)tickRoomTimes(); }
     if(!running) return;
     if(isFocusBlock()){ pendingSec++; blockActive=true; store.set("ff_pending",pendingSec); }
     if(timerType==="stopwatch"){ elapsedSec++; renderTimer(); }
     else if(secondsLeft<=1){ secondsLeft=0; renderTimer(); finish(); }
     else { secondsLeft--; renderTimer(); }
   },1000);
-  setInterval(()=>{if(Cloud.enabled)Cloud.heartbeat(running);},30000);
+  // heartbeat + push my accumulating focus time so co-focusers see it; keep the room fresh
+  setInterval(()=>{if(!Cloud.enabled)return;Cloud.heartbeat(running);if(running)flushFocus(false);refreshRoom();},30000);
+  setInterval(()=>{if(Cloud.enabled&&roomInfo&&(running||openPanel==="room"))refreshRoom();},10000);
 
   function chime(){try{const c=new (window.AudioContext||window.webkitAudioContext)();[0,.18,.36].forEach(t=>{const o=c.createOscillator(),g=c.createGain();o.type="sine";o.frequency.value=760;o.connect(g);g.connect(c.destination);g.gain.setValueAtTime(.0001,c.currentTime+t);g.gain.exponentialRampToValueAtTime(.35,c.currentTime+t+.02);g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+t+.16);o.start(c.currentTime+t);o.stop(c.currentTime+t+.17);});}catch(e){}}
   function toast(msg){const n=document.createElement("div");n.className="toast";n.textContent=msg;document.body.appendChild(n);setTimeout(()=>{n.style.transition="opacity .4s";n.style.opacity="0";setTimeout(()=>n.remove(),400);},4000);}
@@ -672,8 +744,63 @@
   $("#volume").addEventListener("input",e=>{volume=+e.target.value;store.set("ff_volume",volume);if(gain)gain.gain.value=volume/100*.6;});
 
   /* ---- dock ---- */
-  function renderDock(){["tasks","music","stats"].forEach(p=>{$("#"+p+"Panel").classList.toggle("hidden",openPanel!==p);document.querySelector('.dbtn[data-panel="'+p+'"]').classList.toggle("active",openPanel===p);});}
-  document.querySelectorAll(".dbtn").forEach(b=>b.onclick=()=>{const p=b.dataset.panel;openPanel=(openPanel===p)?null:p;renderDock();});
+  function renderDock(){
+    ["tasks","music","stats"].forEach(p=>{$("#"+p+"Panel").classList.toggle("hidden",openPanel!==p);document.querySelector('.dbtn[data-panel="'+p+'"]').classList.toggle("active",openPanel===p);});
+    const inRoom=!!roomInfo;
+    $("#roomDockBtn").classList.toggle("hidden",!inRoom);
+    $("#roomDockBtn").classList.toggle("active",openPanel==="room");
+    $("#roomPanel").classList.toggle("hidden",!(inRoom&&openPanel==="room"));
+  }
+  document.querySelectorAll(".dbtn").forEach(b=>b.onclick=()=>{const p=b.dataset.panel;roomPicked=true;openPanel=(openPanel===p)?null:p;renderDock();});
+
+  /* ---- co-focus: room members' avatars + live focus time ---- */
+  function renderRoom(){
+    if(!roomInfo) return;
+    $("#roomMeta").textContent=roomInfo.name||"";
+    const list=$("#coList"), mem=roomInfo.members||[];
+    const liveN=mem.filter(m=>m.focusing).length, badge=$("#roomLiveBadge");
+    if(liveN>0){badge.textContent=L(liveN);badge.classList.remove("hidden");}else badge.classList.add("hidden");
+    list.innerHTML="";
+    if(!mem.length){list.innerHTML='<div class="empty-tasks">'+T.room_empty+'</div>';return;}
+    const maxSec=mem.reduce((a,m)=>Math.max(a,m.sec),0)||1;
+    mem.forEach((m,i)=>{
+      const row=document.createElement("div"); row.className="co"+(m.me?" me":"")+(m.focusing?"":" off");
+      row.innerHTML='<div class="co-rank mono">'+L(i+1)+'</div>'+
+        '<div class="co-av"><span class="co-ave"></span>'+(m.focusing?'<span class="co-live"></span>':'')+'</div>'+
+        '<div class="co-main"><div class="co-nm"></div><div class="co-bar"><div class="co-fill'+(m.focusing?' on':'')+'"></div></div></div>'+
+        '<div class="co-side"><div class="co-time" data-mid="'+m.id+'">'+L(fmtClock(m.sec))+'</div>'+
+          '<div class="co-st'+(m.focusing?" on":"")+'">'+(m.focusing?T.focusing_now:T.idle)+'</div></div>';
+      row.querySelector(".co-ave").textContent=m.avatar;
+      row.querySelector(".co-nm").textContent=m.name+(m.me?" · "+T.you:"");
+      list.appendChild(row);
+      const fill=row.querySelector(".co-fill"); fill.getBoundingClientRect(); fill.style.width=(m.sec/maxSec*100)+"%";
+    });
+  }
+  function tickRoomTimes(){                       // 1s local estimate between server refreshes
+    if(!roomInfo || $("#roomPanel").classList.contains("hidden")) return;
+    const mem=roomInfo.members||[], maxSec=mem.reduce((a,m)=>Math.max(a,m.sec),0)||1;
+    mem.forEach(m=>{
+      const t=document.querySelector('#coList .co-time[data-mid="'+m.id+'"]'); if(!t)return;
+      t.textContent=L(fmtClock(m.sec));
+      const fill=t.closest(".co").querySelector(".co-fill"); if(fill)fill.style.width=(m.sec/maxSec*100)+"%";
+    });
+  }
+  function refreshRoom(){
+    if(!Cloud.enabled) return;
+    Cloud.currentRoom().then(j=>{
+      if(!j || !j.room){ roomInfo=null; if(openPanel==="room")openPanel=null; renderDock(); return; }
+      const prev={}; if(roomInfo){roomInfo.members.forEach(m=>{prev[m.id]=m.sec;});}
+      const myLive=(stats.secs||0)+pendingSec;                 // my true count incl. unflushed time
+      roomInfo={id:j.room.id,name:j.room.name,members:(j.members||[]).map(m=>{
+        let sec=m.todaySeconds||0;
+        if(m.me) sec=Math.max(sec,myLive);
+        else if(prev[m.id]!=null) sec=Math.max(sec,prev[m.id]); // never let a live time jump backward
+        return {id:m.id,name:m.name,avatar:m.avatar,focusing:m.me?running:!!m.focusing,sec:sec,me:!!m.me};
+      })};
+      if(!roomShown){ roomShown=true; if(!roomPicked) openPanel="room"; }   // show co-focusers on first arrival, online or not
+      renderDock(); renderRoom();
+    });
+  }
 
   /* ---- settings ---- */
   function renderCfg(){["focusMin","shortMin","longMin"].forEach(k=>$("#v-"+k).textContent=L(cfg[k]));}
@@ -700,7 +827,7 @@
   function initAccount(){
     const a=$("#acct"), rb=$("#roomsBtn");
     if(rb)rb.classList.toggle("hidden",!Cloud.enabled);
-    if(Cloud.enabled){a.href="/dashboard";a.innerHTML='<span class="av">'+(Cloud.user.avatar||"🦊")+'</span><span>'+(Cloud.user.name||T.dashboard)+'</span>';a.classList.remove("hidden");}
+    if(Cloud.enabled){a.href="/dashboard";a.innerHTML='<span class="av"></span><span></span>';a.querySelector(".av").textContent=Cloud.user.avatar||"🦊";a.querySelector("span:last-child").textContent=Cloud.user.name||T.dashboard;a.classList.remove("hidden");}
     else if(Cloud.served){a.href="/login";a.textContent=T.sign_in;a.classList.remove("hidden");}
     else{a.classList.add("hidden");}
   }
@@ -727,6 +854,7 @@
   applyAccent();applyBg();buildSwatches();renderFmt();renderDock();
   applyLang();
   if(Cloud.enabled && pendingSec>=60) flushFocus(false);   // recover time from a previous unfinished session
+  if(Cloud.enabled) refreshRoom();                          // load co-focusers if already in a room
 })();
 </script>
 </body>

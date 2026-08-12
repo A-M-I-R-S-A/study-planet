@@ -57,17 +57,23 @@ Set a different port with `PORT=9000 python server.py`.
 
 Auth: `POST /api/signup` · `POST /api/login` · `POST /api/logout` · `GET /api/me`
 · `PATCH /api/profile`
-Data: `PUT /api/settings` · `PUT /api/tasks` · `POST /api/log` (records minutes +
-subject; `session:0` on pause, `session:1` on completion) · `GET /api/stats` ·
-`GET /api/calendar?month=YYYY-MM`
+Data: `PUT /api/settings` · `PUT /api/tasks` · `POST /api/log` (records `seconds`
+— or legacy `minutes` — plus subject; `session:0` on pause, `session:1` on
+completion) · `GET /api/stats` · `GET /api/calendar?month=YYYY-MM`
 Subjects: `GET /api/subjects` · `POST /api/subjects` · `DELETE /api/subjects/<id>`
 Rooms: `POST /api/rooms` · `GET /api/rooms` · `GET /api/rooms/public` ·
-`POST /api/rooms/join` · `GET|DELETE /api/rooms/<id>` · `POST /api/rooms/<id>/leave`
-· `POST /api/rooms/<id>/visibility` · `POST /api/heartbeat` (presence)
+`GET /api/rooms/current` (your room + live co-focus roster) · `POST /api/rooms/join` ·
+`GET|DELETE /api/rooms/<id>` · `POST /api/rooms/<id>/leave` ·
+`POST /api/rooms/<id>/visibility` · `POST /api/heartbeat` (presence)
 
 ## Notes
 
 - Passwords are stored hashed (PBKDF2-HMAC-SHA256, 200k iterations) — never plain text.
 - Invites are share-links/codes (no email is sent).
 - Runs on `127.0.0.1` for local use. To expose it publicly you'd put it behind a
-  real web server (nginx etc.) with HTTPS.
+  real web server (nginx etc.) with HTTPS. When you do, start it with
+  `SECURE_COOKIES=1` so the session cookie carries the `Secure` flag.
+- Security headers (CSP, `X-Frame-Options`, `X-Content-Type-Options`,
+  `Referrer-Policy`) are sent on every response; request bodies are capped at 8 MB
+  and passwords at 128 chars; dotfiles/`.git`/`__pycache__` and directory listings
+  are never served.

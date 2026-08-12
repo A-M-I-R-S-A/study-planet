@@ -19,29 +19,57 @@ Endpoints
   POST /api/session-complete  {minutes}                   -> record a finished focus session
   PATCH /api/profile          {name?, avatar?}            -> update profile
 """
-import os, json, time, base64, hmac, hashlib, secrets, sqlite3
+import os, json, time, base64, hmac, hashlib, secrets, sqlite3, traceback, threading
 from datetime import datetime, timezone, date, timedelta
 from http import cookies
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, unquote
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(ROOT, "focus.db")
 PORT = int(os.environ.get("PORT", "8000"))
 PBKDF_ITER = 200_000
 SESSION_DAYS = 30
+ROOM_MAX = 10  # max members per room; a user may be in only one room at a time
+MAX_BODY = 8 * 1024 * 1024   # cap request bodies (bytes): stops memory-exhaustion reads,
+                             # still roomy for background-image data URLs synced via /api/settings
+MAX_PW = 128                 # cap password length so PBKDF2 hashing cost stays bounded
+# Set SECURE_COOKIES=1 when serving over HTTPS so the session cookie gets the Secure flag.
+SECURE_COOKIES = os.environ.get("SECURE_COOKIES", "").lower() in ("1", "true", "yes", "on")
+
+# Sent on every response. 'unsafe-inline' is unavoidable (the pages use inline <script>/<style>),
+# but the remaining directives still block framing, plugins, <base> hijacking and off-origin form
+# posts. Fonts load from Google; custom backgrounds are data: URLs.
+SECURITY_HEADERS = [
+    ("X-Content-Type-Options", "nosniff"),
+    ("X-Frame-Options", "DENY"),
+    ("Referrer-Policy", "same-origin"),
+    ("Content-Security-Policy",
+     "default-src 'self'; "
+     "script-src 'self' 'unsafe-inline'; "
+     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+     "font-src 'self' https://fonts.gstatic.com; "
+     "img-src 'self' data: blob:; "
+     "connect-src 'self'; "
+     "base-uri 'none'; "
+     "object-src 'none'; "
+     "form-action 'self'; "
+     "frame-ancestors 'none'"),
+]
 
 
 # ---------------------------------------------------------------- database ----
 def db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=5.0)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
+    conn.execute("PRAGMA busy_timeout=5000")  # wait, don't fail, if another writer holds the lock
     return conn
 
 
 def init_db():
     conn = db()
+    conn.execute("PRAGMA journal_mode=WAL")  # readers don't block the writer (and vice versa)
     conn.executescript(
         """
         CREATE TABLE IF NOT EXISTS users(
@@ -71,6 +99,7 @@ def init_db():
           day      TEXT NOT NULL,
           sessions INTEGER DEFAULT 0,
           minutes  INTEGER DEFAULT 0,
+          seconds  INTEGER DEFAULT 0,
           PRIMARY KEY(user_id, day)
         );
         CREATE TABLE IF NOT EXISTS rooms(
@@ -93,6 +122,7 @@ def init_db():
           user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
           day        TEXT NOT NULL,
           minutes    INTEGER DEFAULT 0,
+          seconds    INTEGER DEFAULT 0,
           topic      TEXT DEFAULT '',
           created_at TEXT NOT NULL
         );
@@ -110,12 +140,63 @@ def init_db():
             conn.execute("ALTER TABLE users ADD COLUMN %s %s" % (col, ddl))
     if not any(r["name"] == "subject_id" for r in conn.execute("PRAGMA table_info(session_log)")):
         conn.execute("ALTER TABLE session_log ADD COLUMN subject_id INTEGER")
+    # second-level precision: add `seconds` and backfill from the older minute counts
+    for tbl in ("stat_days", "session_log"):
+        if not any(r["name"] == "seconds" for r in conn.execute("PRAGMA table_info(%s)" % tbl)):
+            conn.execute("ALTER TABLE %s ADD COLUMN seconds INTEGER DEFAULT 0" % tbl)
+            conn.execute("UPDATE %s SET seconds=minutes*60 WHERE seconds=0 AND minutes>0" % tbl)
     conn.commit()
     conn.close()
 
 
 def now_iso():
     return datetime.now(timezone.utc).isoformat()
+
+
+# ------------------------------------------------- rate limiting + upkeep ----
+# Set TRUST_PROXY=1 only when behind a reverse proxy you control, so the client
+# IP is read from X-Forwarded-For instead of the (proxy's) socket address.
+TRUST_PROXY = os.environ.get("TRUST_PROXY", "").lower() in ("1", "true", "yes", "on")
+_rl_lock = threading.Lock()
+_rl_hits = {}  # key -> [timestamps]; trimmed on access and hourly by purge_expired()
+
+
+def rate_ok(key, limit, window):
+    """Allow up to `limit` hits per `window` seconds for `key`; False once exceeded."""
+    now = time.time()
+    with _rl_lock:
+        hits = [t for t in _rl_hits.get(key, ()) if now - t < window]
+        if len(hits) >= limit:
+            _rl_hits[key] = hits
+            return False
+        hits.append(now)
+        _rl_hits[key] = hits
+        return True
+
+
+def purge_expired():
+    """Delete expired sessions and drop stale rate-limit entries. At startup + hourly."""
+    try:
+        conn = db()
+        conn.execute("DELETE FROM sessions WHERE expires < ?", (time.time(),))
+        conn.commit()
+        conn.close()
+    except Exception:
+        traceback.print_exc()
+    now = time.time()
+    with _rl_lock:
+        for k in list(_rl_hits):
+            hits = [t for t in _rl_hits[k] if now - t < 3600]
+            if hits:
+                _rl_hits[k] = hits
+            else:
+                del _rl_hits[k]
+
+
+def cleanup_loop():
+    while True:
+        time.sleep(3600)
+        purge_expired()
 
 
 # ------------------------------------------------------------------- auth ----
@@ -185,10 +266,11 @@ def subjects_for(uid):
     out = []
     for r in rows:
         tm = conn.execute(
-            "SELECT COALESCE(SUM(minutes),0) AS m FROM session_log WHERE user_id=? AND day=? AND subject_id=?",
+            "SELECT COALESCE(SUM(seconds),0) AS s FROM session_log WHERE user_id=? AND day=? AND subject_id=?",
             (uid, today, r["id"]),
         ).fetchone()
-        out.append({"id": r["id"], "name": r["name"], "color": r["color"], "todayMinutes": tm["m"]})
+        out.append({"id": r["id"], "name": r["name"], "color": r["color"],
+                    "todayMinutes": tm["s"] // 60, "todaySeconds": tm["s"]})
     conn.close()
     return out
 
@@ -207,24 +289,26 @@ def compute_streak(by):
 def stats_summary(uid):
     conn = db()
     rows = conn.execute(
-        "SELECT day,sessions,minutes FROM stat_days WHERE user_id=? ORDER BY day", (uid,)
+        "SELECT day,sessions,seconds FROM stat_days WHERE user_id=? ORDER BY day", (uid,)
     ).fetchall()
     conn.close()
-    by = {r["day"]: {"sessions": r["sessions"], "minutes": r["minutes"]} for r in rows}
+    by = {r["day"]: {"sessions": r["sessions"], "seconds": r["seconds"] or 0} for r in rows}
     today = date.today().isoformat()
     history = []
     for i in range(13, -1, -1):
         d = (date.today() - timedelta(days=i)).isoformat()
         cell = by.get(d, {})
+        secs = cell.get("seconds", 0)
         history.append(
-            {"day": d, "minutes": cell.get("minutes", 0), "sessions": cell.get("sessions", 0)}
+            {"day": d, "minutes": secs // 60, "seconds": secs, "sessions": cell.get("sessions", 0)}
         )
+    tcell = by.get(today, {"sessions": 0, "seconds": 0})
     return {
-        "today": by.get(today, {"sessions": 0, "minutes": 0}),
+        "today": {"sessions": tcell["sessions"], "minutes": tcell["seconds"] // 60, "seconds": tcell["seconds"]},
         "totalSessions": sum(r["sessions"] for r in rows),
-        "totalMinutes": sum(r["minutes"] for r in rows),
+        "totalMinutes": sum((r["seconds"] or 0) for r in rows) // 60,
         "streak": compute_streak(by),
-        "bestMinutes": max((r["minutes"] for r in rows), default=0),
+        "bestMinutes": max(((r["seconds"] or 0) // 60 for r in rows), default=0),
         "activeDays": len([r for r in rows if r["sessions"] > 0]),
         "history": history,
     }
@@ -237,6 +321,19 @@ class Handler(SimpleHTTPRequestHandler):
 
     def log_message(self, fmt, *args):
         print("  %s - %s" % (self.command, self.path))
+
+    def version_string(self):
+        return "Focus"  # don't advertise the Python/stdlib version in the Server header
+
+    def end_headers(self):
+        for k, v in SECURITY_HEADERS:
+            self.send_header(k, v)
+        super().end_headers()
+
+    def list_directory(self, path):
+        # never expose directory listings
+        self.send_error(404, "Not found")
+        return None
 
     # -- helpers --
     def _json(self, code, obj, extra_headers=None):
@@ -269,24 +366,38 @@ class Handler(SimpleHTTPRequestHandler):
     def _user(self):
         return user_from_token(self._token())
 
+    def _client_ip(self):
+        if TRUST_PROXY:
+            xff = self.headers.get("X-Forwarded-For")
+            if xff:
+                return xff.split(",")[0].strip()
+        return self.client_address[0] if self.client_address else "?"
+
     def _set_cookie(self, token):
+        sec = "; Secure" if SECURE_COOKIES else ""
         return [("Set-Cookie",
-                 "sid=%s; HttpOnly; SameSite=Lax; Path=/; Max-Age=%d" % (token, SESSION_DAYS * 86400))]
+                 "sid=%s; HttpOnly; SameSite=Lax; Path=/%s; Max-Age=%d" % (token, sec, SESSION_DAYS * 86400))]
 
     def _clear_cookie(self):
-        return [("Set-Cookie", "sid=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0")]
+        sec = "; Secure" if SECURE_COOKIES else ""
+        return [("Set-Cookie", "sid=; HttpOnly; SameSite=Lax; Path=/%s; Max-Age=0" % sec)]
 
     # -- routing --
     def do_GET(self):
         p = urlparse(self.path).path
         if p.startswith("/api/"):
             return self.api()
+        # Never serve dotfiles/dot-directories (.git, .gitignore, .env, …) or bytecode caches.
+        # Decode first so a percent-encoded dot (%2e) can't slip past the check.
+        dp = unquote(p)
+        if any(seg.startswith(".") or seg == "__pycache__" for seg in dp.split("/") if seg):
+            return self._json(404, {"error": "not found"})
         clean = p.rstrip("/") or "/"
         pretty = {"/login": "/login.html", "/dashboard": "/dashboard.html",
                   "/rooms": "/rooms.html", "/app": "/index.html"}
         if clean in pretty:
             self.path = pretty[clean]
-        if self.path.endswith((".py", ".db")):
+        if self.path.endswith((".py", ".pyc", ".db")):
             return self._json(404, {"error": "not found"})
         return super().do_GET()
 
@@ -305,6 +416,8 @@ class Handler(SimpleHTTPRequestHandler):
     def api(self):
         p = urlparse(self.path).path
         m = self.command
+        if int(self.headers.get("Content-Length", 0) or 0) > MAX_BODY:
+            return self._json(413, {"error": "Request too large."})
         try:
             if p == "/api/signup" and m == "POST":
                 return self.signup()
@@ -330,6 +443,8 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.rooms_mine()
             if p == "/api/rooms/public" and m == "GET":
                 return self.rooms_public()
+            if p == "/api/rooms/current" and m == "GET":
+                return self.room_current()
             if p == "/api/rooms/join" and m == "POST":
                 return self.room_join()
             if p == "/api/heartbeat" and m == "POST":
@@ -356,11 +471,15 @@ class Handler(SimpleHTTPRequestHandler):
                 if len(seg) == 4 and seg[3] == "visibility" and m == "POST":
                     return self.room_visibility(rid)
             return self._json(404, {"error": "not found"})
-        except Exception as e:
-            return self._json(500, {"error": str(e)})
+        except Exception:
+            traceback.print_exc()  # log the detail server-side, don't leak it to the client
+            return self._json(500, {"error": "Something went wrong."})
 
     # -- endpoints --
     def signup(self):
+        if not rate_ok("signup:" + self._client_ip(), 8, 3600):
+            return self._json(429, {"error": "Too many sign-ups from this network — try again later."},
+                              [("Retry-After", "3600")])
         d = self._read_json()
         email = (d.get("email") or "").strip().lower()
         pw = d.get("password") or ""
@@ -369,6 +488,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(400, {"error": "Please enter a valid email address."})
         if len(pw) < 6:
             return self._json(400, {"error": "Password must be at least 6 characters."})
+        if len(pw) > MAX_PW:
+            return self._json(400, {"error": "Password is too long (max %d characters)." % MAX_PW})
         conn = db()
         if conn.execute("SELECT 1 FROM users WHERE email=?", (email,)).fetchone():
             conn.close()
@@ -388,9 +509,14 @@ class Handler(SimpleHTTPRequestHandler):
         return self._json(200, {"ok": True, "user": public_user(row)}, self._set_cookie(token))
 
     def login(self):
+        if not rate_ok("login:" + self._client_ip(), 15, 300):
+            return self._json(429, {"error": "Too many attempts — wait a few minutes and try again."},
+                              [("Retry-After", "300")])
         d = self._read_json()
         email = (d.get("email") or "").strip().lower()
         pw = d.get("password") or ""
+        if len(pw) > MAX_PW:  # reject before the costly PBKDF2 hash; don't reveal which field was wrong
+            return self._json(401, {"error": "Wrong email or password."})
         conn = db()
         row = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
         conn.close()
@@ -461,17 +587,19 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(401, {"error": "Not signed in."})
         d = self._read_json()
         mins = max(0, min(600, int(d.get("minutes") or 0)))
+        secs = mins * 60
         topic = (d.get("topic") or "").strip()[:200]
         today = date.today().isoformat()
         conn = db()
         conn.execute(
-            "INSERT INTO stat_days(user_id,day,sessions,minutes) VALUES(?,?,1,?) "
-            "ON CONFLICT(user_id,day) DO UPDATE SET sessions=sessions+1, minutes=minutes+?",
-            (u["id"], today, mins, mins),
+            "INSERT INTO stat_days(user_id,day,sessions,seconds) VALUES(?,?,1,?) "
+            "ON CONFLICT(user_id,day) DO UPDATE SET sessions=sessions+1, seconds=seconds+?",
+            (u["id"], today, secs, secs),
         )
+        conn.execute("UPDATE stat_days SET minutes=seconds/60 WHERE user_id=? AND day=?", (u["id"], today))
         conn.execute(
-            "INSERT INTO session_log(user_id,day,minutes,topic,created_at) VALUES(?,?,?,?,?)",
-            (u["id"], today, mins, topic, now_iso()),
+            "INSERT INTO session_log(user_id,day,minutes,seconds,topic,created_at) VALUES(?,?,?,?,?,?)",
+            (u["id"], today, mins, secs, topic, now_iso()),
         )
         conn.commit()
         conn.close()
@@ -495,6 +623,44 @@ class Handler(SimpleHTTPRequestHandler):
     def _recent(self, last_seen):
         return (time.time() - (last_seen or 0)) < 90
 
+    def _current_room(self, conn, uid):
+        """Return the id of the single room this user belongs to, or None."""
+        row = conn.execute(
+            "SELECT room_id FROM room_members WHERE user_id=? LIMIT 1", (uid,)
+        ).fetchone()
+        return row["room_id"] if row else None
+
+    def _members_payload(self, conn, u, room):
+        """Build the {room, members[]} view for a room, ranked by today's focus time."""
+        rid = room["id"]
+        today = date.today().isoformat()
+        rows = conn.execute(
+            "SELECT u.id,u.name,u.email,u.avatar,u.focusing,u.last_seen,mm.role "
+            "FROM room_members mm JOIN users u ON u.id=mm.user_id WHERE mm.room_id=?",
+            (rid,),
+        ).fetchall()
+        me_member = False
+        members = []
+        for r in rows:
+            td = conn.execute(
+                "SELECT seconds FROM stat_days WHERE user_id=? AND day=?", (r["id"], today)
+            ).fetchone()
+            secs = (td["seconds"] if td and td["seconds"] else 0)
+            mine = r["id"] == u["id"]
+            me_member = me_member or mine
+            members.append({
+                "id": r["id"], "name": r["name"] or r["email"].split("@")[0],
+                "avatar": r["avatar"] or "🦊", "role": r["role"],
+                "todaySeconds": secs, "todayMinutes": secs // 60,
+                "focusing": bool(r["focusing"]) and self._recent(r["last_seen"]),
+                "me": mine,
+            })
+        members.sort(key=lambda x: -x["todaySeconds"])
+        return {
+            "room": {"id": room["id"], "name": room["name"], "visibility": room["visibility"],
+                     "code": room["code"], "isOwner": room["owner_id"] == u["id"], "isMember": me_member},
+            "members": members}
+
     def room_create(self):
         u = self._user()
         if not u:
@@ -504,6 +670,9 @@ class Handler(SimpleHTTPRequestHandler):
         vis = "public" if d.get("visibility") == "public" else "private"
         code = secrets.token_urlsafe(6)
         conn = db()
+        if self._current_room(conn, u["id"]) is not None:
+            conn.close()
+            return self._json(409, {"error": "You're already in a room — leave it before creating a new one."})
         cur = conn.execute(
             "INSERT INTO rooms(name,owner_id,visibility,code,created_at) VALUES(?,?,?,?,?)",
             (name, u["id"], vis, code, now_iso()),
@@ -567,30 +736,27 @@ class Handler(SimpleHTTPRequestHandler):
         if not mem and room["visibility"] != "public":
             conn.close()
             return self._json(403, {"error": "This room is private."})
-        today = date.today().isoformat()
-        rows = conn.execute(
-            "SELECT u.id,u.name,u.email,u.avatar,u.focusing,u.last_seen,mm.role "
-            "FROM room_members mm JOIN users u ON u.id=mm.user_id WHERE mm.room_id=?",
-            (rid,),
-        ).fetchall()
-        members = []
-        for r in rows:
-            td = conn.execute(
-                "SELECT minutes FROM stat_days WHERE user_id=? AND day=?", (r["id"], today)
-            ).fetchone()
-            members.append({
-                "id": r["id"], "name": r["name"] or r["email"].split("@")[0],
-                "avatar": r["avatar"] or "🦊", "role": r["role"],
-                "todayMinutes": (td["minutes"] if td else 0),
-                "focusing": bool(r["focusing"]) and self._recent(r["last_seen"]),
-                "me": r["id"] == u["id"],
-            })
-        members.sort(key=lambda x: -x["todayMinutes"])
+        payload = self._members_payload(conn, u, room)
         conn.close()
-        return self._json(200, {
-            "room": {"id": room["id"], "name": room["name"], "visibility": room["visibility"],
-                     "code": room["code"], "isOwner": room["owner_id"] == u["id"], "isMember": bool(mem)},
-            "members": members})
+        return self._json(200, payload)
+
+    def room_current(self):
+        """The single room the signed-in user is in (for the timer's co-focus panel)."""
+        u = self._user()
+        if not u:
+            return self._json(401, {"error": "Not signed in."})
+        conn = db()
+        rid = self._current_room(conn, u["id"])
+        if rid is None:
+            conn.close()
+            return self._json(200, {"room": None, "members": []})
+        room = conn.execute("SELECT * FROM rooms WHERE id=?", (rid,)).fetchone()
+        if not room:
+            conn.close()
+            return self._json(200, {"room": None, "members": []})
+        payload = self._members_payload(conn, u, room)
+        conn.close()
+        return self._json(200, payload)
 
     def room_join(self):
         u = self._user()
@@ -608,11 +774,25 @@ class Handler(SimpleHTTPRequestHandler):
         if not room:
             conn.close()
             return self._json(404, {"error": "Room not found — check the invite code."})
-        conn.execute(
-            "INSERT OR IGNORE INTO room_members(room_id,user_id,role,joined_at) VALUES(?,?,'member',?)",
-            (room["id"], u["id"], now_iso()),
-        )
-        conn.commit()
+        # already in this room? treat join as a no-op so invite links stay idempotent.
+        already = conn.execute(
+            "SELECT 1 FROM room_members WHERE room_id=? AND user_id=?", (room["id"], u["id"])
+        ).fetchone()
+        if not already:
+            if self._current_room(conn, u["id"]) is not None:
+                conn.close()
+                return self._json(409, {"error": "You can only be in one room at a time — leave your current room first."})
+            members = conn.execute(
+                "SELECT COUNT(*) AS n FROM room_members WHERE room_id=?", (room["id"],)
+            ).fetchone()["n"]
+            if members >= ROOM_MAX:
+                conn.close()
+                return self._json(409, {"error": "This room is full — it already has %d people." % ROOM_MAX})
+            conn.execute(
+                "INSERT INTO room_members(room_id,user_id,role,joined_at) VALUES(?,?,'member',?)",
+                (room["id"], u["id"], now_iso()),
+            )
+            conn.commit()
         conn.close()
         return self._json(200, {"ok": True, "room_id": room["id"]})
 
@@ -735,23 +915,28 @@ class Handler(SimpleHTTPRequestHandler):
         if not u:
             return self._json(401, {"error": "Not signed in."})
         d = self._read_json()
-        minutes = max(0, min(600, int(d.get("minutes") or 0)))
+        # prefer exact seconds; fall back to the older minutes field for compatibility
+        if d.get("seconds") is not None:
+            secs = max(0, min(36000, int(d.get("seconds") or 0)))
+        else:
+            secs = max(0, min(36000, int(d.get("minutes") or 0) * 60))
         session = 1 if d.get("session") else 0
         sid = d.get("subject_id")
         sid = int(sid) if sid else None
         topic = (d.get("topic") or "").strip()[:200]
-        if minutes <= 0 and not session:
+        if secs <= 0 and not session:
             return self._json(200, {"ok": True, "stats": stats_summary(u["id"]), "subjects": subjects_for(u["id"])})
         today = date.today().isoformat()
         conn = db()
         conn.execute(
-            "INSERT INTO stat_days(user_id,day,sessions,minutes) VALUES(?,?,?,?) "
-            "ON CONFLICT(user_id,day) DO UPDATE SET sessions=sessions+?, minutes=minutes+?",
-            (u["id"], today, session, minutes, session, minutes),
+            "INSERT INTO stat_days(user_id,day,sessions,seconds) VALUES(?,?,?,?) "
+            "ON CONFLICT(user_id,day) DO UPDATE SET sessions=sessions+?, seconds=seconds+?",
+            (u["id"], today, session, secs, session, secs),
         )
+        conn.execute("UPDATE stat_days SET minutes=seconds/60 WHERE user_id=? AND day=?", (u["id"], today))
         conn.execute(
-            "INSERT INTO session_log(user_id,day,minutes,topic,subject_id,created_at) VALUES(?,?,?,?,?,?)",
-            (u["id"], today, minutes, topic, sid, now_iso()),
+            "INSERT INTO session_log(user_id,day,minutes,seconds,topic,subject_id,created_at) VALUES(?,?,?,?,?,?,?)",
+            (u["id"], today, secs // 60, secs, topic, sid, now_iso()),
         )
         conn.commit()
         conn.close()
@@ -760,6 +945,8 @@ class Handler(SimpleHTTPRequestHandler):
 
 def main():
     init_db()
+    purge_expired()  # clear anything already expired, then keep it tidy hourly
+    threading.Thread(target=cleanup_loop, daemon=True).start()
     print("Focus server running:  http://localhost:%d" % PORT)
     print("Database:              %s" % DB_PATH)
     print("Press Ctrl+C to stop.")

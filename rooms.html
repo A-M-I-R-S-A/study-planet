@@ -6,142 +6,250 @@
 <title>Focus — Rooms</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{--accent:oklch(0.7 0.12 62);--accent-ink:#16303a;--cream:#faf6ee;--cream2:#efe9de;--ink:#2b2824;--muted:#8a8175;--white:#fbfdfd;--danger:#c0392b;--good:#3a9d5d}
+  :root{
+    --accent:oklch(0.72 0.13 62);--accent-2:oklch(0.66 0.11 220);--accent-ink:#16303a;
+    --cream:#faf6ee;--cream2:#efe9de;--cream3:#e6ddcd;
+    --ink:#2b2824;--muted:#8a8175;--white:#fbfdfd;--danger:#c0392b;--good:#3a9d5d;
+    --shadow:0 18px 46px rgba(0,0,0,.30);--radius:22px;
+  }
   *{box-sizing:border-box}
   html,body{height:100%}
-  body{margin:0;font-family:'Instrument Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:var(--ink);background:#16303a;min-height:100vh;-webkit-font-smoothing:antialiased}
+  body{margin:0;font-family:'Instrument Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:var(--ink);background:#16303a;min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  /* ambient warmth over the shared theme background */
+  body::before{content:"";position:fixed;top:-18%;left:-12%;width:52vw;height:52vw;border-radius:50%;
+    background:radial-gradient(circle,oklch(0.72 0.13 62 / .28),transparent 68%);z-index:0;pointer-events:none}
+  body::after{content:"";position:fixed;bottom:-22%;right:-16%;width:58vw;height:58vw;border-radius:50%;
+    background:radial-gradient(circle,oklch(0.66 0.11 220 / .22),transparent 68%);z-index:0;pointer-events:none}
   .mono{font-family:'DM Mono',ui-monospace,monospace}
-  .wrap{max-width:820px;margin:0 auto;padding:clamp(18px,4vw,40px)}
+  .wrap{position:relative;z-index:1;max-width:840px;margin:0 auto;padding:clamp(18px,4vw,42px)}
 
+  /* ---------- header ---------- */
   header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:26px;flex-wrap:wrap}
-  header h1{font-size:22px;font-weight:600;color:var(--white);letter-spacing:-.01em;margin:0}
+  .brand{display:flex;align-items:center;gap:14px}
+  .brand-badge{width:50px;height:50px;border-radius:15px;flex:none;display:flex;align-items:center;justify-content:center;font-size:25px;
+    background:linear-gradient(150deg,var(--accent),color-mix(in oklch,var(--accent) 55%,#e08a3c));
+    box-shadow:0 8px 22px rgba(224,138,60,.4),inset 0 1px 0 rgba(255,255,255,.4)}
+  .brand h1{font-size:23px;font-weight:700;color:var(--white);letter-spacing:-.02em;margin:0;line-height:1.1}
+  .brand .tagline{font-size:13px;color:rgba(255,255,255,.6);margin-top:3px}
   .hbtns{display:flex;gap:9px}
-  .hbtn{height:40px;padding:0 15px;border-radius:11px;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.14);color:var(--white);font-size:13.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;text-decoration:none;backdrop-filter:blur(8px)}
-  .hbtn:hover{background:rgba(255,255,255,.24)}
+  .hbtn{height:42px;padding:0 15px;border-radius:12px;border:1px solid rgba(255,255,255,.24);background:rgba(255,255,255,.12);color:var(--white);font-size:13.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;text-decoration:none;backdrop-filter:blur(10px);transition:.16s}
+  .hbtn:hover{background:rgba(255,255,255,.22);transform:translateY(-1px)}
+  .hbtn.back{margin-bottom:18px;display:inline-flex}
 
-  .section{background:var(--cream);border-radius:22px;padding:20px 20px 18px;box-shadow:0 14px 40px rgba(0,0,0,.26);margin-bottom:18px}
-  .section h2{font-size:12.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 14px;display:flex;align-items:center;justify-content:space-between}
-  .roomlist{display:flex;flex-direction:column;gap:10px}
-  .roomcard{display:flex;align-items:center;gap:13px;background:var(--cream2);border-radius:14px;padding:14px;text-decoration:none;color:var(--ink);border:1px solid transparent;transition:.15s;cursor:pointer}
-  .roomcard:hover{border-color:rgba(0,0,0,.12)}
-  .roomcard .ic{width:44px;height:44px;border-radius:12px;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;font-size:20px;flex:none}
-  .roomcard .info{flex:1;min-width:0}
-  .roomcard .nm{font-size:15.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .roomcard .sub{font-size:12.5px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:8px}
-  .badge{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 7px;border-radius:99px}
-  .badge.pub{background:#dcefe1;color:#2e7d46}
-  .badge.prv{background:#efe1dc;color:#a05a37}
-  .btn{border:none;border-radius:11px;font-weight:700;cursor:pointer;font-size:13.5px;padding:9px 15px}
-  .btn.pri{background:var(--accent);color:var(--accent-ink)}
-  .btn.pri:hover{filter:brightness(1.06)}
-  .btn.ghost{background:var(--cream);border:1px solid rgba(0,0,0,.14);color:var(--ink)}
+  /* ---------- panels ---------- */
+  .panel{background:linear-gradient(180deg,#fefcf8,var(--cream));border:1px solid rgba(255,255,255,.5);border-radius:var(--radius);padding:20px 20px 18px;box-shadow:var(--shadow);margin-bottom:18px;animation:rise .5s cubic-bezier(.2,.7,.2,1) both}
+  .panel-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 15px}
+  .panel-head h2{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:0;font-weight:700;display:flex;align-items:center;gap:9px}
+  .panel-head h2::before{content:"";width:16px;height:2.5px;border-radius:2px;background:var(--accent)}
+  .hint{font-size:12px;color:var(--muted);font-weight:500}
+
+  /* ---------- buttons ---------- */
+  .btn{border:none;border-radius:12px;font-weight:700;cursor:pointer;font-size:13.5px;padding:10px 16px;transition:.15s;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+  .btn.pri{background:linear-gradient(150deg,var(--accent),color-mix(in oklch,var(--accent) 58%,#e08a3c));color:var(--accent-ink);box-shadow:0 6px 16px rgba(224,138,60,.32)}
+  .btn.pri:hover{filter:brightness(1.05);transform:translateY(-1px);box-shadow:0 9px 22px rgba(224,138,60,.4)}
+  .btn.pri:active{transform:translateY(0)}
+  .btn.ghost{background:var(--cream2);border:1px solid rgba(0,0,0,.1);color:var(--ink)}
   .btn.ghost:hover{background:#fff}
+  .btn.ok{background:var(--good);color:#fff}
   .btn.dng{background:none;color:var(--danger);border:1px solid rgba(192,57,43,.35)}
-  .btn:disabled{opacity:.55;cursor:default}
-  .empty{color:var(--muted);font-size:13.5px;text-align:center;padding:16px 0}
+  .btn.dng:hover{background:rgba(192,57,43,.08)}
+  .btn.wide{width:100%;padding:12px}
+  .btn:disabled{opacity:.5;cursor:default;transform:none;box-shadow:none;filter:none}
 
-  .createbar{display:flex;gap:8px;flex-wrap:wrap}
-  .createbar input[type=text]{flex:1;min-width:160px;border:1px solid rgba(0,0,0,.14);background:#fff;border-radius:11px;padding:11px 13px;font-size:14px;color:var(--ink);outline:none}
-  .createbar input:focus{border-color:var(--accent)}
-  .vis-seg{display:flex;gap:5px;background:var(--cream2);padding:4px;border-radius:11px}
-  .vis-seg button{border:none;background:transparent;color:var(--muted);font-size:13px;font-weight:600;padding:8px 12px;border-radius:8px;cursor:pointer}
-  .vis-seg button.on{background:var(--cream);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
-  .joinbar{display:flex;gap:8px}
-  .joinbar input{flex:1;border:1px solid rgba(0,0,0,.14);background:#fff;border-radius:11px;padding:11px 13px;font-size:14px;outline:none}
+  /* ---------- create / join bars ---------- */
+  .createbar{display:flex;gap:9px;flex-wrap:wrap}
+  .createbar input[type=text],.joinbar input{flex:1;min-width:170px;border:1px solid rgba(0,0,0,.12);background:#fff;border-radius:12px;padding:12px 14px;font-size:14px;color:var(--ink);outline:none;transition:.15s}
+  .createbar input:focus,.joinbar input:focus{border-color:var(--accent);box-shadow:0 0 0 3px oklch(0.72 0.13 62 / .16)}
+  .vis-seg{display:flex;gap:4px;background:var(--cream2);padding:4px;border-radius:12px}
+  .vis-seg button{border:none;background:transparent;color:var(--muted);font-size:13px;font-weight:600;padding:8px 13px;border-radius:9px;cursor:pointer;transition:.15s}
+  .vis-seg button.on{background:#fff;color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.1)}
+  .joinbar{display:flex;gap:9px;margin-top:14px}
 
-  /* detail */
-  .member{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:13px;background:var(--cream2);margin-bottom:8px}
-  .member .rank{width:20px;text-align:center;color:var(--muted);font-size:13px}
-  .member .av{width:38px;height:38px;border-radius:11px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;flex:none;position:relative}
-  .member .av .live{position:absolute;right:-2px;bottom:-2px;width:12px;height:12px;border-radius:50%;background:var(--good);border:2px solid var(--cream2);box-shadow:0 0 0 0 rgba(58,157,93,.6);animation:pulse 1.8s infinite}
-  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(58,157,93,.5)}70%{box-shadow:0 0 0 7px rgba(58,157,93,0)}100%{box-shadow:0 0 0 0 rgba(58,157,93,0)}}
-  .member .mn{flex:1;min-width:0}
-  .member .mn b{font-size:14.5px}
-  .member .mn .st{font-size:12px;color:var(--muted);margin-top:1px}
-  .member .mins{font-family:'DM Mono',monospace;font-size:16px;color:var(--accent)}
-  .invite{display:flex;gap:8px;align-items:center;background:var(--cream2);border-radius:12px;padding:10px 12px}
-  .invite code{font-family:'DM Mono',monospace;font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .msg{font-size:13px;margin-top:10px;min-height:16px}
+  /* ---------- room cards ---------- */
+  .roomlist{display:flex;flex-direction:column;gap:11px}
+  .roomcard{display:flex;align-items:center;gap:14px;background:var(--cream2);border-radius:16px;padding:14px 15px;text-decoration:none;color:var(--ink);border:1px solid transparent;transition:transform .16s,box-shadow .16s,border-color .16s;cursor:pointer;animation:rise .45s cubic-bezier(.2,.7,.2,1) both}
+  .roomcard:hover{transform:translateY(-3px);border-color:rgba(0,0,0,.08);box-shadow:0 12px 26px rgba(0,0,0,.14)}
+  .roomcard .ic{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 4px 12px rgba(0,0,0,.14)}
+  .ic.prv{background:linear-gradient(150deg,#eab962,#dd8a3f);color:#3a2410}
+  .ic.pub{background:linear-gradient(150deg,#63b3c6,#2f7f97);color:#062730}
+  .roomcard .info{flex:1;min-width:0}
+  .roomcard .nm{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
+  .roomcard .sub{display:flex;align-items:center;gap:7px;margin:5px 0 8px;flex-wrap:wrap}
+  .badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px;border-radius:99px}
+  .badge.pub{background:#d7ede2;color:#2e7d46}
+  .badge.prv{background:#f0e2d5;color:#a05a37}
+  .chip{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:3px 8px;border-radius:99px;background:rgba(0,0,0,.05);color:var(--muted)}
+  .chip.full{background:#f6dcd4;color:var(--danger)}
+  .chip.owner{color:#b5852f;background:#f6ecd4}
+  /* capacity meter */
+  .meter{height:6px;border-radius:99px;background:rgba(0,0,0,.08);overflow:hidden;max-width:220px}
+  .meter-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),#e08a3c);transition:width .6s cubic-bezier(.2,.7,.2,1)}
+  .meter-fill.full{background:linear-gradient(90deg,#e06a4e,var(--danger))}
+  .roomcard .side{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex:none}
+  .roomcard .count{font-family:'DM Mono',monospace;font-size:13px;color:var(--muted);line-height:1}
+  .roomcard .count b{font-size:18px;color:var(--ink)}
+  .roomcard .go{font-size:12.5px;font-weight:700;color:var(--accent);opacity:.55;transition:.16s}
+  .roomcard:hover .go{opacity:1;transform:translateX(2px)}
+
+  .empty{color:var(--muted);font-size:13.5px;text-align:center;padding:22px 0;line-height:1.6}
+  .empty .big{font-size:30px;display:block;margin-bottom:6px;opacity:.8}
+  .msg{font-size:13px;margin-top:11px;min-height:16px}
   .msg.err{color:var(--danger)} .msg.ok{color:var(--good)}
-  .loading{color:rgba(255,255,255,.8);text-align:center;padding:80px 0}
+
+  /* ---------- detail: room hero ---------- */
+  .room-hero{display:flex;align-items:center;gap:15px;margin-bottom:18px}
+  .room-hero-ic{width:58px;height:58px;border-radius:17px;flex:none;display:flex;align-items:center;justify-content:center;font-size:27px;
+    background:linear-gradient(150deg,#eab962,#dd8a3f);color:#3a2410;box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 8px 20px rgba(0,0,0,.18)}
+  .room-hero-ic.pub{background:linear-gradient(150deg,#63b3c6,#2f7f97);color:#062730}
+  .room-hero-main{min-width:0}
+  .room-title{display:flex;align-items:center;gap:10px;font-size:21px;font-weight:700;letter-spacing:-.02em;margin:0;color:var(--ink);flex-wrap:wrap}
+  .room-meta{display:flex;align-items:center;gap:14px;margin-top:6px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+  .room-meta .live-count{color:var(--good);font-weight:600;display:inline-flex;align-items:center;gap:6px}
+  .room-meta .dot{width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 0 0 rgba(58,157,93,.6);animation:pulse 1.8s infinite}
+
+  .lead-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:0 2px 10px;border-bottom:1px solid rgba(0,0,0,.07);margin-bottom:12px}
+  .lead-title{font-size:13px;font-weight:700;color:var(--ink)}
+  .lead-sub{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+
+  /* ---------- leaderboard rows ---------- */
+  .member{display:flex;align-items:center;gap:13px;padding:11px 12px;border-radius:14px;background:var(--cream2);margin-bottom:9px;animation:rise .4s cubic-bezier(.2,.7,.2,1) both}
+  .member.me{background:linear-gradient(90deg,color-mix(in oklch,var(--accent) 16%,var(--cream2)),var(--cream2));box-shadow:inset 0 0 0 1.5px oklch(0.72 0.13 62 / .5)}
+  .member .rank{width:27px;height:27px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--muted);background:rgba(0,0,0,.05)}
+  .member .rank.medal{background:none;font-size:20px}
+  .member .av{width:40px;height:40px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:21px;flex:none;position:relative;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+  .member .av .live{position:absolute;right:-3px;bottom:-3px;width:13px;height:13px;border-radius:50%;background:var(--good);border:2.5px solid var(--cream2);animation:pulse 1.8s infinite}
+  .member.me .av .live{border-color:#f3ecdd}
+  .member .mn{flex:1;min-width:0}
+  .member .mn b{font-size:14.5px;font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .member .track{height:5px;border-radius:99px;background:rgba(0,0,0,.06);overflow:hidden;margin:6px 0 5px}
+  .member .trackfill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),#e08a3c);width:0;transition:width .7s cubic-bezier(.2,.7,.2,1)}
+  .member .trackfill.on{background:linear-gradient(90deg,var(--good),#5ec488)}
+  .member .st{font-size:11.5px;color:var(--muted)}
+  .member .st.live-st{color:var(--good);font-weight:600}
+  .member .mins{font-family:'DM Mono',monospace;font-size:19px;color:var(--accent);flex:none;font-weight:500}
+  .member .mins small{font-size:12px;color:var(--muted);font-weight:400}
+
+  /* ---------- invite ---------- */
+  .invite{display:flex;gap:10px;align-items:center;background:var(--cream2);border:1.5px dashed color-mix(in oklch,var(--accent) 55%,var(--cream3));border-radius:14px;padding:11px 12px}
+  .invite-ic{font-size:18px;flex:none}
+  .invite code{font-family:'DM Mono',monospace;font-size:13.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+  .fine{font-size:12.5px;color:var(--muted);margin-top:9px;padding-left:2px}
+  .owner-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .owner-row .btn.dng{margin-inline-start:auto}
+
+  /* ---------- loading ---------- */
+  .loading{color:rgba(255,255,255,.85);text-align:center;padding:90px 0;font-size:14.5px}
+  .spinner{width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.18);border-top-color:var(--accent);animation:spin .8s linear infinite;margin:0 auto 15px}
+
+  @keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(58,157,93,.5)}70%{box-shadow:0 0 0 7px rgba(58,157,93,0)}100%{box-shadow:0 0 0 0 rgba(58,157,93,0)}}
+  @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
   .hidden{display:none!important}
+  @media(max-width:560px){
+    .wrap{padding:16px 14px}
+    .hbtn span{display:none}
+    .roomcard .go{display:none}
+    .panel{padding:16px 15px 14px;border-radius:18px}
+    .joinbar{flex-wrap:wrap}
+    .createbar input[type=text],.joinbar input{min-width:100%}
+    .vis-seg{flex:1}.vis-seg button{flex:1}
+    .createbar .btn.pri,.joinbar .btn.pri{flex:1}
+    .room-hero-ic{width:50px;height:50px;font-size:23px}
+    .room-title{font-size:19px}
+    .member .mins{font-size:17px}
+    .brand-badge{width:44px;height:44px;font-size:22px}
+    .brand h1{font-size:20px}
+  }
 </style>
 </head>
 <body>
 <script src="/theme.js"></script>
 <div class="wrap">
   <header>
-    <h1 id="title">Rooms</h1>
+    <div class="brand">
+      <div class="brand-badge">👥</div>
+      <div>
+        <h1 id="title">Study Rooms</h1>
+        <div class="tagline">Focus together · climb the leaderboard</div>
+      </div>
+    </div>
     <div class="hbtns">
-      <a class="hbtn" href="/">⏱ Timer</a>
-      <a class="hbtn" href="/dashboard">📊 Dashboard</a>
+      <a class="hbtn" href="/">⏱ <span>Timer</span></a>
+      <a class="hbtn" href="/dashboard">📊 <span>Dashboard</span></a>
     </div>
   </header>
-  <div id="loading" class="loading">Loading…</div>
+  <div id="loading" class="loading"><div class="spinner"></div>Loading rooms…</div>
 
   <!-- LIST VIEW -->
   <div id="listView" class="hidden">
-    <div class="section">
-      <h2>Create a room</h2>
+    <section class="panel">
+      <div class="panel-head"><h2>Create a room</h2><span class="hint">up to 10 people · one room at a time</span></div>
       <div class="createbar">
-        <input type="text" id="newName" placeholder="Room name (e.g. Finals Grind)" maxlength="60">
+        <input type="text" id="newName" placeholder="Name your room — e.g. Finals Grind" maxlength="60">
         <div class="vis-seg" id="visSeg">
           <button data-vis="private" class="on">🔒 Private</button>
           <button data-vis="public">🌍 Public</button>
         </div>
-        <button class="btn pri" id="createBtn">Create</button>
+        <button class="btn pri" id="createBtn">＋ Create</button>
       </div>
       <div class="msg" id="createMsg"></div>
-    </div>
+    </section>
 
-    <div class="section">
-      <h2>Your rooms</h2>
+    <section class="panel">
+      <div class="panel-head"><h2>Your rooms</h2></div>
       <div class="roomlist" id="myRooms"></div>
-    </div>
+    </section>
 
-    <div class="section">
-      <h2>Discover public rooms</h2>
+    <section class="panel">
+      <div class="panel-head"><h2>Discover public rooms</h2></div>
       <div class="roomlist" id="pubRooms"></div>
-      <div style="margin-top:14px">
-        <div class="joinbar">
-          <input type="text" id="joinCode" placeholder="Have an invite code? Paste it here" maxlength="40">
-          <button class="btn pri" id="joinBtn">Join</button>
-        </div>
-        <div class="msg" id="joinMsg"></div>
+      <div class="joinbar">
+        <input type="text" id="joinCode" placeholder="Have an invite code? Paste it here" maxlength="40">
+        <button class="btn pri" id="joinBtn">Join</button>
       </div>
-    </div>
+      <div class="msg" id="joinMsg"></div>
+    </section>
   </div>
 
   <!-- DETAIL VIEW -->
   <div id="detailView" class="hidden">
-    <a class="hbtn" href="/rooms" style="margin-bottom:16px;display:inline-flex">← All rooms</a>
-    <div class="section">
-      <h2><span id="dName">Room</span><span class="badge" id="dBadge"></span></h2>
+    <a class="hbtn back" href="/rooms">← All rooms</a>
+    <section class="panel">
+      <div class="room-hero">
+        <div class="room-hero-ic" id="dIcon">🔒</div>
+        <div class="room-hero-main">
+          <h2 class="room-title"><span id="dName">Room</span> <span class="badge" id="dBadge"></span></h2>
+          <div class="room-meta" id="dMeta"></div>
+        </div>
+      </div>
+      <div class="lead-head"><span class="lead-title">Today's leaderboard</span><span class="lead-sub">by focus minutes</span></div>
       <div id="members"></div>
-    </div>
-    <div class="section" id="inviteSec">
-      <h2>Invite</h2>
+    </section>
+    <section class="panel" id="inviteSec">
+      <div class="panel-head"><h2>Invite</h2></div>
       <div class="invite">
+        <span class="invite-ic">🔗</span>
         <code id="inviteLink"></code>
         <button class="btn ghost" id="copyBtn">Copy link</button>
       </div>
-      <div style="font-size:12.5px;color:var(--muted);margin-top:8px">Anyone with this link can join — even a private room.</div>
-    </div>
-    <div class="section" id="ownerSec">
-      <h2>Room settings <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">owner only</span></h2>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <div class="fine">Anyone with this link can join — even a private room.</div>
+    </section>
+    <section class="panel" id="ownerSec">
+      <div class="panel-head"><h2>Room settings</h2><span class="hint">owner only</span></div>
+      <div class="owner-row">
         <div class="vis-seg" id="dVisSeg">
           <button data-vis="private">🔒 Private</button>
           <button data-vis="public">🌍 Public</button>
         </div>
-        <button class="btn dng" id="deleteBtn" style="margin-inline-start:auto">Delete room</button>
+        <button class="btn dng" id="deleteBtn">Delete room</button>
       </div>
-    </div>
-    <div class="section" id="memberSec">
-      <button class="btn dng" id="leaveBtn">Leave room</button>
-    </div>
+    </section>
+    <section class="panel" id="memberSec">
+      <button class="btn dng wide" id="leaveBtn">Leave room</button>
+    </section>
     <div class="msg" id="detailMsg"></div>
   </div>
 </div>
@@ -150,6 +258,7 @@
 (function(){
   var $=function(s){return document.querySelector(s);};
   var qs=new URLSearchParams(location.search);
+  var CAP=10;
   var api=function(url,opt){opt=opt||{};opt.credentials='same-origin';return fetch(url,opt).then(function(r){return r.json().then(function(j){return {ok:r.ok,status:r.status,j:j};});});};
   var post=function(url,body){return api(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});};
   var newVis='private';
@@ -179,33 +288,49 @@
     };
     loadMine(); loadPublic();
   }
+
+  function meter(n){ var pct=Math.min(100,n/CAP*100); return '<div class="meter"><div class="meter-fill'+(n>=CAP?' full':'')+'" style="width:'+pct+'%"></div></div>'; }
+
   function loadMine(){
     api('/api/rooms').then(function(r){
       var box=$('#myRooms'); var rooms=r.j.rooms||[];
-      if(!rooms.length){ box.innerHTML='<div class="empty">No rooms yet — create one above or join a public room.</div>'; return; }
+      if(!rooms.length){ box.innerHTML='<div class="empty"><span class="big">🪑</span>No rooms yet — create one above, or join a public room below.</div>'; return; }
       box.innerHTML='';
-      rooms.forEach(function(rm){
-        var a=document.createElement('a'); a.className='roomcard'; a.href='/rooms?room='+rm.id;
-        a.innerHTML='<div class="ic">'+(rm.visibility==='public'?'🌍':'🔒')+'</div>'+
-          '<div class="info"><div class="nm"></div><div class="sub"><span class="badge '+(rm.visibility==='public'?'pub">Public':'prv">Private')+'</span>'+
-          '<span>'+rm.members+' member'+(rm.members===1?'':'s')+'</span>'+(rm.isOwner?'<span>· owner</span>':'')+'</div></div><span class="btn ghost">Open</span>';
+      rooms.forEach(function(rm,i){
+        var pub=rm.visibility==='public';
+        var a=document.createElement('a'); a.className='roomcard'; a.href='/rooms?room='+rm.id; a.style.animationDelay=(i*45)+'ms';
+        a.innerHTML=
+          '<div class="ic '+(pub?'pub':'prv')+'">'+(pub?'🌍':'🔒')+'</div>'+
+          '<div class="info"><div class="nm"></div>'+
+            '<div class="sub"><span class="badge '+(pub?'pub':'prv')+'">'+(pub?'Public':'Private')+'</span>'+
+              (rm.isOwner?'<span class="chip owner">★ owner</span>':'')+'</div>'+
+            meter(rm.members)+'</div>'+
+          '<div class="side"><div class="count"><b>'+rm.members+'</b>/'+CAP+'</div><div class="go">Open →</div></div>';
         a.querySelector('.nm').textContent=rm.name;
         box.appendChild(a);
       });
     });
   }
+
   function loadPublic(){
     api('/api/rooms/public').then(function(r){
       var box=$('#pubRooms'); var rooms=r.j.rooms||[];
-      if(!rooms.length){ box.innerHTML='<div class="empty">No public rooms yet. Make one public for others to join!</div>'; return; }
+      if(!rooms.length){ box.innerHTML='<div class="empty"><span class="big">🌍</span>No public rooms yet. Make one public for others to find!</div>'; return; }
       box.innerHTML='';
-      rooms.forEach(function(rm){
-        var row=document.createElement('div'); row.className='roomcard';
-        row.innerHTML='<div class="ic">🌍</div><div class="info"><div class="nm"></div><div class="sub"><span>'+rm.members+' member'+(rm.members===1?'':'s')+'</span></div></div>';
+      rooms.forEach(function(rm,i){
+        var full=rm.members>=CAP && !rm.joined;
+        var row=document.createElement('div'); row.className='roomcard'; row.style.animationDelay=(i*45)+'ms';
+        row.innerHTML=
+          '<div class="ic pub">🌍</div>'+
+          '<div class="info"><div class="nm"></div>'+
+            '<div class="sub"><span class="badge pub">Public</span>'+(full?'<span class="chip full">Full</span>':(rm.joined?'<span class="chip">joined</span>':''))+'</div>'+
+            meter(rm.members)+'</div>'+
+          '<div class="side"><div class="count"><b>'+rm.members+'</b>/'+CAP+'</div></div>';
         row.querySelector('.nm').textContent=rm.name;
-        var btn=document.createElement('button'); btn.className='btn '+(rm.joined?'ghost':'pri'); btn.textContent=rm.joined?'Open':'Join';
-        btn.onclick=function(){ if(rm.joined){ location.href='/rooms?room='+rm.id; } else { post('/api/rooms/join',{room_id:rm.id}).then(function(x){ if(x.ok) location.href='/rooms?room='+rm.id; }); } };
-        row.appendChild(btn); box.appendChild(row);
+        var btn=document.createElement('button'); btn.className='btn '+(rm.joined?'ghost':'pri'); btn.textContent=rm.joined?'Open':(full?'Full':'Join'); btn.disabled=full;
+        btn.onclick=function(){ if(rm.joined){ location.href='/rooms?room='+rm.id; } else { post('/api/rooms/join',{room_id:rm.id}).then(function(x){ if(x.ok) location.href='/rooms?room='+rm.id; else msg('#joinMsg',x.j.error||'Could not join.','err'); }); } };
+        row.querySelector('.side').appendChild(btn);
+        box.appendChild(row);
       });
     });
   }
@@ -217,20 +342,35 @@
     load(); if(poll)clearInterval(poll); poll=setInterval(load,15000);
     function load(){
       api('/api/rooms/'+rid).then(function(r){
-        if(!r.ok){ $('#detailView').innerHTML='<div class="section"><div class="empty">'+(r.j.error||'Room unavailable')+'</div><a class="btn pri" href="/rooms">Back to rooms</a></div>'; if(poll)clearInterval(poll); return; }
-        curRoom=r.j.room;
+        if(!r.ok){ $('#detailView').innerHTML='<a class="hbtn back" href="/rooms">← All rooms</a><section class="panel"><div class="empty"><span class="big">🚪</span>'+(r.j.error||'Room unavailable')+'</div></section>'; if(poll)clearInterval(poll); return; }
+        curRoom=r.j.room; var pub=curRoom.visibility==='public';
         $('#dName').textContent=curRoom.name;
-        var b=$('#dBadge'); b.textContent=curRoom.visibility==='public'?'Public':'Private'; b.className='badge '+(curRoom.visibility==='public'?'pub':'prv');
-        // members / leaderboard
+        var b=$('#dBadge'); b.textContent=pub?'Public':'Private'; b.className='badge '+(pub?'pub':'prv');
+        var ic=$('#dIcon'); ic.textContent=pub?'🌍':'🔒'; ic.className='room-hero-ic'+(pub?' pub':'');
+        // meta line: capacity + live focus count
+        var mem=r.j.members||[]; var focusing=mem.filter(function(m){return m.focusing;}).length;
+        $('#dMeta').innerHTML='<span>👥 '+mem.length+' / '+CAP+' here</span>'+
+          (focusing?'<span class="live-count"><span class="dot"></span>'+focusing+' focusing now</span>':'<span>· nobody focusing yet</span>');
+        // leaderboard
         var mbox=$('#members'); mbox.innerHTML='';
-        r.j.members.forEach(function(m,i){
-          var el=document.createElement('div'); el.className='member';
-          el.innerHTML='<div class="rank">'+(i+1)+'</div>'+
-            '<div class="av">'+m.avatar+(m.focusing?'<span class="live"></span>':'')+'</div>'+
-            '<div class="mn"><b></b><div class="st">'+(m.focusing?'focusing now':'idle')+(m.role==='owner'?' · owner':'')+(m.me?' · you':'')+'</div></div>'+
-            '<div class="mins">'+m.todayMinutes+'m</div>';
+        var maxMin=mem.reduce(function(a,m){return Math.max(a,m.todayMinutes);},0)||1;
+        mem.forEach(function(m,i){
+          var medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+          var el=document.createElement('div'); el.className='member'+(m.me?' me':''); el.style.animationDelay=(i*50)+'ms';
+          el.innerHTML=
+            '<div class="rank'+(medal?' medal':'')+'">'+(medal||(i+1))+'</div>'+
+            '<div class="av"><span class="ava-e"></span>'+(m.focusing?'<span class="live"></span>':'')+'</div>'+
+            '<div class="mn"><b></b>'+
+              '<div class="track"><div class="trackfill'+(m.focusing?' on':'')+'"></div></div>'+
+              '<div class="st'+(m.focusing?' live-st':'')+'">'+(m.focusing?'focusing now':'idle')+(m.role==='owner'?' · owner':'')+(m.me?' · you':'')+'</div>'+
+            '</div>'+
+            '<div class="mins">'+m.todayMinutes+'<small>m</small></div>';
+          el.querySelector('.ava-e').textContent=m.avatar;
           el.querySelector('b').textContent=m.name;
           mbox.appendChild(el);
+          var fill=el.querySelector('.trackfill');
+          fill.getBoundingClientRect();  // paint at width:0 first, then transition to target
+          fill.style.width=(m.todayMinutes/maxMin*100)+'%';
         });
         // invite
         $('#inviteLink').textContent=location.origin+'/rooms?join='+curRoom.code;
@@ -243,7 +383,7 @@
         }
       });
     }
-    $('#copyBtn').onclick=function(){ var t=$('#inviteLink').textContent; navigator.clipboard&&navigator.clipboard.writeText(t); msg('#detailMsg','Invite link copied!','ok'); };
+    $('#copyBtn').onclick=function(){ var t=$('#inviteLink').textContent; if(navigator.clipboard) navigator.clipboard.writeText(t); var b=$('#copyBtn'); b.textContent='Copied ✓'; b.classList.add('ok'); msg('#detailMsg','Invite link copied!','ok'); setTimeout(function(){ b.textContent='Copy link'; b.classList.remove('ok'); },1600); };
     $('#deleteBtn').onclick=function(){ if(confirm('Delete this room for everyone?')) api('/api/rooms/'+rid,{method:'DELETE'}).then(function(){ location.href='/rooms'; }); };
     $('#leaveBtn').onclick=function(){ post('/api/rooms/'+rid+'/leave').then(function(r){ if(r.ok) location.href='/rooms'; else msg('#detailMsg',r.j.error||'Failed','err'); }); };
   }
