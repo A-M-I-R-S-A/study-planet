@@ -4,4 +4,35 @@
     <string name="title_activity_main">Focus</string>
     <string name="package_name">com.focus.app</string>
     <string name="custom_url_scheme">com.focus.app</string>
+
+    <!-- Notification-bar timer -->
+    <string name="ch_timer">Session timer</string>
+    <string name="ch_timer_desc">The running session, shown in the notification bar.</string>
+    <string name="ch_alert">Session alerts</string>
+    <string name="ch_alert_desc">Tells you when a focus block or break is over.</string>
+    <string name="phase_focus">Focus session</string>
+    <string name="phase_short">Short break</string>
+    <string name="phase_long">Long break</string>
+    <string name="notif_left">%1$s left · %2$s</string>
+    <string name="notif_elapsed">%1$s · %2$s</string>
+    <string name="notif_paused">Paused · %1$s left</string>
+    <string name="act_pause">Pause</string>
+    <string name="act_resume">Resume</string>
+    <string name="act_end">End</string>
+    <string name="done_focus">Focus complete — take a break.</string>
+    <string name="done_break">Break\'s over — back to it.</string>
+
+    <!-- Background music -->
+    <string name="ch_music">Music</string>
+    <string name="ch_music_desc">The track playing in the background.</string>
+    <string name="music_playing">Playing · on a loop</string>
+    <string name="music_paused">Paused</string>
+    <string name="act_stop">Stop</string>
+
+    <!-- App lock overlay -->
+    <string name="block_title">Stay focused</string>
+    <string name="block_msg">%1$s is blocked until your session ends.</string>
+    <string name="block_msg_generic">This app is blocked until your session ends.</string>
+    <string name="block_open">Back to Focus</string>
+    <string name="block_home">Go to the home screen</string>
 </resources>

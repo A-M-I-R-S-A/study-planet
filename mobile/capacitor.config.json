@@ -6,5 +6,15 @@
     "androidScheme": "https",
     "url": "http://10.234.179.169:8000",
     "cleartext": true
+  },
+  "android": {
+    "adjustMarginsForEdgeToEdge": "disable"
+  },
+  "plugins": {
+    "StatusBar": {
+      "overlaysWebView": true,
+      "style": "DARK",
+      "backgroundColor": "#00000000"
+    }
   }
 }

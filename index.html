@@ -10,7 +10,7 @@
 <title>Focus</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&family=Vazirmatn:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&family=Lalezar&display=swap" rel="stylesheet">
 <style>
   :root{
     --accent:oklch(0.7 0.12 62);
@@ -37,8 +37,10 @@
   }
   .mono{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace}
   /* Farsi: Persian webfont + reset spacing that breaks cursive joining */
-  html[lang="fa"] body{font-family:'Vazirmatn','Segoe UI',Tahoma,sans-serif}
-  html[lang="fa"] .mono{font-family:'Vazirmatn',ui-monospace,monospace}
+  html[lang="fa"] body{font-family:'Lalezar','Vazirmatn','Segoe UI',Tahoma,sans-serif}
+  /* .mono deliberately stays monospaced in Persian too. Lalezar is a display face whose
+     digits range from 11px to 27px wide at 40px, so the countdown would visibly jump on
+     every tick; the clocks keep even, stable numerals. */
   html[lang="fa"] .phase,html[lang="fa"] .qby,html[lang="fa"] .sec-label,html[lang="fa"] .wordmark{letter-spacing:normal;text-transform:none}
   html[lang="fa"] .quote .qt{font-style:normal}
   input,button{font-family:inherit}
@@ -51,7 +53,7 @@
   #bg{position:fixed;inset:0;z-index:-2;background:linear-gradient(180deg,#887326EB,#382C1F,#1F2838),#16303a;background-size:cover;background-position:center}
   #scrim{position:fixed;inset:0;z-index:-1;background:#000;opacity:0;transition:opacity .3s}
 
-  .app{min-height:100vh;padding:calc(clamp(20px,4vw,44px) + env(safe-area-inset-top)) max(clamp(20px,4vw,44px),env(safe-area-inset-right)) clamp(20px,4vw,44px) max(clamp(20px,4vw,44px),env(safe-area-inset-left));display:flex;flex-direction:column}
+  .app{min-height:100vh;padding:calc(clamp(20px,4vw,44px) + env(safe-area-inset-top)) max(clamp(20px,4vw,44px),env(safe-area-inset-right)) calc(clamp(20px,4vw,44px) + env(safe-area-inset-bottom)) max(clamp(20px,4vw,44px),env(safe-area-inset-left));display:flex;flex-direction:column}
 
   /* header */
   header{display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-between}
@@ -166,6 +168,23 @@
   .sound.active{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
   .sound svg{width:22px;height:22px;display:block;margin:0 auto}
   .sound .nm{font-size:11.5px;margin-top:7px}
+  /* download / playing state under an ambient tile — nothing to say on the web, where the
+     tiles are synthesised on the spot and there is no file to fetch */
+  .sound .sst{font-size:9.5px;margin-top:3px;opacity:.72;min-height:12px}
+  /* downloadable tracks */
+  .track-sec{margin:0 0 15px}
+  .track-sec .th{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 9px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.5)}
+  .track-sec .th span:last-child{text-transform:none;letter-spacing:0;font-size:11px;opacity:.8;text-align:end}
+  .track{display:flex;align-items:center;gap:11px;width:100%;padding:11px 13px;margin-bottom:7px;border:1px solid rgba(255,255,255,.09);border-radius:13px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.88);font-size:14px;font-family:inherit;text-align:start;cursor:pointer;transition:.15s;position:relative;overflow:hidden}
+  .track:last-child{margin-bottom:0}
+  .track:hover{background:rgba(255,255,255,.1)}
+  .track.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .track .tnm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+  .track .tst{flex:none;font-size:11.5px;opacity:.72}
+  .track .tic{flex:none;width:19px;height:19px;display:block}
+  /* fills left-to-right behind the row while the file comes down */
+  .track .tbar{position:absolute;inset:0 auto 0 0;background:rgba(255,255,255,.13);width:0;transition:width .25s ease;pointer-events:none}
+  .track > *:not(.tbar){position:relative}
   .vol{display:flex;align-items:center;gap:11px}
   .vol svg{width:16px;height:16px;color:rgba(255,255,255,.6)}
   .vol input{flex:1;accent-color:var(--accent)}
@@ -199,7 +218,7 @@
   .co.off .co-av{filter:grayscale(.25);opacity:.9}
   .co.off .co-time{color:var(--muted)}
   @keyframes copulse{0%{box-shadow:0 0 0 0 rgba(58,157,93,.5)}70%{box-shadow:0 0 0 6px rgba(58,157,93,0)}100%{box-shadow:0 0 0 0 rgba(58,157,93,0)}}
-  .acct.locked,#roomsBtn.locked{opacity:.4;pointer-events:none;filter:grayscale(.35)}
+  .acct.locked,#roomsBtn.locked,#dashBtn.locked{opacity:.4;pointer-events:none;filter:grayscale(.35)}
 
   /* dock buttons */
   .dock-btns{pointer-events:auto;display:flex;gap:6px;background:rgba(255,255,255,.16);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.26);padding:7px;border-radius:99px;box-shadow:0 8px 28px rgba(0,0,0,.18)}
@@ -228,6 +247,10 @@
   .swatch{aspect-ratio:1;border-radius:12px;border:2px solid transparent;cursor:pointer;position:relative;overflow:hidden}
   .swatch.active{border-color:var(--accent)}
   .swatch.active::after{content:"✓";position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:15px;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+  .accents{display:flex;gap:11px;flex-wrap:wrap}
+  .accent-sw{width:40px;height:40px;padding:0;border-radius:50%;border:2px solid transparent;cursor:pointer;position:relative;box-shadow:0 1px 3px rgba(0,0,0,.16)}
+  .accent-sw.active{border-color:var(--ink)}
+  .accent-sw.active::after{content:"✓";position:absolute;inset:0;display:grid;place-items:center;color:var(--accent-ink);font-size:16px;font-weight:700}
   .upload{margin-top:10px}
   .upload label{display:block;text-align:center;padding:11px;border:1px dashed rgba(0,0,0,.2);border-radius:12px;color:var(--muted);font-size:13px;cursor:pointer;transition:.2s}
   .upload label:hover{color:var(--ink);border-color:var(--accent)}
@@ -250,11 +273,57 @@
   .done-btn{width:100%;height:48px;border-radius:14px;border:none;background:var(--accent);color:var(--accent-ink);font-size:15px;font-weight:700;cursor:pointer}
   .reset-all{display:block;width:100%;margin-top:12px;background:none;border:none;color:#c0392b;font-size:12.5px;cursor:pointer}
 
+  /* app lock (Android app only -- the section stays hidden everywhere else) */
+  .sec-note{font-size:12px;color:var(--muted);line-height:1.5;margin:-4px 0 10px}
+  .perm-row{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fdf1e0;border:1px solid rgba(217,162,78,.45);border-radius:13px;margin-bottom:8px}
+  .perm-row .pt{flex:1;min-width:0}
+  .perm-row .pn{font-size:13.5px;font-weight:600;display:block}
+  .perm-row .pd{font-size:11.5px;color:var(--muted);display:block;margin-top:2px;line-height:1.4}
+  .perm-row button{flex:none;border:none;border-radius:9px;padding:8px 13px;font-size:12.5px;font-weight:600;cursor:pointer;background:var(--accent);color:var(--accent-ink)}
+  .allow-btn{display:flex;align-items:center;justify-content:space-between;width:100%;margin-top:10px;padding:12px 14px;background:var(--cream2);border:none;border-radius:13px;font-size:14.5px;font-weight:500;color:var(--ink);cursor:pointer;font-family:inherit}
+  .allow-btn .cnt{font-size:13px;color:var(--muted)}
+  .allow-btn:disabled{opacity:.5;cursor:default}
+
+  .app-search{width:100%;box-sizing:border-box;padding:11px 14px;border:1px solid rgba(0,0,0,.12);border-radius:12px;background:var(--cream2);font-size:14px;font-family:inherit;color:var(--ink);margin-bottom:12px}
+  .app-search:focus{outline:none;border-color:var(--accent)}
+  .app-list{max-height:48vh;overflow-y:auto;-webkit-overflow-scrolling:touch;margin:0 -4px}
+  .app-row{display:flex;align-items:center;gap:11px;width:100%;padding:9px 10px;border:none;background:none;border-radius:12px;cursor:pointer;text-align:start;font-family:inherit}
+  .app-row:hover{background:var(--cream2)}
+  .app-row img{width:32px;height:32px;flex:none;border-radius:8px}
+  .app-row .an{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .app-row .ck{width:21px;height:21px;flex:none;border-radius:6px;border:1.5px solid rgba(0,0,0,.22);display:grid;place-items:center;font-size:13px;color:transparent}
+  .app-row.on .ck{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .app-empty{padding:26px 4px;text-align:center;color:var(--muted);font-size:13px}
+
   .toast{position:fixed;top:22px;left:50%;transform:translateX(-50%);background:var(--accent);color:var(--accent-ink);padding:13px 22px;border-radius:12px;font-weight:600;font-size:14px;z-index:99;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+
+  /* The app offers two takes on the top of the screen, picked in Settings.
+
+     Default — the system status bar stays, transparent, with the page running underneath so
+     the background reaches the top edge. The bar already shows the time, so the header drops
+     its own clock and keeps the date, which the bar doesn't show; the date carries that
+     corner alone now, so it gets a little more presence. With no clock on screen there is
+     nothing for the 12/24-hour setting to change, so that row goes too. The inset floor
+     covers Android WebViews that report only display-cutout insets, leaving
+     safe-area-inset-top at 0 — without it the header would slide under the clock. */
+  html.native:not(.fs) .clock{display:none}
+  html.native:not(.fs) .date{font-size:14px;color:rgba(255,255,255,.86);margin-top:0}
+  html.native:not(.fs) #secClockFmt{display:none}
+  html.native:not(.fs) .app{padding-top:calc(clamp(16px,4vw,44px) + max(env(safe-area-inset-top),26px))}
+
+  /* Fullscreen — the system bar is hidden, so the app's own clock comes back and the header
+     takes over the strip the bar used to occupy: brand at the top left where Android put the
+     time, clock and menu at the top right where the signal and battery were. Flush to the
+     edge, no floor — but a display cutout is still respected if the WebView reports one. */
+  html.native.fs .app{padding-top:env(safe-area-inset-top)}
+
+  /* Both are app-only concerns: a browser tab has no system bar to hide, and the dashboard
+     already has its own chip in the header there. */
+  html:not(.native) #secStatusBar,html:not(.native) #dashBtn{display:none}
 
   /* ---- responsive: tablets & phones ---- */
   @media(max-width:640px){
-    .app{padding:calc(16px + env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) 16px max(14px,env(safe-area-inset-left))}
+    .app{padding:calc(16px + env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
     header{gap:12px}
     .head-right{flex-wrap:wrap;justify-content:flex-end;gap:8px}
     .streak{display:none}
@@ -297,6 +366,9 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
         </button>
         <div class="menu hidden" id="headMenu" role="menu">
+          <a class="menu-item hidden" id="dashBtn" href="/dashboard" role="menuitem">
+            <span class="mi">📊</span><span data-i18n="dashboard">Dashboard</span>
+          </a>
           <a class="menu-item hidden" id="roomsBtn" href="/rooms" role="menuitem">
             <span class="mi">👥</span><span data-i18n="room_tab">Room</span>
           </a>
@@ -359,11 +431,18 @@
     <div class="panel music-panel hidden" id="musicPanel">
       <div class="music-head"><b data-i18n="ambient">Ambient sound</b><span class="now" id="musicNow">off</span></div>
       <div class="sound-grid" id="soundGrid">
-        <div class="sound" data-sound="rain"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 16.6A5 5 0 0 0 18 7h-1.3A8 8 0 1 0 4 15.2"/><path d="M8 19v2M12 19v3M16 19v2"/></svg><div class="nm" data-i18n="rain">Rain</div></div>
-        <div class="sound" data-sound="ocean"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 12c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2"/><path d="M2 17c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2"/></svg><div class="nm" data-i18n="ocean">Ocean</div></div>
-        <div class="sound" data-sound="wind"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8h10a2.5 2.5 0 1 0-2.5-2.5"/><path d="M3 12h15a2.5 2.5 0 1 1-2.5 2.5"/><path d="M3 16h8a2 2 0 1 1-2 2"/></svg><div class="nm" data-i18n="wind">Wind</div></div>
-        <div class="sound" data-sound="forest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 22v-7"/><path d="M12 15l-4-4h8l-4-4-4 4"/><path d="M8 11 5 8h14l-3 3"/></svg><div class="nm" data-i18n="forest">Forest</div></div>
+        <div class="sound" data-sound="rain"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 16.6A5 5 0 0 0 18 7h-1.3A8 8 0 1 0 4 15.2"/><path d="M8 19v2M12 19v3M16 19v2"/></svg><div class="nm" data-i18n="rain">Rain</div><div class="sst"></div></div>
+        <div class="sound" data-sound="ocean"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 12c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2"/><path d="M2 17c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2"/></svg><div class="nm" data-i18n="ocean">Ocean</div><div class="sst"></div></div>
+        <div class="sound" data-sound="wind"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8h10a2.5 2.5 0 1 0-2.5-2.5"/><path d="M3 12h15a2.5 2.5 0 1 1-2.5 2.5"/><path d="M3 16h8a2 2 0 1 1-2 2"/></svg><div class="nm" data-i18n="wind">Wind</div><div class="sst"></div></div>
+        <div class="sound" data-sound="forest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 22v-7"/><path d="M12 15l-4-4h8l-4-4-4 4"/><path d="M8 11 5 8h14l-3 3"/></svg><div class="nm" data-i18n="forest">Forest</div><div class="sst"></div></div>
       </div>
+      <!-- Downloadable tracks. App only: playing them needs the native service that keeps
+           audio alive with the screen off, which a browser tab has no equivalent for. -->
+      <div class="track-sec" id="trackSec">
+        <div class="th"><span data-i18n="tracks">Tracks</span><span id="trackHint" data-i18n="tracks_hint">Saved on your phone after the first play</span></div>
+        <div id="trackList"></div>
+      </div>
+
       <div class="vol">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 5 6 9H2v6h4l5 4z"/></svg>
         <input type="range" id="volume" min="0" max="100" value="45">
@@ -413,6 +492,17 @@
     </div>
 
     <div class="sec">
+      <div class="sec-label" data-i18n="button_color">Button color</div>
+      <div class="accents" id="accents"></div>
+    </div>
+
+    <div class="sec" id="secStatusBar">
+      <div class="sec-label" data-i18n="status_bar">Top of screen</div>
+      <div class="sec-note" data-i18n="sb_note">Fullscreen hides Android's bar — the clock moves into the app.</div>
+      <div class="seg"><button id="sbShow" class="active" data-i18n="sb_show">System bar</button><button id="sbHide" data-i18n="sb_hide">Fullscreen</button></div>
+    </div>
+
+    <div class="sec" id="secClockFmt">
       <div class="sec-label" data-i18n="clock_format">Clock format</div>
       <div class="seg"><button id="fmt12" class="active" data-i18n="h12">12-hour</button><button id="fmt24" data-i18n="h24">24-hour</button></div>
     </div>
@@ -422,8 +512,32 @@
       <div class="toggle-row"><span class="lbl" data-i18n="chime">Chime when timer ends</span><label class="switch"><input type="checkbox" id="chime" checked><span class="tr"></span></label></div>
     </div>
 
+    <!-- App lock: Android app only. Stays hidden in a browser, where nothing can enforce it. -->
+    <div class="sec hidden" id="lockSec">
+      <div class="sec-label" data-i18n="app_lock">App lock</div>
+      <div class="sec-note" data-i18n="lock_note">While a focus session runs, opening anything outside your allowed list shows a reminder instead.</div>
+      <div class="toggle-row"><span class="lbl" data-i18n="lock_enable">Block other apps while focusing</span><label class="switch"><input type="checkbox" id="lockOn"><span class="tr"></span></label></div>
+      <div id="lockPerms"></div>
+      <!-- Separate from the app lock on purpose: notifications arrive whether or not their
+           app is allowed to open, so silencing them is its own switch and its own permission. -->
+      <div class="toggle-row" style="margin-top:10px"><span class="lbl" data-i18n="lock_mute">Silence notifications while focusing</span><label class="switch"><input type="checkbox" id="muteOn"><span class="tr"></span></label></div>
+      <div class="toggle-row" id="lockBreaksRow" style="margin-top:10px"><span class="lbl" data-i18n="lock_breaks">Keep blocking during breaks</span><label class="switch"><input type="checkbox" id="lockBreaks"><span class="tr"></span></label></div>
+      <button class="allow-btn" id="allowBtn"><span data-i18n="allowed_apps">Allowed apps</span><span class="cnt mono" id="allowCount">0</span></button>
+    </div>
+
     <button class="done-btn" id="doneBtn" data-i18n="done">Done</button>
     <button class="reset-all" id="resetAll" data-i18n="reset_all">Reset everything</button>
+  </div>
+</div>
+
+<!-- ALLOWED-APPS PICKER (Android app only) -->
+<div class="overlay hidden" id="appsOverlay">
+  <div class="sheet">
+    <div class="sheet-head"><b data-i18n="allowed_apps">Allowed apps</b><button class="x" id="closeApps" aria-label="Close">×</button></div>
+    <div class="sec-note" data-i18n="allow_note">Your phone, the home screen and Focus itself are always allowed.</div>
+    <input type="search" id="appSearch" class="app-search" placeholder="Search apps…">
+    <div class="app-list" id="appList"></div>
+    <button class="done-btn" id="appsDone" style="margin-top:14px" data-i18n="done">Done</button>
   </div>
 </div>
 
@@ -467,38 +581,76 @@
   const I18N={
     en:{brand:"Focus",mode_focus:"Focus",mode_short:"Short",mode_long:"Long",
       tasks:"Tasks",music:"Music",stats:"Stats",ambient:"Ambient sound",
+      tracks:"Tracks",tracks_hint:"Saved on your phone after the first play",
+      tracks_hint_web:"Streamed — install the app to keep them offline",
+      tr_download:"download",tr_downloading:"downloading…",tr_loading:"loading…",
+      tr_playing:"playing",tr_paused:"paused",
+      tr_failed:"That track wouldn't download — check your connection.",
+      tr_campfire:"Campfire",tr_birds:"Birds",tr_sea:"Sea",tr_rain:"Rain",tr_cricket:"Crickets",
       rain:"Rain",ocean:"Ocean",wind:"Wind",forest:"Forest",
       sessions_today:"sessions today",minutes_today:"minutes today",day_streak:"day streak",
       settings:"Settings",durations:"Durations (min)",dur_focus:"Focus",dur_short:"Short break",dur_long:"Long break",
-      background:"Background",upload:"↑ Upload your own image",dim:"Dim",
+      background:"Background",upload:"↑ Upload your own image",dim:"Dim",button_color:"Button color",
       clock_format:"Clock format",h12:"12-hour",h24:"24-hour",
+      status_bar:"Top of screen",sb_show:"System bar",sb_hide:"Fullscreen",
+      sb_note:"Fullscreen hides Android's bar — the clock moves into the app.",
       sound:"Sound",chime:"Chime when timer ends",done:"Done",reset_all:"Reset everything",
       add_task:"Add a task…",empty:"Nothing yet — add one above.",
       all_done:"All done — nice work.",show_done:"Show completed",hide_done:"Hide completed",
       start:"Start",pause:"Pause",off:"off",loop:"loop",left:"left",
       phase_focus:"Focus session",phase_short:"Short break",phase_long:"Long break",
       streak_suffix:"-day streak",toast_focus:"Focus complete — take a break.",toast_break:"Break's over — back to it.",
+      u_h:"h",u_m:"m",u_s:"s",
       confirm_reset:"Reset all settings, tasks, and progress?",img_big:"Image is large — it'll show now but may not persist.",
       am:"AM",pm:"PM",lang_switch:"English",sign_in:"Sign in",dashboard:"Dashboard",studying:"What are you studying?",
       timer_mode:"Timer",stopwatch:"Stopwatch",add_subjects:"＋ Create subjects on your dashboard",sign_in_subjects:"Sign in to track subjects",
-      focus_together:"Focusing together",room_tab:"Room",room_empty:"No one else here yet — invite a friend from the room.",you:"you",locked_hint:"Finish or pause your session to leave the timer.",focusing_now:"focusing now",idle:"idle"},
+      focus_together:"Focusing together",room_tab:"Room",room_empty:"No one else here yet — invite a friend from the room.",you:"you",locked_hint:"Finish or pause your session to leave the timer.",focusing_now:"focusing now",idle:"idle",
+      app_lock:"App lock",lock_note:"While a focus session runs, opening anything outside your allowed list shows a reminder instead.",
+      lock_enable:"Block other apps while focusing",lock_breaks:"Keep blocking during breaks",allowed_apps:"Allowed apps",
+      lock_mute:"Silence notifications while focusing",
+      perm_dnd:"Do Not Disturb",perm_dnd_d:"Lets Focus mute other apps while you study. Alarms and your priority contacts still get through.",
+      allow_note:"Your phone, the home screen and Focus itself are always allowed.",search_apps:"Search apps…",grant:"Allow",
+      perm_usage:"Usage access",perm_usage_d:"Lets Focus see which app is in front. Nothing leaves your phone.",
+      perm_overlay:"Display over other apps",perm_overlay_d:"Needed to show the reminder on top of a blocked app.",
+      perm_notif:"Notifications",perm_notif_d:"Needed for the timer in the notification bar.",
+      perm_battery:"Ignore battery saver",perm_battery_d:"Stops Android pausing the timer while your screen is off.",
+      no_apps:"No apps match that.",apps_failed:"Couldn't read the app list.",session_saved:"Session saved."},
     fa:{brand:"تمرکز",mode_focus:"تمرکز",mode_short:"کوتاه",mode_long:"بلند",
       tasks:"کارها",music:"موسیقی",stats:"آمار",ambient:"صدای محیط",
+      tracks:"آهنگ‌ها",tracks_hint:"بعد از پخش اول روی گوشی ذخیره می‌شود",
+      tracks_hint_web:"پخش آنلاین — برای ذخیره آفلاین برنامه را نصب کنید",
+      tr_download:"دانلود",tr_downloading:"در حال دانلود…",tr_loading:"در حال بارگذاری…",
+      tr_playing:"در حال پخش",tr_paused:"مکث",
+      tr_failed:"دانلود این آهنگ انجام نشد — اتصال را بررسی کنید.",
+      tr_campfire:"آتش",tr_birds:"پرندگان",tr_sea:"دریا",tr_rain:"باران",tr_cricket:"جیرجیرک",
       rain:"باران",ocean:"اقیانوس",wind:"باد",forest:"جنگل",
       sessions_today:"جلسه امروز",minutes_today:"دقیقه امروز",day_streak:"روز پیاپی",
       settings:"تنظیمات",durations:"مدت‌زمان (دقیقه)",dur_focus:"تمرکز",dur_short:"استراحت کوتاه",dur_long:"استراحت بلند",
-      background:"پس‌زمینه",upload:"↑ بارگذاری تصویر",dim:"تیرگی",
+      background:"پس‌زمینه",upload:"↑ بارگذاری تصویر",dim:"تیرگی",button_color:"رنگ دکمه‌ها",
       clock_format:"قالب ساعت",h12:"۱۲-ساعته",h24:"۲۴-ساعته",
+      status_bar:"بالای صفحه",sb_show:"نوار سیستم",sb_hide:"تمام‌صفحه",
+      sb_note:"در حالت تمام‌صفحه نوار اندروید پنهان می‌شود و ساعت به داخل برنامه می‌آید.",
       sound:"صدا",chime:"زنگ در پایان تایمر",done:"تمام",reset_all:"بازنشانی همه",
       add_task:"افزودن کار…",empty:"هنوز کاری نیست — یکی اضافه کنید.",
       all_done:"همه انجام شد — عالی بود.",show_done:"نمایش انجام‌شده‌ها",hide_done:"پنهان کردن انجام‌شده‌ها",
       start:"شروع",pause:"توقف",off:"خاموش",loop:"تکرار",left:"باقی‌مانده",
       phase_focus:"جلسهٔ تمرکز",phase_short:"استراحت کوتاه",phase_long:"استراحت بلند",
       streak_suffix:" روز پیاپی",toast_focus:"تمرکز کامل شد — کمی استراحت کنید.",toast_break:"استراحت تمام شد — به کار برگردید.",
+      u_h:"ساعت",u_m:"دقیقه",u_s:"ثانیه",
       confirm_reset:"همهٔ تنظیمات، کارها و پیشرفت بازنشانی شود؟",img_big:"تصویر بزرگ است — اکنون نمایش داده می‌شود اما شاید ذخیره نشود.",
       am:"ق.ظ",pm:"ب.ظ",lang_switch:"فارسی",sign_in:"ورود",dashboard:"داشبورد",studying:"چه می‌خوانی؟",
       timer_mode:"تایمر",stopwatch:"کرنومتر",add_subjects:"＋ موضوع‌ها را در داشبورد بسازید",sign_in_subjects:"برای موضوع‌ها وارد شوید",
-      focus_together:"تمرکز باهم",room_tab:"روم",room_empty:"هنوز کسی اینجا نیست — از روم یک دوست را دعوت کن.",you:"شما",locked_hint:"برای خروج از تایمر، جلسه را تمام یا متوقف کن.",focusing_now:"در حال تمرکز",idle:"آرام"}
+      focus_together:"تمرکز باهم",room_tab:"روم",room_empty:"هنوز کسی اینجا نیست — از روم یک دوست را دعوت کن.",you:"شما",locked_hint:"برای خروج از تایمر، جلسه را تمام یا متوقف کن.",focusing_now:"در حال تمرکز",idle:"آرام",
+      app_lock:"قفل برنامه‌ها",lock_note:"در طول جلسهٔ تمرکز، باز کردن هر برنامه‌ای خارج از فهرست مجاز، به‌جای آن یک یادآوری نشان می‌دهد.",
+      lock_enable:"مسدود کردن برنامه‌های دیگر هنگام تمرکز",lock_breaks:"مسدودسازی در زمان استراحت هم ادامه یابد",allowed_apps:"برنامه‌های مجاز",
+      lock_mute:"بی‌صدا کردن اعلان‌ها هنگام تمرکز",
+      perm_dnd:"مزاحم نشوید",perm_dnd_d:"تا «تمرکز» بتواند اعلان‌های بقیه برنامه‌ها را هنگام مطالعه بی‌صدا کند. زنگ هشدار و مخاطبان اولویت‌دار همچنان می‌رسند.",
+      allow_note:"تلفن، صفحهٔ اصلی و خود «تمرکز» همیشه مجازند.",search_apps:"جست‌وجوی برنامه‌ها…",grant:"اجازه",
+      perm_usage:"دسترسی به آمار استفاده",perm_usage_d:"تا «تمرکز» بداند کدام برنامه باز است. چیزی از گوشی شما خارج نمی‌شود.",
+      perm_overlay:"نمایش روی برنامه‌های دیگر",perm_overlay_d:"برای نشان دادن یادآوری روی برنامهٔ مسدودشده لازم است.",
+      perm_notif:"اعلان‌ها",perm_notif_d:"برای نمایش تایمر در نوار اعلان لازم است.",
+      perm_battery:"نادیده گرفتن بهینه‌سازی باتری",perm_battery_d:"جلوی متوقف‌شدن تایمر هنگام خاموش‌بودن صفحه را می‌گیرد.",
+      no_apps:"برنامه‌ای پیدا نشد.",apps_failed:"فهرست برنامه‌ها خوانده نشد.",session_saved:"جلسه ذخیره شد."}
   };
   const QUOTES={
     en:[
@@ -528,6 +680,15 @@
   };
   const FA_DIG="۰۱۲۳۴۵۶۷۸۹";
   function L(v){v=String(v);return lang==="fa"?v.replace(/[0-9]/g,d=>FA_DIG[+d]):v;}
+  /* Durations. English keeps the tight "45m"; Persian has no accepted one-letter form, so it
+     spells the unit out and needs a space before it. Clock readouts (25:00) stay as they are. */
+  function unit(n,key){return L(n)+(lang==="fa"?" ":"")+T[key];}
+  function durMin(mins){
+    mins=Math.max(0,Math.round(mins||0));
+    const h=Math.floor(mins/60), m=mins%60;
+    if(h&&m) return unit(h,"u_h")+" "+unit(m,"u_m");
+    return h?unit(h,"u_h"):unit(m,"u_m");
+  }
 
   /* ---- backgrounds ---- */
   const BGS={
@@ -538,9 +699,25 @@
     plum:"linear-gradient(180deg,#2a1f38,#140d1c)",
     slate:"linear-gradient(180deg,#2a2f38,#111418)",
     ember:"linear-gradient(180deg,#3a2418,#160b08)",
-    rose:"linear-gradient(180deg,#3a2028,#160a10)"
+    rose:"linear-gradient(180deg,#3a2028,#160a10)",
+    sand:"linear-gradient(180deg,#4a3a28,#1d1610)",
+    mint:"linear-gradient(180deg,#1e3a38,#0a1a19)",
+    indigo:"linear-gradient(180deg,#232a4a,#0d1024)",
+    crimson:"linear-gradient(180deg,#3d1c22,#170a0c)",
+    moss:"linear-gradient(180deg,#2f3a24,#131a0e)",
+    charcoal:"linear-gradient(180deg,#2c2c2e,#0b0b0c)"
   };
-  const ACCENT={focus:"oklch(0.7 0.12 62)",brk:"oklch(0.72 0.09 175)"};
+  /* Accent = every button, toggle and highlight in the app. Each option carries its own
+     break tone, so breaks keep reading calmer than focus time whichever colour is picked.
+     `amber` is the original pair -- leaving it first keeps existing users looking the same. */
+  const ACCENTS={
+    amber :{focus:"oklch(0.7 0.12 62)",  brk:"oklch(0.72 0.09 175)"},
+    coral :{focus:"oklch(0.71 0.14 40)", brk:"oklch(0.75 0.08 60)"},
+    rose  :{focus:"oklch(0.68 0.15 15)", brk:"oklch(0.73 0.08 350)"},
+    violet:{focus:"oklch(0.66 0.16 300)",brk:"oklch(0.72 0.09 285)"},
+    sky   :{focus:"oklch(0.7 0.13 235)", brk:"oklch(0.75 0.08 205)"},
+    green :{focus:"oklch(0.7 0.14 150)", brk:"oklch(0.75 0.08 168)"}
+  };
 
   /* ---- state ---- */
   const CFG_DEF={focusMin:25,shortMin:5,longMin:15};
@@ -567,8 +744,12 @@
   // no dock panel on launch -- the timer opens clean and you pick a panel yourself
   let mode="focus", secondsLeft=cfg.focusMin*60, running=false, openPanel=null;
   let timerType=prefs.timerType||"timer", elapsedSec=0, pendingSec=store.get("ff_pending",0)||0, blockActive=false;
+  // Whether the stopwatch run in progress has already earned its session. Persisted so a run
+  // that survives the app being closed (mobile) isn't counted a second time on the way back.
+  let swCounted=!!store.get("ff_swcounted",false);
   let showDone=!!prefs.showDone;   // completed tasks stay hidden until you ask for them
   let lastTickTs=Date.now();   // wall-clock anchor so the timer survives mobile background-throttling
+  let zeroSince=0;             // app only: when the countdown hit 0, while we wait for the service
   let subjects=Cloud.subjects||[], curSubject=store.get("ff_subject",null);
   let quoteIdx=Math.floor(Date.now()/86400000)%QUOTES.en.length;
   let liveQuotes=[];   // filled from /api/quotes; empty means "use the built-in list"
@@ -618,7 +799,19 @@
   });
   $("#dim").addEventListener("input",e=>{bg.dim=+e.target.value;$("#dimVal").textContent=L(bg.dim)+"%";store.set("ff_bg",bg);applyBg();});
 
-  function applyAccent(){document.documentElement.style.setProperty("--accent",isFocus()?ACCENT.focus:ACCENT.brk);}
+  function accent(){return ACCENTS[prefs.accent]||ACCENTS.amber;}
+  function applyAccent(){const a=accent();document.documentElement.style.setProperty("--accent",isFocus()?a.focus:a.brk);}
+  function buildAccents(){
+    const w=$("#accents"); if(!w) return; w.innerHTML="";
+    Object.keys(ACCENTS).forEach(id=>{
+      const b=document.createElement("button");
+      b.type="button"; b.title=id;
+      b.className="accent-sw"+((prefs.accent||"amber")===id?" active":"");
+      b.style.background=ACCENTS[id].focus;
+      b.onclick=()=>{prefs.accent=id;store.set("ff_prefs",prefs);applyAccent();buildAccents();};
+      w.appendChild(b);
+    });
+  }
 
   /* ---- clock ---- */
   function renderClock(){
@@ -651,25 +844,48 @@
     // while focusing, stay put — both the dashboard and rooms links are disabled
     const acct=$("#acct"); if(acct){acct.classList.toggle("locked",running);acct.title=running?T.locked_hint:"";}
     const rb=$("#roomsBtn"); if(rb){rb.classList.toggle("locked",running);rb.title=running?T.locked_hint:"";}
+    const db=$("#dashBtn"); if(db){db.classList.toggle("locked",running);db.title=running?T.locked_hint:"";}
   }
-  function setType(t){if(running)return;timerType=t;prefs.timerType=t;store.set("ff_prefs",prefs);elapsedSec=0;if(t==="timer")secondsLeft=durFor(mode);renderTimer();}
-  function selectMode(m){if(running)return;mode=m;secondsLeft=durFor(m);applyAccent();renderTimer();}
+  // A fresh run gets to earn its own session again.
+  function newRun(){ swCounted=false; store.set("ff_swcounted",false); }
+  function setType(t){if(running)return;timerType=t;prefs.timerType=t;store.set("ff_prefs",prefs);elapsedSec=0;newRun();if(t==="timer")secondsLeft=durFor(mode);renderTimer();Bar.push();Bar.anchor();}
+  function selectMode(m){if(running)return;mode=m;secondsLeft=durFor(m);applyAccent();renderTimer();Bar.push();Bar.anchor();}
   function curSubjectId(){return curSubject&&curSubject.id?curSubject.id:null;}
+
+  const SW_SESSION_SEC=5*60;    // a stopwatch run has to reach 5 minutes to count as a session
+  const STREAK_DAY_SEC=45*60;   // ...and a day joins the streak once it passes 45 minutes
+
+  /* The streak follows time studied, not sessions: a day counts the moment its total passes
+     45 minutes, whichever mix of timer and stopwatch got it there. Signed in, the server
+     recomputes the same rule over the stored history and its answer wins. */
+  function bumpStreak(){
+    const today=dayStr(new Date());
+    if(streak.lastDate===today) return;              // already on the board today
+    if((stats.secs||0)<STREAK_DAY_SEC) return;       // not there yet
+    const yest=dayStr(new Date(Date.now()-864e5));
+    streak.count=(streak.lastDate===yest)?streak.count+1:1;
+    streak.lastDate=today;
+    store.set("ff_streak",streak);
+  }
 
   /* flush accumulated focus time -> local stats + account (so a pause never loses time) */
   function flushFocus(countSession){
     const secs=Math.floor(pendingSec);
-    if(secs<=0 && !(countSession&&blockActive)) return;
+    // A countdown block earns its session when the block ends. A stopwatch earns one the
+    // moment the run passes SW_SESSION_SEC and keeps running -- there is no "end" to wait for,
+    // and leaving the counter on zero through a 40-minute run is what made stopwatch time look
+    // uncounted. `swCounted` keeps a single run from earning twice.
+    const swEarns=timerType==="stopwatch" && blockActive && !swCounted && elapsedSec>=SW_SESSION_SEC;
+    const earns=swEarns || (!!countSession && blockActive && timerType!=="stopwatch");
+    if(swEarns){ swCounted=true; store.set("ff_swcounted",true); }
+    if(countSession){ blockActive=false; }           // the block is over either way
+    if(secs<=0 && !earns) return;
     if(secs>0){ stats.secs=(stats.secs||0)+secs; stats.mins=Math.floor(stats.secs/60); pendingSec=0; store.set("ff_pending",0); }
-    if(countSession&&blockActive){
-      stats.sessions++;
-      const today=dayStr(new Date()),yest=dayStr(new Date(Date.now()-864e5));
-      if(streak.lastDate!==today){streak.count=(streak.lastDate===yest)?streak.count+1:1;streak.lastDate=today;store.set("ff_streak",streak);}
-      blockActive=false;
-    }
+    if(earns) stats.sessions++;
+    bumpStreak();
     store.set("ff_stats",stats); renderStats();
     if(Cloud.enabled){
-      Cloud.log(secs,curSubjectId(),curSubject?curSubject.name:"",countSession?1:0).then(res=>{
+      Cloud.log(secs,curSubjectId(),curSubject?curSubject.name:"",earns?1:0).then(res=>{
         if(res&&res.stats){stats.sessions=res.stats.today.sessions;stats.mins=res.stats.today.minutes;if(res.stats.today.seconds!=null)stats.secs=res.stats.today.seconds;streak.count=res.stats.streak;streak.lastDate=dayStr(new Date());store.set("ff_stats",stats);store.set("ff_streak",streak);renderStats();}
         if(res&&res.subjects){subjects=res.subjects;renderSubjects();}
       });
@@ -678,9 +894,11 @@
 
   function toggle(){
     running=!running;
+    // Starting from zero is a new run, whatever a previous one left behind in storage.
+    if(running && elapsedSec<=0 && !blockActive) newRun();
     if(running){ lastTickTs=Date.now(); if(timerType==="timer") Native.scheduleEnd(secondsLeft); }
     else { flushFocus(false); Native.cancelEnd(); }   // pause -> log time, session stays open
-    renderTimer();
+    renderTimer(); Bar.push(); Bar.anchor();
     if(Cloud.enabled){
       Cloud.heartbeat(running);
       if(running && roomInfo){ openPanel="room"; renderDock(); }  // surface co-focusers on start
@@ -688,19 +906,25 @@
     }
   }
   function reset(){
-    if(running||pendingSec>0) flushFocus(true); // ending the block counts a session
+    // `blockActive` matters on its own: pausing already flushed the time and emptied
+    // pendingSec, so without it ending a paused block would slip past unrecorded.
+    if(running||pendingSec>0||blockActive) flushFocus(true); // ending the block counts a session
     running=false; Native.cancelEnd(); elapsedSec=0; secondsLeft=durFor(mode);
-    renderTimer(); if(Cloud.enabled){Cloud.heartbeat(false);refreshRoom();}
+    newRun();
+    renderTimer(); Bar.push(); Bar.anchor();
+    if(Cloud.enabled){Cloud.heartbeat(false);refreshRoom();}
   }
-  function finish(){                             // countdown reached 0
+  // countdown reached 0. `silent` is for the app, where the service has already sounded the
+  // alert and this is just the page catching up to a block that ended in the notification bar.
+  function finish(silent){
     running=false; Native.cancelEnd();
     const wasFocus=isFocus();
     flushFocus(true);
     const next=wasFocus?((stats.sessions%4===0)?"long":"short"):"focus";
-    if(prefs.chime) chime();
+    if(prefs.chime && !silent) chime();
     toast(wasFocus?T.toast_focus:T.toast_break);
-    mode=next; secondsLeft=durFor(next); elapsedSec=0;
-    applyAccent(); renderTimer(); renderStats();
+    mode=next; secondsLeft=durFor(next); elapsedSec=0; newRun();
+    applyAccent(); renderTimer(); renderStats(); Bar.push(); Bar.anchor();
     if(Cloud.enabled){Cloud.heartbeat(false);refreshRoom();}
   }
 
@@ -714,9 +938,9 @@
       const b=document.createElement("button");
       b.className="subj"+(curSubject&&curSubject.id===s.id?" on":"");
       b.style.setProperty("--sc",s.color||"#d9a24e");
-      b.innerHTML='<span class="dot"></span><span class="sn"></span><span class="sm mono">'+L(s.todayMinutes)+'m</span>';
+      b.innerHTML='<span class="dot"></span><span class="sn"></span><span class="sm mono">'+durMin(s.todayMinutes)+'</span>';
       b.querySelector(".sn").textContent=s.name;
-      b.onclick=()=>{curSubject=(curSubject&&curSubject.id===s.id)?null:{id:s.id,name:s.name,color:s.color};store.set("ff_subject",curSubject);renderSubjects();renderTimer();};
+      b.onclick=()=>{curSubject=(curSubject&&curSubject.id===s.id)?null:{id:s.id,name:s.name,color:s.color};store.set("ff_subject",curSubject);renderSubjects();renderTimer();Bar.push();};
       bar.appendChild(b);
     });
   }
@@ -738,17 +962,33 @@
     if(timerType==="stopwatch"){
       elapsedSec+=dt;
       if(focusing){ pendingSec+=dt; blockActive=true; store.set("ff_pending",pendingSec); }
+      // Bank the session as soon as the run passes five minutes rather than waiting for a
+      // stop that may never come -- the counter should move while you're still studying.
+      if(focusing && !swCounted && elapsedSec>=SW_SESSION_SEC) flushFocus(false);
       renderTimer();
     }else{
       const applied=Math.min(dt,secondsLeft);        // never log or count past the end of the block
       secondsLeft-=applied;
       if(focusing&&applied>0){ pendingSec+=applied; blockActive=true; store.set("ff_pending",pendingSec); }
-      if(secondsLeft<=0){ secondsLeft=0; renderTimer(); finish(); }
-      else renderTimer();
+      if(secondsLeft<=0){
+        secondsLeft=0; renderTimer();
+        // In the app the service owns the end of a block (it is the one that survives being
+        // backgrounded), so wait a beat for its push rather than ending the block twice. If it
+        // never answers — killed, throttled — carry on alone.
+        if(!Bar.on) finish();
+        else if(!zeroSince) zeroSince=now;
+        else if(now-zeroSince>4000){ zeroSince=0; finish(true); }
+      }
+      else { zeroSince=0; renderTimer(); }
     }
+    Bar.anchor();
   }
   setInterval(()=>{ renderClock(); syncTimer(); },1000);
-  document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ renderClock(); syncTimer(); } });
+  document.addEventListener("visibilitychange",()=>{
+    if(document.hidden){ Bar.anchor(); return; }   // last word before the OS may suspend us
+    renderClock(); syncTimer();
+    if(Bar.on){ Bar.adopt(false); Lock.recheck(); } // catch up on notification buttons / new grants
+  });
   // heartbeat + push my accumulating focus time so co-focusers see it; keep the room fresh
   setInterval(()=>{if(!Cloud.enabled)return;Cloud.heartbeat(running);if(running)flushFocus(false);refreshRoom();},30000);
   setInterval(()=>{if(Cloud.enabled&&roomInfo&&(running||openPanel==="room"))refreshRoom();},10000);
@@ -760,16 +1000,122 @@
      No-op on the plain web (window.Capacitor is undefined). Inside the Android app it
      schedules the "time's up" alert at the block's end time, so it fires even if the OS
      has suspended the WebView while backgrounded — which JS timers alone can't guarantee. */
+  const CAP=()=>(window.Capacitor&&Capacitor.Plugins)||null;
+  /* Marks the app build, and the chosen top-of-screen mode with it. Both go on before the
+     first paint — applyBars() sets the same classes later, but leaving it until then would
+     show one frame of the wrong top inset on every launch. */
+  if(window.Capacitor){
+    document.documentElement.classList.add("native");
+    if(prefs.fullscreen) document.documentElement.classList.add("fs");
+  }
+  const FocusPlugin=()=>{const p=CAP();return (p&&p.Focus)||null;};   // our own plugin — Android app only
+
   const Native={
-    ln(){return (window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.LocalNotifications)||null;},
-    async init(){const p=this.ln(); if(p){try{await p.requestPermissions();}catch(e){}}},
-    async scheduleEnd(secs){const p=this.ln(); if(!p||!(secs>0))return; try{
+    ln(){const p=CAP();return (p&&p.LocalNotifications)||null;},
+    /* Puts the chosen "top of screen" mode on the native window. Fullscreen hides Android's
+       bar outright; otherwise it stays, transparent, with the page running under it rather
+       than below a solid strip of it. Called at startup and on every change — also covers the
+       WebView being recreated (rotation, night-mode switch), which drops the native state but
+       not this page. */
+    async bars(){
+      const p=CAP(); const sb=p&&p.StatusBar; if(!sb)return;
+      try{
+        if(prefs.fullscreen){ await sb.hide(); return; }
+        await sb.show();
+        await sb.setOverlaysWebView({overlay:true});
+        await sb.setStyle({style:"DARK"});     // Capacitor's "DARK" = light icons, for a dark backdrop
+      }catch(e){}
+    },
+    async init(){const p=this.ln(); if(p){try{await p.requestPermissions();}catch(e){}}},   // bars() runs from applyBars() at init
+    // With the foreground service installed, *it* owns the end-of-block alert — scheduling a
+    // local notification too would fire two of them a second apart.
+    async scheduleEnd(secs){const p=this.ln(); if(!p||FocusPlugin()||!(secs>0))return; try{
       await p.cancel({notifications:[{id:7}]});
       await p.schedule({notifications:[{id:7,title:T.brand,body:(isFocus()?T.toast_focus:T.toast_break),schedule:{at:new Date(Date.now()+Math.round(secs*1000))}}]});
     }catch(e){}},
     async cancelEnd(){const p=this.ln(); if(!p)return; try{await p.cancel({notifications:[{id:7}]});}catch(e){}}
   };
   Native.init();
+
+  /* ---- the timer in the notification bar (Android app only) ----
+     The service is handed the same wall-clock numbers this page uses, on every state change,
+     so the notification and the page can never drift apart. It keeps counting — and keeps the
+     app lock in force — after the app is closed or swiped away, and it fires the end alert.
+     Its Pause / Resume / End buttons come back through the `timerState` listener below. */
+  const Bar={
+    get on(){return !!FocusPlugin();},
+    // Nothing worth a notification: no session open and the clock sitting at its full duration.
+    idle(){return !running && pendingSec<=0 && !blockActive &&
+      (timerType==="stopwatch" ? elapsedSec<=0 : secondsLeft>=durFor(mode));},
+    push(){
+      const p=FocusPlugin(); if(!p) return;
+      if(this.idle()){ p.stop().catch(()=>{}); return; }
+      p.sync({
+        running:running, type:timerType, mode:mode,
+        label:(curSubject&&isFocus())?curSubject.name:"",
+        remainingSec:Math.max(0,Math.round(secondsLeft)),
+        elapsedSec:Math.max(0,Math.round(elapsedSec))
+      }).catch(()=>{});
+    },
+    /* The anchor is what lets us bill the focus time that accrued while the WebView was dead.
+       The service knows the clock, but only this page knows how much of it was already
+       logged, so the two are reconciled on the way back in. */
+    anchor(){
+      if(!this.on) return;
+      store.set("ff_anchor",{running:running,type:timerType,mode:mode,
+        secondsLeft:secondsLeft,elapsedSec:elapsedSec,ts:Date.now()});
+    },
+    /* Adopt the service's state on launch and on every return to the foreground. */
+    async adopt(firstRun){
+      const p=FocusPlugin(); if(!p) return;
+      let st=null; try{ st=await p.getState(); }catch(e){ return; }
+      if(!st||!st.known){ if(firstRun) store.set("ff_anchor",null); return; }
+
+      const now=Date.now(), a=firstRun?store.get("ff_anchor",null):null;
+      // Focus seconds that passed while this page was not running. Only on the first pass —
+      // once the page is alive, syncTimer is the one accruing and would double-count.
+      if(a&&a.running&&a.ts&&(a.type==="stopwatch"||a.mode==="focus")){   // matches isFocusBlock()
+        let away=(now-a.ts)/1000;
+        if(away<0) away=0;
+        if(a.type!=="stopwatch") away=Math.min(away,Math.max(0,a.secondsLeft));
+        if(away>0){ pendingSec+=away; blockActive=true; store.set("ff_pending",pendingSec); }
+      }
+
+      timerType=st.type||timerType; prefs.timerType=timerType; store.set("ff_prefs",prefs);
+      mode=st.mode||mode;
+      running=!!st.running;
+      if(timerType==="stopwatch") elapsedSec=Math.max(0,st.elapsedSec||0);
+      else secondsLeft=Math.max(0,st.remainingSec||0);
+      lastTickTs=now;
+
+      if(st.cleared){
+        // The block ended out there. Either the countdown ran out — same as reaching zero on
+        // screen, so roll on to the next block — or End was tapped, which is the reset button.
+        running=false;
+        if(st.endedBy==="expired") finish(true);   // silent: the service already sounded the alert
+        else { reset(); toast(T.session_saved); }
+        p.stop().catch(()=>{});
+      }
+      applyAccent(); renderTimer(); renderStats(); this.anchor();
+      if(Cloud.enabled) Cloud.heartbeat(running);
+    },
+    /* Live push from the service while the app is open — a notification button was tapped. */
+    listen(){
+      const p=FocusPlugin(); if(!p||!p.addListener) return;
+      p.addListener("timerState",st=>{
+        if(!st||!st.known) return;
+        if(st.cleared){ this.adopt(false); return; }
+        if(!!st.running===running) return;
+        running=!!st.running; lastTickTs=Date.now();
+        if(timerType!=="stopwatch") secondsLeft=Math.max(0,st.remainingSec||0);
+        if(!running) flushFocus(false);
+        renderTimer(); this.anchor();
+        if(Cloud.enabled){Cloud.heartbeat(running);refreshRoom();}
+      });
+      const app=CAP()&&CAP().App;
+      if(app&&app.addListener) app.addListener("appStateChange",s=>{ if(s&&s.isActive) this.adopt(false); });
+    }
+  };
 
   /* ---- quote ----
      English quotes come from api-ninjas via our own /api/quotes proxy (the key stays on the
@@ -832,7 +1178,12 @@
   $("#volume").value=volume;
   function ctx(){if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();if(ac.state==="suspended")ac.resume();}
   function noiseBuf(){const n=ac.sampleRate*2,b=ac.createBuffer(1,n,ac.sampleRate),d=b.getChannelData(0);let last=0;for(let i=0;i<n;i++){const w=Math.random()*2-1;last=(last+.02*w)/1.02;d[i]=last*3.5;}return b;}
-  function renderMusicNow(){$("#musicNow").textContent=active?T[active]+" · "+T.loop:T.off;}
+  // A downloaded track and a synthesised one are never both on, so whichever is live wins.
+  function renderMusicNow(){
+    const m=Music.st;   // defined below, but nothing calls this until after init
+    $("#musicNow").textContent = m.loaded ? Music.label(m.id)+" · "+(m.playing?T.tr_playing:T.tr_paused)
+                               : active ? T[active]+" · "+T.loop : T.off;
+  }
   function stopSound(){if(noise){try{noise.stop();}catch(e){}noise.disconnect();noise=null;}if(birds){clearInterval(birds);birds=null;}active=null;document.querySelectorAll(".sound").forEach(s=>s.classList.remove("active"));renderMusicNow();}
   function play(kind,el){
     ctx();
@@ -854,8 +1205,186 @@
     s.connect(f);f.connect(gain);s.start();noise=s;
     if(kind==="ocean"){const lfo=ac.createOscillator(),lg=ac.createGain();lfo.frequency.value=.12;lg.gain.value=.25;lfo.connect(lg);lg.connect(gain.gain);lfo.start();}
   }
-  document.querySelectorAll(".sound").forEach(s=>s.onclick=()=>play(s.dataset.sound,s));
-  $("#volume").addEventListener("input",e=>{volume=+e.target.value;store.set("ff_volume",volume);if(gain)gain.gain.value=volume/100*.6;});
+  // In the app a tile is a real recording handed to the music service; on the web it stays
+  // the synthesised stand-in, which is all a page can keep running on its own.
+  document.querySelectorAll(".sound").forEach(s=>s.onclick=()=>{
+    const amb=AMBIENT.find(a=>a.sound===s.dataset.sound);
+    if(amb) return Music.tap(amb.id);       // recording in the app, stream on the web
+    Music.stop(); play(s.dataset.sound,s);  // a tile with no recording behind it
+  });
+  $("#volume").addEventListener("input",e=>{volume=+e.target.value;store.set("ff_volume",volume);if(gain)gain.gain.value=volume/100*.6;Music.volume(volume);});
+
+  /* ---- downloadable tracks (Android app only) ----
+     The file is fetched by the native plugin — the page could not reach a remote host under
+     `connect-src 'self'` — kept in the app's own storage, and played by MusicService, which
+     survives the screen locking. Everything here is inert on the plain web. */
+  const TRACKS=[
+    {id:"campfire",k:"tr_campfire",url:"https://irsv.upmusics.com/dlw/Unknown%20Artist%20-%20bikalam%20(1).mp3"},
+    {id:"birds",   k:"tr_birds",   url:"https://irsv.upmusics.com/dlw/Unknown%20Artist%20-%20bikalam%20(011).mp3"},
+    {id:"sea",     k:"tr_sea",     url:"https://irsv.upmusics.com/dlw/Unknown%20Artist%20-%20Bikalam%20(43).mp3"},
+    {id:"rain",    k:"tr_rain",    url:"https://irsv.upmusics.com/dlw/Unknown%20Artist%20-%20Bikalam%20(100).mp3"},
+    {id:"cricket", k:"tr_cricket", url:"https://irsv.upmusics.com/dlw/Unknown%20Artist%20-%20Bikalam%20(240).mp3"}
+  ];
+  /* The four ambient tiles are real recordings in the app and keep their icons; on the plain
+     web they stay synthesised, since there is no service there to download or outlive the
+     page. The ids are prefixed so amb_rain can't collide on disk with the track "rain",
+     which is a different file. */
+  const AMBIENT=[
+    {id:"amb_rain",  sound:"rain",  k:"rain",  url:"https://irsv.upmusics.com/dlw/Unknown%20Artist%20-%20Bikalam%20(8300).mp3"},
+    {id:"amb_ocean", sound:"ocean", k:"ocean", url:"https://irsv.upmusics.com/dlw/Unknown%20Artist%20-%20bikalam%20(11).mp3"},
+    {id:"amb_wind",  sound:"wind",  k:"wind",  url:"https://irsv.upmusics.com/dlw/Unknown%20Artist%20-%20bikalam%20(011).mp3"},
+    {id:"amb_forest",sound:"forest",k:"forest",url:"https://irsv.upmusics.com/dlw/Unknown%20Artist%20-%20Bikalam%20(42).mp3"}
+  ];
+  const CATALOG=TRACKS.concat(AMBIENT);
+  const ICON_DL='<svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 4v11m0 0 4-4m-4 4-4-4"/><path d="M5 19h14"/></svg>';
+  const ICON_PLAY='<svg class="tic" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10-6.5z"/></svg>';
+  const ICON_PAUSE='<svg class="tic" viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="5.5" width="3.4" height="13" rx="1"/><rect x="13.6" y="5.5" width="3.4" height="13" rx="1"/></svg>';
+
+  /* The website's player. No service and no local file out here, so the same catalogue is
+     streamed straight into an <audio> element: it stops when the tab does, which a page
+     cannot help. Streaming rather than fetch-and-cache on purpose — an <audio src> needs no
+     CORS headers from the music host, while fetch() would, and that is not ours to fix. */
+  const WebPlay={
+    el:null, onchange:null,
+    gain(){return Math.max(0,Math.min(1,volume/100*.6));},
+    ensure(){
+      if(!this.el){
+        this.el=new Audio(); this.el.loop=true; this.el.preload="none";
+        this.el.addEventListener("playing",()=>this.onchange&&this.onchange());
+        this.el.addEventListener("pause",()=>this.onchange&&this.onchange());
+      }
+      this.el.volume=this.gain();
+      return this.el;
+    },
+    play(entry){
+      const a=this.ensure();
+      if(a.dataset.id!==entry.id){ a.src=entry.url; a.dataset.id=entry.id; }
+      return a.play();
+    },
+    pause(){ if(this.el) this.el.pause(); },
+    resume(){ return this.el?this.el.play():Promise.resolve(); },
+    stop(){ if(!this.el) return; this.el.pause(); this.el.removeAttribute("src"); delete this.el.dataset.id; try{this.el.load();}catch(e){} },
+    setVolume(){ if(this.el) this.el.volume=this.gain(); }
+  };
+
+  const Music={
+    p(){const c=CAP();return (c&&c.Music)||null;},
+    st:{id:"",playing:false,loaded:false},
+    have:{},        // id -> true once the file is on disk
+    busy:{},        // id -> percent while downloading (-1 when the size is unknown)
+    entry(id){return CATALOG.find(x=>x.id===id);},
+    label(id){const e=this.entry(id);return (e&&T[e.k])||id;},
+
+    /* ---- website: stream it, no download step ---- */
+    setWeb(id,playing){this.st={id,name:this.label(id),playing,loaded:true};this.render();renderMusicNow();},
+    failWeb(id){
+      this.st={id:"",name:"",playing:false,loaded:false};
+      this.render();                                  // before the fallback, or it would undo it
+      const amb=AMBIENT.find(a=>a.id===id);
+      const tile=amb&&document.querySelector('.sound[data-sound="'+amb.sound+'"]');
+      // The four ambient tiles have a synthesised version to fall back on; the tracks don't.
+      if(tile) play(amb.sound,tile); else { toast(T.tr_failed); renderMusicNow(); }
+    },
+    async tapWeb(id,e){
+      if(this.st.loaded&&this.st.id===id){
+        if(this.st.playing){WebPlay.pause();return this.setWeb(id,false);}
+        try{ await WebPlay.resume(); this.setWeb(id,true); }catch(_){ this.failWeb(id); }
+        return;
+      }
+      stopSound();
+      this.busy[id]=-1; this.render();                // "loading" until the stream really starts
+      try{ await WebPlay.play(e); delete this.busy[id]; this.setWeb(id,true); }
+      catch(_){ delete this.busy[id]; this.failWeb(id); }
+    },
+
+    /* One tap does whatever the track needs next: fetch it, start it, or pause it. */
+    async tap(id){
+      const e=this.entry(id); if(!e||this.busy[id]!=null) return;
+      const p=this.p(); if(!p) return this.tapWeb(id,e);
+      if(this.st.id===id&&this.st.loaded){
+        try{ this.st.playing?await p.pause():await p.resume(); }catch(e){}
+        return this.sync();
+      }
+      if(!this.have[id]){
+        this.busy[id]=0; this.render();
+        try{
+          await p.download({id,url:this.entry(id).url});
+          this.have[id]=true;
+        }catch(e){
+          delete this.busy[id]; this.render(); toast(T.tr_failed); return;
+        }
+        delete this.busy[id];
+      }
+      stopSound();                    // a downloaded track and the synth never play together
+      try{ await p.play({id,name:this.label(id),volume}); }catch(e){ toast(T.tr_failed); }
+      this.sync();
+    },
+    async stop(){
+      const p=this.p();
+      if(!this.st.loaded) return;
+      if(!p){ WebPlay.stop(); this.st={id:"",name:"",playing:false,loaded:false}; this.render(); return renderMusicNow(); }
+      try{await p.stop();}catch(e){} this.sync();
+    },
+    async volume(v){
+      const p=this.p(); if(!p) return WebPlay.setVolume();
+      if(!this.st.loaded)return; try{await p.setVolume({volume:v});}catch(e){}
+    },
+    async sync(){
+      const p=this.p(); if(!p)return;
+      try{ this.st=await p.getState()||this.st; }catch(e){}
+      this.render(); renderMusicNow();
+    },
+    async init(){
+      const p=this.p();
+      $("#trackHint").textContent=p?T.tracks_hint:T.tracks_hint_web;
+      if(!p){
+        // The element can stall or be paused by the OS; follow it rather than assume.
+        WebPlay.onchange=()=>{
+          if(!this.st.loaded||!WebPlay.el) return;
+          this.st.playing=!WebPlay.el.paused; this.render(); renderMusicNow();
+        };
+        return this.render();
+      }
+      for(const t of CATALOG){
+        try{ const r=await p.isDownloaded({id:t.id}); this.have[t.id]=!!(r&&r.downloaded); }catch(e){}
+      }
+      p.addListener("musicState",s=>{this.st=s;this.render();renderMusicNow();});
+      p.addListener("musicDownload",d=>{ if(this.busy[d.id]!=null){this.busy[d.id]=d.percent;this.render();} });
+      this.sync();
+    },
+    /* Status for one catalogue entry: how far a download has got, or what it's doing now. */
+    status(id){
+      const pct=this.busy[id], native=!!this.p();
+      if(pct!=null) return pct>=0?L(pct)+"%":(native?T.tr_downloading:T.tr_loading);
+      if(this.st.loaded&&this.st.id===id) return this.st.playing?T.tr_playing:T.tr_paused;
+      if(!native) return "";                          // nothing to download when it streams
+      return this.have[id]?"":T.tr_download;
+    },
+    render(){
+      // the four tiles keep their icons and names; only their state line and highlight move
+      AMBIENT.forEach(a=>{
+        const tile=document.querySelector('.sound[data-sound="'+a.sound+'"]'); if(!tile) return;
+        const st=tile.querySelector(".sst"); if(st) st.textContent=this.status(a.id);
+        // `active` is the synthesised fallback's current tile, which owns the highlight itself.
+        tile.classList.toggle("active",(this.st.loaded&&this.st.id===a.id)||active===a.sound);
+      });
+      const box=$("#trackList"); if(!box) return;
+      box.innerHTML="";
+      TRACKS.forEach(t=>{
+        const on=this.st.loaded&&this.st.id===t.id, pct=this.busy[t.id];
+        const b=document.createElement("button");
+        b.type="button"; b.className="track"+(on?" on":"");
+        const icon=pct!=null?ICON_DL:(on&&this.st.playing?ICON_PAUSE:ICON_PLAY);
+        b.innerHTML='<span class="tbar"></span>'+icon+
+                    '<span class="tnm"></span><span class="tst"></span>';
+        b.querySelector(".tnm").textContent=this.label(t.id);
+        b.querySelector(".tst").textContent=this.status(t.id);
+        if(pct>0) b.querySelector(".tbar").style.width=pct+"%";
+        b.onclick=()=>this.tap(t.id);
+        box.appendChild(b);
+      });
+    }
+  };
 
   /* ---- dock ---- */
   function renderDock(){
@@ -937,10 +1466,139 @@
     cfg[k]=Math.min(mx,Math.max(mn,cur+d));store.set("ff_cfg",cfg);renderCfg();
     if(!running && {focus:"focusMin",short:"shortMin",long:"longMin"}[mode]===k){secondsLeft=cfg[k]*60;renderTimer();}
   });
+  /* Top-of-screen mode. The class drives the layout (see the html.native rules); Native.bars
+     pushes the same choice to the Android window. No-op on the plain web, where there is no
+     system bar to hide and the setting stays out of sight. */
+  function applyBars(){
+    document.documentElement.classList.toggle("fs",!!prefs.fullscreen);
+    Native.bars();
+  }
+  function renderBarMode(){
+    $("#sbShow").classList.toggle("active",!prefs.fullscreen);
+    $("#sbHide").classList.toggle("active",!!prefs.fullscreen);
+  }
+  const setBarMode=v=>{prefs.fullscreen=v;store.set("ff_prefs",prefs);renderBarMode();applyBars();renderClock();};
+  $("#sbShow").onclick=()=>setBarMode(false);
+  $("#sbHide").onclick=()=>setBarMode(true);
+
   function renderFmt(){$("#fmt12").classList.toggle("active",!prefs.clock24);$("#fmt24").classList.toggle("active",prefs.clock24);}
   $("#fmt12").onclick=()=>{prefs.clock24=false;store.set("ff_prefs",prefs);renderFmt();renderClock();};
   $("#fmt24").onclick=()=>{prefs.clock24=true;store.set("ff_prefs",prefs);renderFmt();renderClock();};
   $("#chime").onclick=e=>{prefs.chime=e.target.checked;store.set("ff_prefs",prefs);};
+
+  /* ---- app lock (Android app only) ----
+     The rules themselves live natively — the service is what actually sees which app is in
+     front and covers it. This is the settings surface for them: the on/off switch, the
+     special-access grants Android only hands out from its own Settings screens, and the
+     picker for the apps that stay usable during a session. On the web `FocusPlugin()` is
+     null, `#lockSec` never comes out of `hidden`, and none of this runs. */
+  const Lock={
+    cfg:{enabled:false,duringBreaks:false,allowed:[]},
+    perms:{},
+    apps:null,          // cached: listing them rasterises every icon on the device
+    get on(){return !!FocusPlugin();},
+
+    async init(){
+      const p=FocusPlugin(); if(!p) return;
+      $("#lockSec").classList.remove("hidden");
+      try{ this.cfg=await p.getLockConfig()||this.cfg; }catch(e){}
+      $("#lockOn").checked=!!this.cfg.enabled;
+      $("#muteOn").checked=!!this.cfg.mute;
+      $("#lockBreaks").checked=!!this.cfg.duringBreaks;
+      await this.refreshPerms();
+      this.render();
+      $("#lockOn").onchange=e=>this.set({enabled:e.target.checked});
+      $("#muteOn").onchange=e=>this.set({mute:e.target.checked});
+      $("#lockBreaks").onchange=e=>this.set({duringBreaks:e.target.checked});
+      $("#allowBtn").onclick=()=>this.openPicker();
+      const shut=()=>$("#appsOverlay").classList.add("hidden");
+      $("#closeApps").onclick=shut; $("#appsDone").onclick=shut;
+      $("#appsOverlay").onclick=e=>{if(e.target===$("#appsOverlay"))shut();};
+      $("#appSearch").oninput=()=>this.renderList();
+    },
+
+    async set(patch){
+      const p=FocusPlugin(); if(!p) return;
+      // Apply locally first: taps in the app list land faster than the round-trip, and reading
+      // `cfg` back from a call that hasn't returned yet would drop every tap but the last.
+      Object.assign(this.cfg,patch);
+      this.render();
+      try{ await p.setLockConfig(patch); }catch(e){}
+      if(patch.enabled!==undefined){ await this.refreshPerms(); this.render(); }
+    },
+    async refreshPerms(){
+      const p=FocusPlugin(); if(!p) return;
+      try{ this.perms=await p.checkPerms()||{}; }catch(e){ this.perms={}; }
+    },
+    async recheck(){ if(!this.on) return; await this.refreshPerms(); this.render(); },
+
+    render(){
+      if(!this.on) return;
+      const p=FocusPlugin(), need=[];
+      // Only what's actually missing, so the section is empty once everything is granted.
+      if(!this.perms.notifications) need.push(["perm_notif","perm_notif_d",()=>p.requestNotifications()]);
+      if(this.cfg.enabled){
+        if(!this.perms.usage)   need.push(["perm_usage","perm_usage_d",()=>p.openUsageAccess()]);
+        if(!this.perms.overlay) need.push(["perm_overlay","perm_overlay_d",()=>p.openOverlaySettings()]);
+      }
+      if(this.cfg.mute && !this.perms.dnd) need.push(["perm_dnd","perm_dnd_d",()=>p.openDndSettings()]);
+      if(!this.perms.battery)   need.push(["perm_battery","perm_battery_d",()=>p.openBatterySettings()]);
+
+      const box=$("#lockPerms"); box.innerHTML="";
+      need.forEach(([tk,dk,go])=>{
+        const row=document.createElement("div"); row.className="perm-row";
+        row.innerHTML='<span class="pt"><span class="pn"></span><span class="pd"></span></span><button></button>';
+        row.querySelector(".pn").textContent=T[tk];
+        row.querySelector(".pd").textContent=T[dk];
+        const b=row.querySelector("button"); b.textContent=T.grant;
+        // The special-access ones open a Settings screen; re-check when we get focus back.
+        b.onclick=()=>{ try{ Promise.resolve(go()).catch(()=>{}); }catch(e){} setTimeout(()=>this.recheck(),800); };
+        box.appendChild(row);
+      });
+      $("#lockBreaksRow").classList.toggle("hidden",!this.cfg.enabled);
+      $("#allowBtn").disabled=!this.cfg.enabled;
+      $("#allowCount").textContent=L((this.cfg.allowed||[]).length);
+    },
+
+    async openPicker(){
+      const p=FocusPlugin(); if(!p) return;
+      $("#appsOverlay").classList.remove("hidden");
+      $("#appSearch").value="";
+      const list=$("#appList");
+      if(!this.apps){
+        list.innerHTML='<div class="app-empty"></div>';
+        list.firstChild.textContent="…";
+        try{ const r=await p.getInstalledApps({icons:true}); this.apps=(r&&r.apps)||[]; }
+        catch(e){ list.firstChild.textContent=T.apps_failed; return; }
+      }
+      this.renderList();
+    },
+    renderList(){
+      const q=($("#appSearch").value||"").trim().toLowerCase();
+      const sel=new Set(this.cfg.allowed||[]);
+      const list=$("#appList"); list.innerHTML="";
+      const shown=(this.apps||[]).filter(a=>!q||String(a.name||a.package).toLowerCase().includes(q));
+      if(!shown.length){
+        const d=document.createElement("div"); d.className="app-empty"; d.textContent=T.no_apps;
+        list.appendChild(d); return;
+      }
+      shown.forEach(a=>{
+        const row=document.createElement("button");
+        row.className="app-row"+(sel.has(a.package)?" on":"");
+        row.innerHTML='<img alt=""><span class="an"></span><span class="ck">✓</span>';
+        const img=row.querySelector("img");
+        if(a.icon) img.src=a.icon; else img.style.visibility="hidden";
+        row.querySelector(".an").textContent=a.name||a.package;
+        row.onclick=()=>{
+          const cur=new Set(this.cfg.allowed||[]);
+          if(cur.has(a.package)) cur.delete(a.package); else cur.add(a.package);
+          row.classList.toggle("on",cur.has(a.package));
+          this.set({allowed:Array.from(cur)});
+        };
+        list.appendChild(row);
+      });
+    }
+  };
 
   function openSettings(){$("#overlay").classList.remove("hidden");}
   function closeSettings(){$("#overlay").classList.add("hidden");}
@@ -960,14 +1618,23 @@
   $("#closeSettings").onclick=closeSettings;
   $("#doneBtn").onclick=closeSettings;
   $("#overlay").onclick=e=>{if(e.target===$("#overlay"))closeSettings();};
-  $("#resetAll").onclick=()=>{if(confirm(T.confirm_reset)){["ff_cfg","ff_prefs","ff_bg","ff_tasks","ff_stats","ff_streak","ff_volume"].forEach(k=>localStorage.removeItem(k));location.reload();}};
+  $("#resetAll").onclick=()=>{if(confirm(T.confirm_reset)){const p=FocusPlugin();if(p)p.stop().catch(()=>{});["ff_cfg","ff_prefs","ff_bg","ff_tasks","ff_stats","ff_streak","ff_volume","ff_anchor"].forEach(k=>localStorage.removeItem(k));location.reload();}};
   document.addEventListener("keydown",e=>{if(e.key==="Escape")closeSettings();});
 
   /* ---- account chip ---- */
   function initAccount(){
-    const a=$("#acct"), rb=$("#roomsBtn");
+    const a=$("#acct"), rb=$("#roomsBtn"), db=$("#dashBtn"), native=!!window.Capacitor;
     if(rb)rb.classList.toggle("hidden",!Cloud.enabled);
-    if(Cloud.enabled){a.href="/dashboard";a.innerHTML='<span class="av"></span><span></span>';a.querySelector(".av").textContent=Cloud.user.avatar||"🦊";a.querySelector("span:last-child").textContent=Cloud.user.name||T.dashboard;a.classList.remove("hidden");}
+    // App only, and only once there's an account to open a dashboard for. It wears the
+    // account's own avatar rather than a generic icon, since it stands in for the chip.
+    if(db){
+      db.classList.toggle("hidden",!(Cloud.enabled&&native));
+      if(Cloud.enabled) db.querySelector(".mi").textContent=Cloud.user.avatar||"🦊";
+    }
+    // Signed in, the app drops the header chip: the menu entry above already says the same
+    // thing, with the same avatar. Signed out it stays put either way — it's the way in.
+    if(Cloud.enabled&&native){a.classList.add("hidden");}
+    else if(Cloud.enabled){a.href="/dashboard";a.innerHTML='<span class="av"></span><span></span>';a.querySelector(".av").textContent=Cloud.user.avatar||"🦊";a.querySelector("span:last-child").textContent=Cloud.user.name||T.dashboard;a.classList.remove("hidden");}
     else if(Cloud.served){a.href="/login";a.textContent=T.sign_in;a.classList.remove("hidden");}
     else{a.classList.add("hidden");}
   }
@@ -979,6 +1646,8 @@
     document.documentElement.dir=(lang==="fa")?"rtl":"ltr";
     document.querySelectorAll("[data-i18n]").forEach(el=>{el.textContent=T[el.dataset.i18n];});
     $("#taskInput").placeholder=T.add_task;
+    $("#appSearch").placeholder=T.search_apps;
+    Lock.render();
     renderSubjects();
     $("#uploadLabel").textContent=T.upload;
     $("#langLabel").textContent=T.lang_switch;
@@ -991,9 +1660,15 @@
   /* ---- init ---- */
   $("#chime").checked=prefs.chime;
   $("#dim").value=bg.dim;
-  applyAccent();applyBg();buildSwatches();renderFmt();renderDock();
+  applyAccent();applyBg();buildSwatches();buildAccents();renderFmt();renderBarMode();applyBars();renderDock();
   applyLang();
   if(_cfgRepaired) store.set("ff_cfg",cfg);   // push the repaired durations back so the stored/cloud copy stops being broken
+  // In the app, pick the session back up from the notification bar *before* deciding whether
+  // there is leftover time to recover — adopting it is what tops `pendingSec` up.
+  Bar.listen();
+  await Bar.adopt(true);
+  Lock.init();
+  Music.init();                                            // adopts whatever the music service is already playing
   if(Cloud.enabled && pendingSec>=60) flushFocus(false);   // recover time from a previous unfinished session
   if(Cloud.enabled) refreshRoom();                          // load co-focusers if already in a room
 })();

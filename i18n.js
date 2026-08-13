@@ -70,6 +70,7 @@
       best_day: "Best day",
       active_days: "Active days",
       sess_short: " sess",
+      u_h: "h", u_m: "m", u_s: "s",
       session_one: "session",
       session_many: "sessions",
       background: "Background",
@@ -84,6 +85,8 @@
       custom_image: "Custom image",
       bg_warm: "Warm", bg_midnight: "Midnight", bg_forest: "Forest", bg_ocean: "Ocean",
       bg_plum: "Plum", bg_slate: "Slate", bg_ember: "Ember", bg_rose: "Rose",
+      bg_sand: "Sand", bg_mint: "Mint", bg_indigo: "Indigo", bg_crimson: "Crimson",
+      bg_moss: "Moss", bg_charcoal: "Charcoal",
       prog_bar: "▬ Bar", prog_rabbit: "🐇 Rabbit → 🥕", prog_rocket: "🚀 Rocket → 🌙", prog_runner: "🏃 Runner → 🏁",
       dow: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
 
@@ -192,6 +195,7 @@
       best_day: "بهترین روز",
       active_days: "روزهای فعال",
       sess_short: " جلسه",
+      u_h: "ساعت", u_m: "دقیقه", u_s: "ثانیه",
       session_one: "جلسه",
       session_many: "جلسه",
       background: "پس‌زمینه",
@@ -206,6 +210,8 @@
       custom_image: "تصویر دلخواه",
       bg_warm: "گرم", bg_midnight: "نیمه‌شب", bg_forest: "جنگل", bg_ocean: "اقیانوس",
       bg_plum: "آلو", bg_slate: "سنگی", bg_ember: "اخگر", bg_rose: "رز",
+      bg_sand: "شنی", bg_mint: "نعنایی", bg_indigo: "نیلی", bg_crimson: "زرشکی",
+      bg_moss: "خزه‌ای", bg_charcoal: "زغالی",
       prog_bar: "▬ نوار", prog_rabbit: "🐇 خرگوش → 🥕", prog_rocket: "🚀 موشک → 🌙", prog_runner: "🏃 دونده → 🏁",
       dow: ["ی", "د", "س", "چ", "پ", "ج", "ش"],
 
@@ -296,6 +302,31 @@
   /* Persian digits for any number shown to the user */
   function num(v) { return lang === "fa" ? String(v).replace(/[0-9]/g, function (d) { return FA_DIG[+d]; }) : String(v); }
   function locale() { return lang === "fa" ? "fa-IR" : undefined; }
+
+  /* Durations. English keeps the tight "1h 20m"; Persian has no accepted one-letter
+     abbreviations, so it spells the units out and needs a space before each. */
+  function unit(n, key) { return num(n) + unitLabel(key); }
+  /* The unit on its own, carrying the space Persian needs, for the few places that style the
+     number and its unit separately. */
+  function unitLabel(key) { return (lang === "fa" ? " " : "") + t(key); }
+  function durSecs(secs) {
+    secs = Math.max(0, Math.round(secs || 0));
+    if (secs < 60) return secs ? "<" + unit(1, "u_m") : unit(0, "u_m");
+    return durMins(Math.floor(secs / 60));
+  }
+  function durMins(mins) {
+    mins = Math.max(0, Math.round(mins || 0));
+    var h = Math.floor(mins / 60), m = mins % 60;
+    if (h && m) return unit(h, "u_h") + " " + unit(m, "u_m");
+    return h ? unit(h, "u_h") : unit(m, "u_m");
+  }
+  /* One unit only, for boxes too small for two -- the calendar squares are a seventh of the
+     grid, and spelled-out Persian needs three times the room "1h 20m" does. Tapping the day
+     shows the exact figure underneath. */
+  function durCompact(mins) {
+    mins = Math.max(0, Math.round(mins || 0));
+    return mins < 60 ? unit(mins, "u_m") : unit(Math.round(mins / 60), "u_h");
+  }
   function serverError(text) { return (lang === "fa" && SERVER_ERRORS[text]) || text; }
 
   function apply(root) {
@@ -338,6 +369,7 @@
   window.FocusI18n = {
     t: t, tf: tf, num: num, apply: apply, setLang: setLang, toggle: toggle,
     locale: locale, serverError: serverError,
+    durSecs: durSecs, durMins: durMins, durCompact: durCompact, unitLabel: unitLabel,
     get lang() { return lang; }
   };
 

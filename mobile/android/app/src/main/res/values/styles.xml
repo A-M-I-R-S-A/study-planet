@@ -13,10 +13,25 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!-- The page paints its own gradient all the way to the top edge, so the system bars
+             get out of its way instead of sitting over it as coloured strips. The web layout
+             keeps its content clear of them with env(safe-area-inset-*).
+             API 35 forces transparent bars regardless; these keep Android 14 and below in
+             line. windowLightStatusBar stays false because the gradient behind the bar is
+             dark, so the clock and icons need to be light. -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
+        <!-- Matched to the theme above so the bar doesn't change colour behind the splash
+             and then again on hand-off to the WebView. -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>

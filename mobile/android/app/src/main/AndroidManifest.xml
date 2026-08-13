@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="true"
@@ -24,6 +25,29 @@
 
         </activity>
 
+        <!-- Keeps the session ticking in the notification bar and enforces the app lock.
+             stopWithTask=false is the point of it: swiping the app away must not stop the timer. -->
+        <service
+            android:name=".FocusService"
+            android:enabled="true"
+            android:exported="false"
+            android:stopWithTask="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="A study timer the user starts by hand. The notification is the timer, and it has to keep counting and keep the app lock in force after the app is closed." />
+        </service>
+
+        <!-- Background music. Separate from FocusService on purpose: the two have different
+             lifetimes — music can play with no session running, and a session can run in
+             silence. stopWithTask=false so swiping the app away doesn't cut the track off. -->
+        <service
+            android:name=".MusicService"
+            android:enabled="true"
+            android:exported="false"
+            android:stopWithTask="false"
+            android:foregroundServiceType="mediaPlayback" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -38,4 +62,47 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- notification-bar timer -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <!-- background music: the media playback service type, plus the wake lock MediaPlayer
+         takes so playback survives the screen going off -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- app lock. Both are special access the user grants on a Settings screen, not at runtime:
+         usage stats to see which app is in front, overlay to draw the block panel over it. -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- Silencing other apps while focusing. Also special access, granted on a Settings
+         screen: blocking an app from opening does nothing about its notifications. -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+
+    <!-- Listing every launchable app is the whole point of the allow-list picker, so the
+         narrow <queries> form below is not enough on Android 11+. Play Console needs the
+         "device security / app blocking" declaration for this one. -->
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.HOME" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+        </intent>
+    </queries>
 </manifest>

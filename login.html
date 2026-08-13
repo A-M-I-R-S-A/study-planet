@@ -7,7 +7,7 @@
 <title>Focus — Sign in</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&family=Lalezar&display=swap" rel="stylesheet">
 <style>
   :root{--accent:oklch(0.7 0.12 62);--accent-ink:#16303a;--cream:#faf6ee;--cream2:#efe9de;--ink:#2b2824;--muted:#8a8175;--white:#fbfdfd;--danger:#c0392b}
   *{box-sizing:border-box}
@@ -20,8 +20,12 @@
     background:#16303a;min-height:100vh;
     display:flex;align-items:center;justify-content:center;-webkit-font-smoothing:antialiased;
     padding:calc(24px + env(safe-area-inset-top)) max(24px,env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left))}
+  /* See index.html: floor for WebViews that report no status-bar inset, and no floor at all
+     in fullscreen, where there is no bar to clear. */
+  html.native:not(.fs) body{padding-top:calc(24px + max(env(safe-area-inset-top),26px))}
+  html.native.fs body{padding-top:calc(24px + env(safe-area-inset-top))}
   .mono{font-family:'DM Mono',ui-monospace,monospace}
-  html[lang="fa"] body{font-family:'Vazirmatn','Segoe UI',Tahoma,sans-serif}
+  html[lang="fa"] body{font-family:'Lalezar','Vazirmatn','Segoe UI',Tahoma,sans-serif}
   .langsw{display:block;margin:10px auto 0;border:none;background:transparent;color:var(--muted);font-family:inherit;font-size:12.5px;cursor:pointer;padding:4px 8px;border-radius:8px}
   .langsw:hover{color:var(--ink);background:var(--cream2)}
   .card{width:100%;max-width:400px;background:var(--cream);border-radius:24px;padding:34px 30px 28px;box-shadow:0 24px 70px rgba(0,0,0,.4)}

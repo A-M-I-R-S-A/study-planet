@@ -7,7 +7,7 @@
 <title>Focus — Your dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&family=Vazirmatn:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&family=Lalezar&display=swap" rel="stylesheet">
 <style>
   :root{--accent:oklch(0.7 0.12 62);--accent-ink:#16303a;--cream:#faf6ee;--cream2:#efe9de;--ink:#2b2824;--muted:#8a8175;--white:#fbfdfd;--danger:#c0392b}
   *{box-sizing:border-box}
@@ -15,13 +15,18 @@
      focus ring left behind after a tap. :focus-visible keeps the ring for keyboard users. */
   html{-webkit-tap-highlight-color:transparent}
   :focus:not(:focus-visible){outline:none}
-  html[lang="fa"] body{font-family:'Vazirmatn','Segoe UI',Tahoma,sans-serif}
+  html[lang="fa"] body{font-family:'Lalezar','Vazirmatn','Segoe UI',Tahoma,sans-serif}
   html[lang="fa"] h2{letter-spacing:normal;text-transform:none}
   html,body{height:100%}
   body{margin:0;font-family:'Instrument Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:var(--ink);
     background:#16303a;min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
   .mono{font-family:'DM Mono',ui-monospace,monospace}
   .wrap{max-width:920px;margin:0 auto;padding:calc(clamp(18px,4vw,40px) + env(safe-area-inset-top)) max(clamp(18px,4vw,40px),env(safe-area-inset-right)) calc(clamp(18px,4vw,40px) + env(safe-area-inset-bottom)) max(clamp(18px,4vw,40px),env(safe-area-inset-left))}
+
+  /* See index.html: floor for WebViews that report no status-bar inset, and no floor at all
+     in fullscreen, where there is no bar to clear. */
+  html.native:not(.fs) .wrap{padding-top:calc(clamp(16px,4vw,40px) + max(env(safe-area-inset-top),26px))}
+  html.native.fs .wrap{padding-top:calc(clamp(16px,4vw,40px) + env(safe-area-inset-top))}
 
   header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:26px;flex-wrap:wrap}
   .who{display:flex;align-items:center;gap:13px}
@@ -104,12 +109,16 @@
   .cal-cell.sel{box-shadow:0 0 0 2px var(--ink)}
   .cal-cell .dn{font-size:12px;color:var(--ink)}
   .cal-cell.dim .dn{color:#b9b1a4}
-  .cal-cell .cm{font-size:9px;color:var(--accent-ink);font-family:'DM Mono',monospace;font-weight:500}
+  .cal-cell .cm{font-size:9px;color:var(--accent-ink);font-family:'DM Mono',monospace;font-weight:500;white-space:nowrap;max-width:100%}
+  /* "۴۵ دقیقه" is far longer than "45m", and the cell is a seventh of the grid. */
+  html[lang="fa"] .cal-cell .cm{font-size:7.5px;letter-spacing:-.02em}
   .cal-day-detail{margin-top:16px;background:var(--cream2);border-radius:14px;padding:16px}
   .cal-day-detail h3{margin:0 0 10px;font-size:14px}
   .cal-day-detail .topic{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;padding:7px 0;border-top:1px solid rgba(0,0,0,.06)}
   .cal-day-detail .topic:first-of-type{border-top:none}
   .cal-day-detail .topic .b{color:var(--accent)}
+  .cal-day-detail .topic .tn{flex:1;min-width:0;overflow-wrap:anywhere}
+  .cal-day-detail .topic .tm{flex:none;color:var(--accent);font-size:13px}
   .cal-day-detail .none{color:var(--muted);font-size:13px}
   .loading{color:rgba(255,255,255,.8);text-align:center;padding:80px 0;font-size:15px}
 
@@ -212,9 +221,17 @@
     plum:"linear-gradient(180deg,#2a1f38,#140d1c)",
     slate:"linear-gradient(180deg,#2a2f38,#111418)",
     ember:"linear-gradient(180deg,#3a2418,#160b08)",
-    rose:"linear-gradient(180deg,#3a2028,#160a10)"
+    rose:"linear-gradient(180deg,#3a2028,#160a10)",
+    sand:"linear-gradient(180deg,#4a3a28,#1d1610)",
+    mint:"linear-gradient(180deg,#1e3a38,#0a1a19)",
+    indigo:"linear-gradient(180deg,#232a4a,#0d1024)",
+    crimson:"linear-gradient(180deg,#3d1c22,#170a0c)",
+    moss:"linear-gradient(180deg,#2f3a24,#131a0e)",
+    charcoal:"linear-gradient(180deg,#2c2c2e,#0b0b0c)"
   };
   const I=window.FocusI18n, t=k=>I.t(k), N=v=>I.num(v);
+  // Units live in i18n.js: "1h 20m" in English, "۱ ساعت ۲۰ دقیقه" in Persian.
+  const durS=s=>I.durSecs(s), durM=m=>I.durMins(m);
   const PROG={bar:"prog_bar",rabbit:"prog_rabbit",rocket:"prog_rocket",runner:"prog_runner"};
   const AVATARS=["🦊","🐱","🐼","🦉","🐧","🐢","🐝","🌸","🚀","⭐","🔥","🌙"];
   let selAvatar="🦊";
@@ -222,7 +239,6 @@
   $("#langLabel").textContent=t("lang_switch");
   $("#langBtn").onclick=()=>I.toggle();
 
-  function fmtDur(mins){ const h=Math.floor(mins/60), m=mins%60; return h? (h+"h "+(m?m+"m":"")) : (m+"m"); }
   function weekday(iso){ return new Date(iso+"T00:00").toLocaleDateString(I.locale(),{weekday:"short"}).slice(0,2); }
 
   fetch("/api/me",{credentials:"same-origin"}).then(r=>r.json()).then(render).catch(()=>{
@@ -248,19 +264,6 @@
       b.onclick=()=>{selAvatar=a;avs.querySelectorAll(".av").forEach(x=>x.classList.toggle("sel",x.textContent===a));};
       avs.appendChild(b);
     });
-
-    // stat cards
-    const cards=[
-      {k:t("streak"), v:N(st.streak||0), s:t((st.streak||0)===1?"day":"days"), hl:true},
-      {k:t("total_focus"), v:N(Math.floor((st.totalMinutes||0)/60)), s:"h "+N((st.totalMinutes||0)%60)+"m"},
-      {k:t("sessions"), v:N(st.totalSessions||0)},
-      {k:t("today"), v:N((st.today&&st.today.minutes)||0), s:"m · "+N((st.today&&st.today.sessions)||0)+t("sess_short")},
-      {k:t("best_day"), v:N(st.bestMinutes||0), s:"m"},
-      {k:t("active_days"), v:N(st.activeDays||0)}
-    ];
-    $("#statGrid").innerHTML=cards.map(c=>
-      '<div class="card stat'+(c.hl?" hl":"")+'"><div class="k">'+c.k+'</div><div class="v mono">'+c.v+(c.s?'<small>'+c.s+'</small>':'')+'</div></div>'
-    ).join("");
 
     // chart
     const hist=st.history||[];
@@ -339,7 +342,7 @@
       el.className='cal-cell'+(cell?' has':' dim')+(iso===todayISO?' today':'')+(iso===calSel?' sel':'');
       el.dataset.iso=iso;
       if(cell){var pct=Math.round(cell.minutes/maxMin*70)+12; el.style.background='color-mix(in oklch, var(--accent) '+pct+'%, var(--cream2))';}
-      el.innerHTML='<span class="dn">'+N(day)+'</span>'+(cell?'<span class="cm">'+N(cell.minutes)+'m</span>':'');
+      el.innerHTML='<span class="dn">'+N(day)+'</span>'+(cell?'<span class="cm">'+I.durCompact(cell.minutes)+'</span>':'');
       if(cell) el.onclick=(function(x){return function(){selectDay(x);};})(iso);
       g.appendChild(el);
     }
@@ -351,8 +354,18 @@
     var d=calData[iso], det=$("#calDetail");
     var lbl=new Date(iso+'T00:00').toLocaleDateString(I.locale(),{weekday:'long',month:'long',day:'numeric'});
     if(!d){det.innerHTML='';det.appendChild(Object.assign(document.createElement('div'),{className:'none',textContent:I.tf('nothing_on',lbl)}));return;}
-    det.innerHTML='<h3>'+lbl+' · '+N(d.minutes)+'m · '+N(d.sessions)+' '+t(d.sessions===1?'session_one':'session_many')+'</h3>';
-    if(d.topics&&d.topics.length){ d.topics.forEach(function(t){var row=document.createElement('div');row.className='topic';var b=document.createElement('span');b.className='b';b.textContent='▸';var s=document.createElement('span');s.textContent=t;row.appendChild(b);row.appendChild(s);det.appendChild(row);}); }
+    det.innerHTML='<h3>'+lbl+' · '+durM(d.minutes)+' · '+N(d.sessions)+' '+t(d.sessions===1?'session_one':'session_many')+'</h3>';
+    // One row per subject with its total for the day -- the server groups them, so a subject
+    // studied across several blocks appears once rather than once per block.
+    if(d.topics&&d.topics.length){
+      d.topics.forEach(function(tp){
+        var row=document.createElement('div'); row.className='topic';
+        var b=document.createElement('span'); b.className='b'; b.textContent='▸';
+        var s=document.createElement('span'); s.className='tn'; s.textContent=tp.name||tp;
+        var m=document.createElement('span'); m.className='tm mono'; m.textContent=durS(tp.seconds);
+        row.appendChild(b); row.appendChild(s); row.appendChild(m); det.appendChild(row);
+      });
+    }
     else { det.appendChild(Object.assign(document.createElement('div'),{className:'none',textContent:t('no_notes')})); }
   }
   $("#calPrev").onclick=function(){ loadCalendar(shiftMonth(calMonth,-1)); };
@@ -368,7 +381,8 @@
     box.innerHTML="";
     list.forEach(function(s){
       var row=document.createElement("div"); row.className="subj-row";
-      row.innerHTML='<span class="cdot"></span><span class="snm"></span><span class="stime mono">'+N(s.todayMinutes)+'m</span><button class="del">×</button>';
+      row.innerHTML='<span class="cdot"></span><span class="snm"></span><span class="stime mono"></span><button class="del">×</button>';
+      row.querySelector(".stime").textContent=durM(s.todayMinutes);
       row.querySelector(".cdot").style.background=s.color;
       row.querySelector(".snm").textContent=s.name;
       row.querySelector(".del").title=t("delete");

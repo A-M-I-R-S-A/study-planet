@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Drawn over a blocked app while a focus session is running. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F50D2730"
+    android:clickable="true"
+    android:focusable="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:paddingStart="34dp"
+        android:paddingEnd="34dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/block_title"
+            android:textColor="#FFF8EE"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/blockMsg"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center"
+            android:lineSpacingExtra="4dp"
+            android:text="@string/block_msg_generic"
+            android:textColor="#A9C2CB"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/blockTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="26dp"
+            android:fontFamily="monospace"
+            android:textColor="#D9A24E"
+            android:textSize="46sp" />
+
+        <Button
+            android:id="@+id/blockOpen"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="30dp"
+            android:background="@drawable/block_btn"
+            android:text="@string/block_open"
+            android:textAllCaps="false"
+            android:textColor="#25190B"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/blockHome"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/block_btn_ghost"
+            android:text="@string/block_home"
+            android:textAllCaps="false"
+            android:textColor="#CFE0E6"
+            android:textSize="14sp" />
+    </LinearLayout>
+</FrameLayout>

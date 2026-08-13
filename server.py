@@ -44,6 +44,7 @@ SECURE_COOKIES = os.environ.get("SECURE_COOKIES", "").lower() in ("1", "true", "
 # e.g. 210 for Iran (UTC+3:30), 60 for CET, -480 for US Pacific. Set it to your users' zone.
 DAY_OFFSET_MIN = int(os.environ.get("DAY_OFFSET_MIN", "0"))
 MAX_DAY_SECONDS = 24 * 3600   # per-user daily ceiling on logged focus time (anti-inflation sanity cap)
+STREAK_MIN_SECONDS = 45 * 60  # a day has to reach this much focus time to count toward the streak
 
 # --- quotes (api-ninjas) ------------------------------------------------------------
 # The key stays server-side: the browser calls /api/quotes here, never api-ninjas directly.
@@ -133,6 +134,10 @@ SECURITY_HEADERS = [
      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
      "font-src 'self' https://fonts.gstatic.com; "
      "img-src 'self' data: blob:; "
+     # The music host, so the ambient tiles and tracks can stream on the website. Only
+     # media-src is widened: the page still can't fetch(), XHR or connect anywhere but here,
+     # so a <audio src> is the whole of what this buys.
+     "media-src 'self' https://irsv.upmusics.com; "
      "connect-src 'self'; "
      "base-uri 'none'; "
      "object-src 'none'; "
@@ -368,11 +373,20 @@ def subjects_for(uid):
 
 
 def compute_streak(by):
+    """Consecutive days of real study time.
+
+    A day joins the streak once its focused time passes STREAK_MIN_SECONDS, whether that came
+    from countdown blocks or the stopwatch — counting sessions instead would let a handful of
+    ten-second blocks keep a streak alive.
+    """
+    def qualifies(d):
+        return by.get(d.isoformat(), {}).get("seconds", 0) >= STREAK_MIN_SECONDS
+
     streak = 0
     d = today_date()
-    if by.get(d.isoformat(), {}).get("sessions", 0) == 0:
+    if not qualifies(d):
         d = d - timedelta(days=1)  # today still pending -> count from yesterday
-    while by.get(d.isoformat(), {}).get("sessions", 0) > 0:
+    while qualifies(d):
         streak += 1
         d -= timedelta(days=1)
     return streak
@@ -966,17 +980,28 @@ class Handler(SimpleHTTPRequestHandler):
         q = parse_qs(urlparse(self.path).query)
         month = (q.get("month", [None])[0]) or today_date().strftime("%Y-%m")
         conn = db()
-        rows = conn.execute(
-            "SELECT day,minutes,topic FROM session_log WHERE user_id=? AND day LIKE ? ORDER BY created_at",
-            (u["id"], month + "-%"),
-        ).fetchall()
         days = {}
-        for r in rows:
-            cell = days.setdefault(r["day"], {"day": r["day"], "minutes": 0, "sessions": 0, "topics": []})
-            cell["minutes"] += r["minutes"]
-            cell["sessions"] += 1
-            if r["topic"]:
-                cell["topics"].append(r["topic"])
+        # Day totals come from stat_days. session_log holds one row per *flush* -- a pause, a
+        # 30s heartbeat, the end of a block -- so counting its rows would report one session as
+        # several, and summing its per-row minutes would floor every part-minute away to zero.
+        for r in conn.execute(
+            "SELECT day,sessions,COALESCE(seconds,0) AS secs FROM stat_days "
+            "WHERE user_id=? AND day LIKE ?",
+            (u["id"], month + "-%"),
+        ):
+            days[r["day"]] = {"day": r["day"], "minutes": r["secs"] // 60, "seconds": r["secs"],
+                              "sessions": r["sessions"], "topics": []}
+        # One entry per subject per day with the total time on it. Grouping here is the point:
+        # the log has a row per flush, so a subject picked once still lands in it many times.
+        for r in conn.execute(
+            "SELECT day, topic, SUM(COALESCE(seconds, minutes*60)) AS secs FROM session_log "
+            "WHERE user_id=? AND day LIKE ? AND topic IS NOT NULL AND topic<>'' "
+            "GROUP BY day, topic ORDER BY secs DESC",
+            (u["id"], month + "-%"),
+        ):
+            cell = days.setdefault(r["day"], {"day": r["day"], "minutes": 0, "seconds": 0,
+                                              "sessions": 0, "topics": []})
+            cell["topics"].append({"name": r["topic"], "seconds": r["secs"], "minutes": r["secs"] // 60})
         conn.close()
         return self._json(200, {"month": month, "days": list(days.values())})
 
