@@ -40,14 +40,35 @@
     }
     return bg;
   }
+  /* Acrylic blur on the background layer. A blurred fixed layer fades out at the viewport
+     edges, because the filter has nothing beyond them to sample -- scaling it up pushes that
+     soft margin off-screen. Kept in step with applyBg() in index.html. */
+  var BLUR_MAX_PX = 32;
+  function blurLayer(el, pct) {
+    pct = Math.max(0, Math.min(100, Number(pct) || 0));
+    var px = pct / 100 * BLUR_MAX_PX;
+    el.style.filter = px ? "blur(" + px.toFixed(1) + "px)" : "";
+    el.style.transform = px ? "scale(1.12)" : "";
+  }
   function apply() {
     var bg = get("ff_bg", { type: "preset", value: "warm", dim: 0 });
     var prefs = get("ff_prefs", { lang: "en" });
     var el = layers();
     if (bg && bg.type === "image") { el.style.background = ""; el.style.backgroundImage = "url(" + bg.value + ")"; }
     else { el.style.background = BGS[bg && bg.value] || BGS.warm; }
+    // Both branches above write the `background` shorthand, which resets background-size and
+    // background-position along with it -- so they have to go back on afterwards. Without this
+    // a photo fell back to `auto` at the top-left corner and came out cropped on every page but
+    // the timer, which re-applies them the same way.
+    el.style.backgroundSize = "cover";
+    el.style.backgroundPosition = "center";
+    el.style.backgroundRepeat = "no-repeat";
+    blurLayer(el, (bg && bg.blur) || 0);
     document.getElementById("themeScrim").style.opacity = (((bg && bg.dim) || 0) / 100);
     document.documentElement.style.setProperty("--accent", ACCENTS[prefs && prefs.accent] || ACCENTS.amber);
+    // Appearance, picked on the timer page. Absent means Classic, so accounts saved before the
+    // setting existed keep the surfaces they had.
+    document.documentElement.classList.toggle("glass", !!(prefs && prefs.glass));
     // Carry the timer page's "top of screen" choice onto every other screen in the app, so
     // opening the dashboard mid-session doesn't pop the system bar back into view.
     if (window.Capacitor) {

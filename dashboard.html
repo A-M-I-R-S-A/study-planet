@@ -9,176 +9,302 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&family=Lalezar&display=swap" rel="stylesheet">
 <style>
-  :root{--accent:oklch(0.7 0.12 62);--accent-ink:#16303a;--cream:#faf6ee;--cream2:#efe9de;--ink:#2b2824;--muted:#8a8175;--white:#fbfdfd;--danger:#c0392b}
+  /* ---- surface tokens ----
+     The page carries both appearances. Classic is the default and reproduces the cream cards
+     the app has always had; html.glass (set by theme.js from prefs.glass, chosen in the
+     timer's Settings) swaps the same four tokens for translucent dark ones. Everything below
+     reads the tokens, so the layout, markup and script are shared -- only these values move. */
+  :root{
+    --accent:oklch(0.7 0.12 62);--accent-ink:#16303a;--white:#fbfdfd;--danger:#c0392b;
+    --surface:#faf6ee;
+    --surface-2:#efe9de;
+    --ink:#2b2824;
+    --muted:#8a8175;
+    --line:rgba(0,0,0,.06);
+    --hair:rgba(0,0,0,.14);
+    --field:#fff;
+    --blur:none;
+    --shadow:0 14px 40px rgba(0,0,0,.26);
+    --radius:22px;
+  }
+  html.glass{
+    --surface:rgba(18,24,30,.68);
+    --surface-2:rgba(255,255,255,.07);
+    --ink:#f1f5f8;
+    --muted:rgba(233,240,246,.58);
+    --line:rgba(255,255,255,.14);
+    --hair:rgba(255,255,255,.2);
+    --field:rgba(255,255,255,.08);
+    --blur:blur(26px) saturate(1.5);
+    --shadow:0 24px 64px rgba(0,0,0,.42);
+  }
+  /* No blur available: lean on opacity so text keeps its contrast. */
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    html.glass{--surface:rgba(18,24,30,.94)}
+  }
+
   *{box-sizing:border-box}
   /* Kill the grey/blue rectangle Android's WebView flashes over anything tapped, and the
      focus ring left behind after a tap. :focus-visible keeps the ring for keyboard users. */
   html{-webkit-tap-highlight-color:transparent}
   :focus:not(:focus-visible){outline:none}
   html[lang="fa"] body{font-family:'Lalezar','Vazirmatn','Segoe UI',Tahoma,sans-serif}
-  html[lang="fa"] h2{letter-spacing:normal;text-transform:none}
+  html[lang="fa"] h2,html[lang="fa"] .k{letter-spacing:normal;text-transform:none}
   html,body{height:100%}
   body{margin:0;font-family:'Instrument Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:var(--ink);
-    background:#16303a;min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
-  .mono{font-family:'DM Mono',ui-monospace,monospace}
-  .wrap{max-width:920px;margin:0 auto;padding:calc(clamp(18px,4vw,40px) + env(safe-area-inset-top)) max(clamp(18px,4vw,40px),env(safe-area-inset-right)) calc(clamp(18px,4vw,40px) + env(safe-area-inset-bottom)) max(clamp(18px,4vw,40px),env(safe-area-inset-left))}
+    background:#16303a;min-height:100vh;-webkit-font-smoothing:antialiased;
+    /* clip, not hidden: it contains sideways overflow without turning <body> into a scroll
+       container, which would bring scroll-anchoring quirks with it */
+    overflow-x:clip}
+  .mono{font-family:'DM Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+
+  /* Contrast floor for the glass skin only, so translucent cards stay readable over a bright
+     uploaded background. Classic's cards are opaque and never needed it. */
+  #veil{display:none}
+  html.glass #veil{display:block;position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:radial-gradient(125% 85% at 50% 0%,rgba(0,0,0,0) 0%,rgba(0,0,0,.3) 55%,rgba(0,0,0,.52) 100%)}
+
+  .wrap{max-width:1160px;margin:0 auto;padding:calc(clamp(18px,4vw,40px) + env(safe-area-inset-top)) max(clamp(18px,4vw,40px),env(safe-area-inset-right)) calc(clamp(40px,7vw,80px) + env(safe-area-inset-bottom)) max(clamp(18px,4vw,40px),env(safe-area-inset-left))}
 
   /* See index.html: floor for WebViews that report no status-bar inset, and no floor at all
      in fullscreen, where there is no bar to clear. */
   html.native:not(.fs) .wrap{padding-top:calc(clamp(16px,4vw,40px) + max(env(safe-area-inset-top),26px))}
   html.native.fs .wrap{padding-top:calc(clamp(16px,4vw,40px) + env(safe-area-inset-top))}
 
-  header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:26px;flex-wrap:wrap}
-  .who{display:flex;align-items:center;gap:13px}
-  .avatar{width:52px;height:52px;border-radius:16px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);display:flex;align-items:center;justify-content:center;font-size:26px;backdrop-filter:blur(8px)}
-  .who .nm{font-size:20px;font-weight:600;color:var(--white);letter-spacing:-.01em}
-  .who .em{font-size:13px;color:rgba(255,255,255,.66);margin-top:1px}
-  .hbtns{display:flex;gap:9px}
-  .hbtn{height:42px;padding:0 16px;border-radius:12px;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.14);color:var(--white);font-size:13.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;text-decoration:none;backdrop-filter:blur(8px)}
-  .hbtn:hover{background:rgba(255,255,255,.24)}
+  /* ---- nav ---- */
+  nav{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:clamp(30px,6vw,56px)}
+  .who{display:flex;align-items:center;gap:13px;min-width:0}
+  .avatar{width:52px;height:52px;border-radius:17px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);display:flex;align-items:center;justify-content:center;font-size:26px;flex:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  .who .nm{font-size:19px;font-weight:600;color:var(--white);letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .who .em{font-size:13px;color:rgba(255,255,255,.62);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .navbtns{display:flex;gap:8px;flex-wrap:wrap}
+  .nbtn{height:42px;padding:0 16px;border-radius:99px;border:1px solid rgba(255,255,255,.26);background:rgba(255,255,255,.13);color:var(--white);font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;text-decoration:none;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:background .18s,transform .18s}
+  .nbtn:hover{background:rgba(255,255,255,.24);transform:translateY(-1px)}
 
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:22px}
-  .card{background:var(--cream);border-radius:20px;padding:20px;box-shadow:0 14px 40px rgba(0,0,0,.26)}
-  .stat .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px}
-  .stat .v{font-size:34px;line-height:1;margin-top:12px;color:var(--ink)}
-  .stat .v small{font-size:16px;color:var(--muted)}
-  .stat.hl{background:linear-gradient(150deg,var(--accent),color-mix(in oklch,var(--accent) 62%,#e08a3c));color:var(--accent-ink)}
-  .stat.hl .k{color:rgba(22,48,58,.7)}
-  .stat.hl .v{color:var(--accent-ink)}
+  /* ---- hero: editorial split ----
+     The headline is two block lines rather than one wrapping paragraph, so it is exactly two
+     lines whatever the name's length and whichever language is on. */
+  .hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:clamp(24px,5vw,64px);align-items:center;margin-bottom:clamp(34px,6vw,60px)}
+  .hero h1{margin:0;font-size:clamp(2rem,4.4vw,3.4rem);line-height:1.12;letter-spacing:-.032em;font-weight:600;color:var(--white);text-shadow:0 6px 34px rgba(0,0,0,.24)}
+  .hero h1 .ln{display:block}
+  .hero h1 .ln+.ln{margin-top:.12em}
+  .hero .nmark{overflow-wrap:anywhere}
+  .hero .hl{color:var(--accent)}
+  /* the user's own avatar, set inline in the heading */
+  .hero .chip{display:inline-flex;align-items:center;justify-content:center;width:.98em;height:.98em;border-radius:.32em;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.26);font-size:.72em;vertical-align:-.06em;margin-inline-end:.28em;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  .gauge{position:relative;width:clamp(150px,20vw,196px);aspect-ratio:1;flex:none;justify-self:end}
+  /* stays clockwise under RTL: a filling ring reads the same way in both directions */
+  .gauge svg{width:100%;height:100%;transform:rotate(-90deg)}
+  .gauge .trk{fill:none;stroke:rgba(255,255,255,.16);stroke-width:9}
+  .gauge .fil{fill:none;stroke:var(--accent);stroke-width:9;stroke-linecap:round;
+    stroke-dasharray:326.7;stroke-dashoffset:326.7;transition:stroke-dashoffset 1.1s cubic-bezier(.22,.75,.24,1)}
+  .gauge .mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:12%}
+  .gauge .gv{font-size:clamp(20px,2.4vw,27px);color:var(--white);line-height:1.05;letter-spacing:-.02em}
+  .gauge .gl{margin-top:6px;font-size:10.5px;line-height:1.35;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6)}
+  html[lang="fa"] .gauge .gl{letter-spacing:normal;text-transform:none;font-size:11.5px}
 
-  .section{background:var(--cream);border-radius:22px;padding:22px 22px 20px;box-shadow:0 14px 40px rgba(0,0,0,.26);margin-bottom:22px}
-  .section h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 18px}
+  /* ---- cards ---- */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);
+    backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur)}
+  .sec{padding:clamp(18px,2.4vw,26px);margin-bottom:clamp(16px,2vw,22px)}
+  .sec>h2{margin:0 0 18px;font-size:12.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:600}
+  .sec>h2 .soft{font-weight:400;text-transform:none;letter-spacing:0}
+
+  /* ---- bento ----
+     12 columns that divide exactly: row 1 is chart(8)+streak(4), row 2 is the chart's second
+     row + sessions(4), row 3 is three 4s. Every row totals 12, so there is no empty cell to
+     leave a hole; grid-auto-flow:dense is the belt-and-braces guard. */
+  .bento{display:grid;grid-template-columns:repeat(12,1fr);grid-auto-flow:dense;gap:clamp(12px,1.5vw,18px);margin-bottom:clamp(16px,2vw,22px)}
+  .b-chart{grid-column:span 8;grid-row:span 2;padding:clamp(18px,2.4vw,26px);display:flex;flex-direction:column}
+  .b-stat{grid-column:span 4;padding:clamp(18px,2.2vw,24px);display:flex;flex-direction:column;justify-content:center;min-height:118px}
+  .b-stat .k{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;font-weight:600}
+  .b-stat .v{font-size:clamp(26px,3.2vw,36px);line-height:1;margin-top:12px;color:var(--ink);letter-spacing:-.02em}
+  .b-stat.hl{background:linear-gradient(150deg,var(--accent),color-mix(in oklch,var(--accent) 62%,#e08a3c));border-color:transparent}
+  .b-stat.hl .k{color:rgba(22,48,58,.72)}
+  .b-stat.hl .v{color:var(--accent-ink)}
 
   /* chart */
-  .chart{display:flex;align-items:flex-end;gap:6px;height:150px}
+  .chart{display:flex;align-items:flex-end;gap:6px;flex:1;min-height:170px;margin-top:4px}
   .bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end;min-width:0}
-  .bar .fill{width:100%;max-width:26px;background:var(--accent);border-radius:6px 6px 3px 3px;min-height:3px;transition:height .5s ease;position:relative}
-  .bar.today .fill{box-shadow:0 0 0 2px var(--ink)}
+  /* The bar's real height is inline, so the figure is right even if the animation never runs;
+     the grow is a transform, which costs no layout and needs no second pass to kick off. */
+  .bar .fill{width:100%;max-width:30px;background:linear-gradient(180deg,var(--accent),color-mix(in oklch,var(--accent) 68%,transparent));border-radius:7px 7px 3px 3px;min-height:3px;
+    transform-origin:bottom;animation:grow .8s cubic-bezier(.22,.75,.24,1) both}
+  @keyframes grow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+  /* today is marked on the label, not the bar: a ring on the bar would be squashed by scaleY */
+  .bar.today .fill{background:var(--accent)}
+  .bar.today .d{color:var(--accent);font-weight:600}
   .bar .d{font-size:10px;color:var(--muted);white-space:nowrap}
   .bar .mv{font-size:10px;color:var(--muted);opacity:0;transition:.15s}
   .bar:hover .mv{opacity:1}
-  .chart-empty{color:var(--muted);font-size:13.5px;text-align:center;padding:40px 0}
+  .chart-empty{color:var(--muted);font-size:13.5px;text-align:center;padding:52px 0;flex:1;display:flex;align-items:center;justify-content:center}
 
-  /* personalized items */
-  .items{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-  .item{background:var(--cream2);border-radius:14px;padding:14px}
-  .item .il{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
-  .item .iv{font-size:15px;font-weight:600;margin-top:8px;display:flex;align-items:center;gap:8px}
-  .swatch{width:22px;height:22px;border-radius:7px;border:1px solid rgba(0,0,0,.15);flex:none}
+  /* ---- heat ribbon: 90 days, one square a day, weeks running across ---- */
+  .ribbon-scroll{overflow-x:auto;padding-bottom:4px}
+  .ribbon{display:grid;grid-template-rows:repeat(7,1fr);grid-auto-flow:column;grid-auto-columns:minmax(11px,1fr);gap:3px;min-width:340px}
+  .rc{aspect-ratio:1;border-radius:3px;background:var(--surface-2);opacity:0;transition:opacity .4s}
+  .rc.in{opacity:1}
+  .rc.pad{background:transparent}
 
-  /* profile editor */
-  .prof{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end}
-  .prof .fld{flex:1;min-width:180px}
-  .prof label{display:block;font-size:12px;color:var(--muted);margin:0 2px 6px}
-  .prof input{width:100%;border:1px solid rgba(0,0,0,.14);background:#fff;border-radius:11px;padding:11px 12px;font-size:14px;color:var(--ink);outline:none}
-  .prof input:focus{border-color:var(--accent)}
-  .avs{display:flex;flex-wrap:wrap;gap:6px}
-  .av{width:38px;height:38px;border-radius:11px;border:1px solid rgba(0,0,0,.12);background:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}
-  .av.sel{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
-  .save{height:44px;padding:0 22px;border:none;border-radius:12px;background:var(--accent);color:var(--accent-ink);font-size:14px;font-weight:700;cursor:pointer}
-  .save.saved{background:#2e7d46;color:#fff}
-
-  /* subjects */
-  .subj-add{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
-  .subj-add input{flex:1;min-width:150px;border:1px solid rgba(0,0,0,.14);background:#fff;border-radius:11px;padding:11px 13px;font-size:14px;color:var(--ink);outline:none}
-  .subj-add input:focus{border-color:var(--accent)}
-  .color-pick{display:flex;gap:5px}
-  .color-pick button{width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
-  .color-pick button.on{border-color:var(--ink)}
-  .subj-list{display:flex;flex-direction:column;gap:8px}
-  .subj-row{display:flex;align-items:center;gap:11px;background:var(--cream2);border-radius:12px;padding:12px 14px}
-  .subj-row .cdot{width:12px;height:12px;border-radius:50%;flex:none}
-  .subj-row .snm{flex:1;font-size:14.5px;font-weight:600}
-  .subj-row .stime{font-size:15px;color:var(--accent)}
-  .subj-row .del{border:none;background:none;color:#a89e8f;font-size:18px;cursor:pointer;padding:0 4px;line-height:1}
-  .subj-row .del:hover{color:var(--danger)}
-  .subj-empty{color:var(--muted);font-size:13.5px;text-align:center;padding:12px 0}
-  /* calendar */
-  .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-  .cal-head .mlabel{font-size:15px;font-weight:600;color:var(--ink)}
+  /* ---- calendar ---- */
+  .cal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+  .cal-head .mlabel{font-size:15.5px;font-weight:600;color:var(--ink)}
   .cal-nav{display:flex;gap:6px}
-  .cal-nav button{width:32px;height:32px;border-radius:9px;border:1px solid rgba(0,0,0,.12);background:var(--cream2);cursor:pointer;font-size:16px;color:var(--ink);line-height:1}
-  .cal-nav button:hover{background:#e7dfd1}
+  .cal-nav button{width:34px;height:34px;border-radius:11px;border:1px solid var(--hair);background:var(--surface-2);cursor:pointer;font-size:16px;color:var(--ink);line-height:1;font-family:inherit}
+  .cal-nav button:hover{border-color:var(--accent)}
   .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
   .cal-dow{font-size:10.5px;color:var(--muted);text-align:center;text-transform:uppercase;letter-spacing:.04em;padding-bottom:2px}
-  .cal-cell{aspect-ratio:1;border-radius:10px;background:var(--cream2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;position:relative;border:1.5px solid transparent}
+  html[lang="fa"] .cal-dow{text-transform:none;letter-spacing:normal}
+  .cal-cell{aspect-ratio:1;border-radius:11px;background:var(--surface-2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:1.5px solid transparent;transition:transform .18s}
   .cal-cell.empty{background:transparent}
   .cal-cell.has{cursor:pointer}
-  .cal-cell.has:hover{filter:brightness(1.04)}
+  .cal-cell.has:hover{transform:translateY(-2px)}
   .cal-cell.today{border-color:var(--accent)}
-  .cal-cell.sel{box-shadow:0 0 0 2px var(--ink)}
+  .cal-cell.sel{box-shadow:0 0 0 2px var(--hair)}
   .cal-cell .dn{font-size:12px;color:var(--ink)}
-  .cal-cell.dim .dn{color:#b9b1a4}
+  .cal-cell.dim .dn{color:var(--muted)}
   .cal-cell .cm{font-size:9px;color:var(--accent-ink);font-family:'DM Mono',monospace;font-weight:500;white-space:nowrap;max-width:100%}
   /* "۴۵ دقیقه" is far longer than "45m", and the cell is a seventh of the grid. */
   html[lang="fa"] .cal-cell .cm{font-size:7.5px;letter-spacing:-.02em}
-  .cal-day-detail{margin-top:16px;background:var(--cream2);border-radius:14px;padding:16px}
-  .cal-day-detail h3{margin:0 0 10px;font-size:14px}
-  .cal-day-detail .topic{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;padding:7px 0;border-top:1px solid rgba(0,0,0,.06)}
+  .cal-day-detail{margin-top:16px;background:var(--surface-2);border-radius:15px;padding:16px}
+  .cal-day-detail h3{margin:0 0 10px;font-size:14px;color:var(--ink)}
+  .cal-day-detail .topic{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;padding:8px 0;border-top:1px solid var(--line);color:var(--ink)}
   .cal-day-detail .topic:first-of-type{border-top:none}
   .cal-day-detail .topic .b{color:var(--accent)}
   .cal-day-detail .topic .tn{flex:1;min-width:0;overflow-wrap:anywhere}
   .cal-day-detail .topic .tm{flex:none;color:var(--accent);font-size:13px}
   .cal-day-detail .none{color:var(--muted);font-size:13px}
+
+  /* ---- subjects ---- */
+  .subj-add{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .subj-add input{flex:1;min-width:150px;border:1px solid var(--hair);background:var(--field);border-radius:12px;padding:12px 14px;font-size:14px;font-family:inherit;color:var(--ink);outline:none}
+  .subj-add input:focus{border-color:var(--accent)}
+  .color-pick{display:flex;gap:5px}
+  .color-pick button{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
+  .color-pick button.on{border-color:var(--ink)}
+  .subj-list{display:flex;flex-direction:column;gap:8px}
+  .subj-row{display:flex;align-items:center;gap:11px;background:var(--surface-2);border-radius:13px;padding:12px 14px}
+  .subj-row .cdot{width:12px;height:12px;border-radius:50%;flex:none}
+  .subj-row .snm{flex:1;min-width:0;font-size:14.5px;font-weight:600;overflow-wrap:anywhere;color:var(--ink)}
+  .subj-row .stime{font-size:15px;color:var(--accent);flex:none}
+  .subj-row .del{border:none;background:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px;line-height:1;font-family:inherit}
+  .subj-row .del:hover{color:var(--danger)}
+  html.glass .subj-row .del:hover{color:#ff7a6a}
+  .subj-empty{color:var(--muted);font-size:13.5px;text-align:center;padding:14px 0}
+
+  /* ---- setup + profile, side by side ---- */
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:clamp(16px,2vw,22px);align-items:start}
+  .items{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+  .item{background:var(--surface-2);border-radius:14px;padding:14px}
+  .item .il{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  html[lang="fa"] .item .il{text-transform:none;letter-spacing:normal}
+  .item .iv{font-size:14.5px;font-weight:600;margin-top:8px;display:flex;align-items:center;gap:8px;color:var(--ink);overflow-wrap:anywhere}
+  .swatch{width:22px;height:22px;border-radius:7px;border:1px solid var(--hair);flex:none}
+  .prof label{display:block;font-size:12px;color:var(--muted);margin:0 2px 6px}
+  .prof input{width:100%;border:1px solid var(--hair);background:var(--field);border-radius:12px;padding:12px 14px;font-size:14px;font-family:inherit;color:var(--ink);outline:none}
+  .prof input:focus{border-color:var(--accent)}
+  .avs{display:flex;flex-wrap:wrap;gap:6px}
+  .av{width:38px;height:38px;border-radius:12px;border:1px solid var(--hair);background:var(--field);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+  .av.sel{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+  .save{height:46px;padding:0 24px;border:none;border-radius:13px;background:var(--accent);color:var(--accent-ink);font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:16px}
+  .save.saved{background:#2e7d46;color:#fff}
+  ::placeholder{color:var(--muted)}
+
   .loading{color:rgba(255,255,255,.8);text-align:center;padding:80px 0;font-size:15px}
 
-  /* ---- responsive: phones ---- */
+  /* ---- motion ----
+     Staggered cascade on entry. No library: an IntersectionObserver adds .in and the index
+     each element carries turns into its delay. */
+  .reveal{opacity:0;transform:translateY(18px);transition:opacity .65s ease,transform .65s cubic-bezier(.22,.75,.24,1);transition-delay:calc(var(--i,0)*45ms)}
+  .reveal.in{opacity:1;transform:none}
+
+  /* ---- responsive ---- */
+  @media(max-width:900px){
+    .hero{grid-template-columns:1fr;justify-items:start;gap:26px}
+    .gauge{justify-self:center}
+    .bento{grid-template-columns:repeat(6,1fr)}
+    .b-chart{grid-column:span 6;grid-row:span 1}
+    .b-stat{grid-column:span 3}
+    .duo{grid-template-columns:1fr}
+  }
   @media(max-width:560px){
-    .wrap{padding:calc(16px + env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
-    header{gap:12px}
-    .avatar{width:44px;height:44px;font-size:22px}
-    .who .nm{font-size:18px}
+    .wrap{padding:calc(16px + env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) calc(34px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
+    .avatar{width:44px;height:44px;font-size:22px;border-radius:14px}
+    .who .nm{font-size:17px}
     .who .em{font-size:12px}
-    .hbtn{height:38px;padding:0 12px;font-size:13px}
-    .grid{grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
-    .stat .v{font-size:28px}
-    .section{padding:18px 16px 16px;border-radius:18px}
-    .prof .fld{min-width:140px}
+    .nbtn{height:38px;padding:0 13px;font-size:13px}
+    .bento{grid-template-columns:repeat(2,1fr)}
+    .b-chart{grid-column:span 2}
+    .b-stat{grid-column:span 1;min-height:100px}
+    .sec{border-radius:18px}
     .cal-cell .dn{font-size:11px}
     .cal-cell .cm{font-size:8px}
   }
+  @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
 </head>
 <body>
+<div id="veil"></div>
 <script src="/theme.js"></script>
 <script src="/i18n.js"></script>
-<div class="wrap" id="wrap">
+<div class="wrap">
   <div class="loading" id="loading" data-i18n="loading_dash">Loading your dashboard…</div>
   <div id="content" style="display:none">
-    <header>
+
+    <nav>
       <div class="who">
         <div class="avatar" id="hAvatar">🦊</div>
-        <div>
+        <div style="min-width:0">
           <div class="nm" id="hName">—</div>
           <div class="em" id="hEmail">—</div>
         </div>
       </div>
-      <div class="hbtns">
-        <a class="hbtn" href="/">⏱ <span data-i18n="timer">Timer</span></a>
-        <a class="hbtn" href="/rooms">👥 <span data-i18n="rooms">Rooms</span></a>
-        <button class="hbtn" id="langBtn">🌐 <span id="langLabel">English</span></button>
-        <button class="hbtn" id="logout" data-i18n="sign_out">Sign out</button>
+      <div class="navbtns">
+        <a class="nbtn" href="/">⏱ <span data-i18n="timer">Timer</span></a>
+        <a class="nbtn" href="/rooms">👥 <span data-i18n="rooms">Rooms</span></a>
+        <button class="nbtn" id="langBtn">🌐 <span id="langLabel">English</span></button>
+        <button class="nbtn" id="logout" data-i18n="sign_out">Sign out</button>
       </div>
-    </header>
+    </nav>
 
-    <div class="grid" id="statGrid"></div>
-
-    <div class="section">
-      <h2><span data-i18n="subjects">Subjects</span> <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)" data-i18n="subjects_sub">· focus time today</span></h2>
-      <div class="subj-add">
-        <input type="text" id="subjName" data-i18n-ph="subject_ph" placeholder="Add a subject (e.g. Calculus)" maxlength="40">
-        <div class="color-pick" id="colorPick"></div>
-        <button class="save" id="addSubj" data-i18n="add">Add</button>
+    <section class="hero">
+      <div class="reveal" style="--i:0">
+        <h1>
+          <span class="ln"><span class="chip" id="heroChip">🦊</span><span id="heroGreet"></span></span>
+          <span class="ln" id="heroToday"></span>
+        </h1>
+        <p class="sub" id="heroSub"></p>
       </div>
-      <div class="subj-list" id="subjList"></div>
+      <div class="gauge reveal" style="--i:2">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="trk" cx="60" cy="60" r="52"></circle>
+          <circle class="fil" id="gaugeFill" cx="60" cy="60" r="52"></circle>
+        </svg>
+        <div class="mid">
+          <div class="gv mono" id="gaugeVal">—</div>
+          <div class="gl" id="gaugeLbl"></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="bento" id="bento">
+      <div class="card b-chart reveal" style="--i:0">
+        <h2 data-i18n="last14">Last 14 days · focus minutes</h2>
+        <div id="chart"></div>
+      </div>
+      <div class="card b-stat hl reveal" style="--i:1"><div class="k" data-i18n="streak">🔥 Streak</div><div class="v mono" id="sStreak">—</div></div>
+      <div class="card b-stat reveal" style="--i:2"><div class="k" data-i18n="sessions">Sessions</div><div class="v mono" id="sSessions">—</div></div>
+      <div class="card b-stat reveal" style="--i:3"><div class="k" data-i18n="best_day">Best day</div><div class="v mono" id="sBest">—</div></div>
+      <div class="card b-stat reveal" style="--i:4"><div class="k" data-i18n="active_days">Active days</div><div class="v mono" id="sActive">—</div></div>
+      <div class="card b-stat reveal" style="--i:5"><div class="k" data-i18n="total_focus">Total focus</div><div class="v mono" id="sTotal">—</div></div>
     </div>
 
-    <div class="section">
-      <h2 data-i18n="last14">Last 14 days · focus minutes</h2>
-      <div id="chart"></div>
-    </div>
+    <section class="card sec reveal" style="--i:0">
+      <h2 data-i18n="ribbon">Last 90 days</h2>
+      <div class="ribbon-scroll"><div class="ribbon" id="ribbon"></div></div>
+    </section>
 
-    <div class="section">
+    <section class="card sec reveal" style="--i:1">
       <h2 data-i18n="calendar">Study calendar</h2>
       <div class="cal-head">
         <div class="mlabel" id="calLabel">—</div>
@@ -186,32 +312,41 @@
       </div>
       <div class="cal-grid" id="calGrid"></div>
       <div class="cal-day-detail" id="calDetail"><div class="none" data-i18n="pick_day">Pick a day to see what you studied.</div></div>
-    </div>
+    </section>
 
-    <div class="section">
-      <h2 data-i18n="setup">Your personalized setup</h2>
-      <div class="items" id="items"></div>
-    </div>
+    <section class="card sec reveal" style="--i:2">
+      <h2><span data-i18n="subjects">Subjects</span> <span class="soft" data-i18n="subjects_sub">· focus time today</span></h2>
+      <div class="subj-add">
+        <input type="text" id="subjName" data-i18n-ph="subject_ph" placeholder="Add a subject (e.g. Calculus)" maxlength="40">
+        <div class="color-pick" id="colorPick"></div>
+        <button class="save" id="addSubj" style="margin-top:0" data-i18n="add">Add</button>
+      </div>
+      <div class="subj-list" id="subjList"></div>
+    </section>
 
-    <div class="section">
-      <h2 data-i18n="profile">Profile</h2>
-      <div class="prof">
-        <div class="fld">
-          <label for="pName" data-i18n="display_name">Display name</label>
-          <input id="pName" type="text" maxlength="60" data-i18n-ph="your_name" placeholder="Your name">
-          <div style="margin-top:12px">
-            <label data-i18n="avatar">Avatar</label>
-            <div class="avs" id="avs"></div>
-          </div>
+    <div class="duo">
+      <section class="card sec reveal" style="--i:0">
+        <h2 data-i18n="setup">Your personalized setup</h2>
+        <div class="items" id="items"></div>
+      </section>
+      <section class="card sec reveal prof" style="--i:1">
+        <h2 data-i18n="profile">Profile</h2>
+        <label for="pName" data-i18n="display_name">Display name</label>
+        <input id="pName" type="text" maxlength="60" data-i18n-ph="your_name" placeholder="Your name">
+        <div style="margin-top:14px">
+          <label data-i18n="avatar">Avatar</label>
+          <div class="avs" id="avs"></div>
         </div>
         <button class="save" id="saveProfile" data-i18n="save">Save</button>
-      </div>
+      </section>
     </div>
+
   </div>
 </div>
 
 <script>
 (function(){
+  "use strict";
   const $=s=>document.querySelector(s);
   const BGS={
     warm:"linear-gradient(180deg,#887326EB,#382C1F,#1F2838),#16303a",
@@ -234,12 +369,54 @@
   const durS=s=>I.durSecs(s), durM=m=>I.durMins(m);
   const PROG={bar:"prog_bar",rabbit:"prog_rabbit",rocket:"prog_rocket",runner:"prog_runner"};
   const AVATARS=["🦊","🐱","🐼","🦉","🐧","🐢","🐝","🌸","🚀","⭐","🔥","🌙"];
+  const REDUCED=window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)").matches;
   let selAvatar="🦊";
 
   $("#langLabel").textContent=t("lang_switch");
   $("#langBtn").onclick=()=>I.toggle();
 
   function weekday(iso){ return new Date(iso+"T00:00").toLocaleDateString(I.locale(),{weekday:"short"}).slice(0,2); }
+  function iso(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+  const todayISO=iso(new Date());
+
+  /* Fills a "%s" template with a real DOM node instead of a string, so a value the user typed
+     (their display name) is never parsed as markup. */
+  function fill(key,node){
+    const parts=t(key).split("%s"), f=document.createDocumentFragment();
+    f.appendChild(document.createTextNode(parts[0]||""));
+    f.appendChild(node);
+    f.appendChild(document.createTextNode(parts[1]||""));
+    return f;
+  }
+  function span(cls,text){ const s=document.createElement("span"); s.className=cls; s.textContent=text; return s; }
+  /* Persian writes the sign on the other side of the figure. */
+  function pctLabel(n){ return I.lang==="fa" ? "٪"+N(n) : N(n)+"%"; }
+
+  /* Numbers count up to their value. The final figure is written first and the animation only
+     paints over it: requestAnimationFrame does not run in a hidden tab, and a stat that reads
+     0 because a frame never arrived would be wrong rather than merely unanimated.
+     fmt keeps Persian digits and duration units correct at every frame, because it is the same
+     formatter the resting value uses. */
+  function countUp(el,to,fmt){
+    el.textContent=fmt(to);
+    if(REDUCED||!(to>0)) return;
+    const start=performance.now(), dur=900;
+    requestAnimationFrame(function step(now){
+      const p=Math.min(1,(now-start)/dur), e=1-Math.pow(1-p,3);
+      el.textContent=fmt(Math.round(to*e));
+      if(p<1) requestAnimationFrame(step);
+    });
+  }
+
+  /* One observer for every .reveal on the page; elements added later just get observed too. */
+  const obs=("IntersectionObserver" in window)
+    ? new IntersectionObserver(function(es){ es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add("in"); obs.unobserve(e.target); } }); },{rootMargin:"0px 0px -8% 0px"})
+    : null;
+  function watch(root){
+    (root||document).querySelectorAll(".reveal:not(.in),.rc:not(.in)").forEach(function(el){
+      if(obs) obs.observe(el); else el.classList.add("in");
+    });
+  }
 
   fetch("/api/me",{credentials:"same-origin"}).then(r=>r.json()).then(render).catch(()=>{
     // drop the key first so a later i18n pass can't paint "Loading…" back over the error
@@ -252,12 +429,14 @@
     const u=j.user, s=j.settings||{}, st=j.stats||{};
     $("#loading").style.display="none"; $("#content").style.display="block";
 
-    // header + profile
-    $("#hAvatar").textContent=u.avatar||"🦊";
-    $("#hName").textContent=u.name||u.email.split("@")[0];
+    // ---- identity
+    const av=u.avatar||"🦊", nm=u.name||u.email.split("@")[0];
+    $("#hAvatar").textContent=av;
+    $("#heroChip").textContent=av;
+    $("#hName").textContent=nm;
     $("#hEmail").textContent=u.email;
     $("#pName").value=u.name||"";
-    selAvatar=u.avatar||"🦊";
+    selAvatar=av;
     const avs=$("#avs"); avs.innerHTML="";
     (AVATARS.includes(selAvatar)?AVATARS:[selAvatar,...AVATARS]).forEach(a=>{
       const b=document.createElement("button"); b.className="av"+(a===selAvatar?" sel":""); b.textContent=a; b.type="button";
@@ -265,10 +444,31 @@
       avs.appendChild(b);
     });
 
-    // chart
+    // ---- hero
+    const totalMin=st.totalMinutes||0, bestMin=st.bestMinutes||0, todayMin=(st.today&&st.today.minutes)||0;
+    $("#heroGreet").appendChild(fill("greet",span("nmark",nm)));
+    // today's focus, not the running total -- the all-time figure has its own tile below
+    $("#heroToday").appendChild(fill("hero_today",span("hl",durM(todayMin))));
+
+    // ---- gauge: today measured against the best day so far. It shows the share rather than
+    // repeating the duration the headline just gave, so the two say different things.
+    const pct=bestMin>0?Math.max(0,Math.min(1,todayMin/bestMin)):(todayMin>0?1:0);
+    $("#gaugeVal").textContent=bestMin>0?pctLabel(Math.round(pct*100)):durM(todayMin);
+    $("#gaugeLbl").textContent=bestMin>0?t("vs_best"):t("today");
+    // the circle is static markup, already styled at its empty value, so assigning here
+    // transitions on its own -- no animation frame needed to land on the right number
+    $("#gaugeFill").style.strokeDashoffset=String(326.7*(1-pct));
+
+    // ---- stat tiles (the grid the old dashboard declared but never filled)
+    countUp($("#sStreak"),st.streak||0,v=>N(v)+t(v===1?"day":"days"));
+    countUp($("#sSessions"),st.totalSessions||0,N);
+    countUp($("#sBest"),bestMin,durM);
+    countUp($("#sActive"),st.activeDays||0,v=>N(v)+t(v===1?"day":"days"));
+    countUp($("#sTotal"),totalMin,durM);
+
+    // ---- chart
     const hist=st.history||[];
     const max=Math.max(1,...hist.map(d=>d.minutes));
-    const todayISO=new Date().toISOString().slice(0,10);
     if(hist.some(d=>d.minutes>0)){
       $("#chart").className="chart";
       $("#chart").innerHTML=hist.map(d=>{
@@ -281,7 +481,7 @@
       $("#chart").textContent=t("chart_empty");
     }
 
-    // personalized items
+    // ---- personalized setup
     const cfg=s.cfg||{}, prefs=s.prefs||{};
     const bgId = s.bg && s.bg.type==="image" ? "image" : (s.bg&&s.bg.value)||"warm";
     const bgSwatch = bgId==="image" ? '<span class="swatch" style="background:#333"></span>'+t("custom_image")
@@ -290,6 +490,7 @@
     const dur=(v,d)=>N(Number.isFinite(Number(v))&&Number(v)>0?Number(v):d);
     const items=[
       {l:t("background"), v:bgSwatch},
+      {l:t("appearance"), v:t(prefs.glass?"ap_glass":"ap_classic")},
       {l:t("language"), v:(prefs.lang==="fa"?"فارسی":"English")},
       {l:t("focus_length"), v:dur(cfg.focusMin,25)+" "+t("min")},
       {l:t("breaks"), v:dur(cfg.shortMin,5)+" / "+dur(cfg.longMin,15)+" "+t("min")},
@@ -297,8 +498,11 @@
       {l:t("end_chime"), v:t(prefs.chime===false?"off":"on")}
     ];
     $("#items").innerHTML=items.map(i=>'<div class="item"><div class="il">'+i.l+'</div><div class="iv">'+i.v+'</div></div>').join("");
+
     loadCalendar(ymNow());
+    loadRibbon();
     renderSubjects(j.subjects||[]);
+    watch();
   }
 
   $("#saveProfile").onclick=async ()=>{
@@ -307,7 +511,8 @@
       const r=await fetch("/api/profile",{method:"PATCH",credentials:"same-origin",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({name:$("#pName").value.trim(),avatar:selAvatar})});
       const j=await r.json();
-      if(j&&j.user){ $("#hAvatar").textContent=j.user.avatar; $("#hName").textContent=j.user.name||j.user.email.split("@")[0];
+      if(j&&j.user){ $("#hAvatar").textContent=j.user.avatar; $("#heroChip").textContent=j.user.avatar;
+        $("#hName").textContent=j.user.name||j.user.email.split("@")[0];
         btn.textContent=t("saved"); btn.classList.add("saved"); setTimeout(()=>{btn.textContent=t("save");btn.classList.remove("saved");},1600);
       }
     }catch(e){ btn.textContent=t("error"); setTimeout(()=>btn.textContent=t("save"),1600); }
@@ -318,41 +523,49 @@
     location.href="/login";
   };
 
+  /* ---------- month data ----------
+     Shared by the calendar and the 90-day ribbon, so the month they both want is fetched once. */
+  var monthCache={};
+  function fetchMonth(ym){
+    if(monthCache[ym]) return Promise.resolve(monthCache[ym]);
+    return fetch('/api/calendar?month='+ym,{credentials:'same-origin'})
+      .then(function(r){return r.ok?r.json():{days:[]};})
+      .then(function(j){ var m={}; (j.days||[]).forEach(function(d){m[d.day]=d;}); monthCache[ym]=m; return m; })
+      .catch(function(){ return {}; });
+  }
+
   /* ---------- study calendar ---------- */
   var calMonth=null, calData={}, calSel=null;
   function ymNow(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
   function shiftMonth(ym,delta){ var p=(ym||ymNow()).split('-'); var d=new Date(+p[0],+p[1]-1+delta,1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
   function loadCalendar(month){ calMonth=month;
-    fetch('/api/calendar?month='+month,{credentials:'same-origin'}).then(function(r){return r.ok?r.json():{days:[]};}).then(function(j){
-      calData={}; (j.days||[]).forEach(function(d){calData[d.day]=d;}); renderCalendar();
-    }).catch(function(){});
+    fetchMonth(month).then(function(m){ calData=m; renderCalendar(); });
   }
   function renderCalendar(){
     var p=calMonth.split('-'), y=+p[0], m=+p[1];
     $("#calLabel").textContent=new Date(y,m-1,1).toLocaleDateString(I.locale(),{month:'long',year:'numeric'});
     var first=new Date(y,m-1,1).getDay(), dim=new Date(y,m,0).getDate();
     var maxMin=1; Object.keys(calData).forEach(function(k){maxMin=Math.max(maxMin,calData[k].minutes);});
-    var todayISO=new Date().toISOString().slice(0,10);
     var g=$("#calGrid"); g.innerHTML='';
     t('dow').forEach(function(d){var e=document.createElement('div');e.className='cal-dow';e.textContent=d;g.appendChild(e);});
     for(var i=0;i<first;i++){var e=document.createElement('div');e.className='cal-cell empty';g.appendChild(e);}
     for(var day=1;day<=dim;day++){
-      var iso=y+'-'+String(m).padStart(2,'0')+'-'+String(day).padStart(2,'0'), cell=calData[iso];
+      var dISO=y+'-'+String(m).padStart(2,'0')+'-'+String(day).padStart(2,'0'), cell=calData[dISO];
       var el=document.createElement('div');
-      el.className='cal-cell'+(cell?' has':' dim')+(iso===todayISO?' today':'')+(iso===calSel?' sel':'');
-      el.dataset.iso=iso;
-      if(cell){var pct=Math.round(cell.minutes/maxMin*70)+12; el.style.background='color-mix(in oklch, var(--accent) '+pct+'%, var(--cream2))';}
+      el.className='cal-cell'+(cell?' has':' dim')+(dISO===todayISO?' today':'')+(dISO===calSel?' sel':'');
+      el.dataset.iso=dISO;
+      if(cell){var pct=Math.round(cell.minutes/maxMin*70)+12; el.style.background='color-mix(in oklch, var(--accent) '+pct+'%, var(--surface-2))';}
       el.innerHTML='<span class="dn">'+N(day)+'</span>'+(cell?'<span class="cm">'+I.durCompact(cell.minutes)+'</span>':'');
-      if(cell) el.onclick=(function(x){return function(){selectDay(x);};})(iso);
+      if(cell) el.onclick=(function(x){return function(){selectDay(x);};})(dISO);
       g.appendChild(el);
     }
     if(calSel && calData[calSel]) selectDay(calSel);
   }
-  function selectDay(iso){
-    calSel=iso;
-    document.querySelectorAll('.cal-cell').forEach(function(c){c.classList.toggle('sel',c.dataset.iso===iso);});
-    var d=calData[iso], det=$("#calDetail");
-    var lbl=new Date(iso+'T00:00').toLocaleDateString(I.locale(),{weekday:'long',month:'long',day:'numeric'});
+  function selectDay(dISO){
+    calSel=dISO;
+    document.querySelectorAll('.cal-cell').forEach(function(c){c.classList.toggle('sel',c.dataset.iso===dISO);});
+    var d=calData[dISO], det=$("#calDetail");
+    var lbl=new Date(dISO+'T00:00').toLocaleDateString(I.locale(),{weekday:'long',month:'long',day:'numeric'});
     if(!d){det.innerHTML='';det.appendChild(Object.assign(document.createElement('div'),{className:'none',textContent:I.tf('nothing_on',lbl)}));return;}
     det.innerHTML='<h3>'+lbl+' · '+durM(d.minutes)+' · '+N(d.sessions)+' '+t(d.sessions===1?'session_one':'session_many')+'</h3>';
     // One row per subject with its total for the day -- the server groups them, so a subject
@@ -362,14 +575,42 @@
         var row=document.createElement('div'); row.className='topic';
         var b=document.createElement('span'); b.className='b'; b.textContent='▸';
         var s=document.createElement('span'); s.className='tn'; s.textContent=tp.name||tp;
-        var m=document.createElement('span'); m.className='tm mono'; m.textContent=durS(tp.seconds);
-        row.appendChild(b); row.appendChild(s); row.appendChild(m); det.appendChild(row);
+        var mm=document.createElement('span'); mm.className='tm mono'; mm.textContent=durS(tp.seconds);
+        row.appendChild(b); row.appendChild(s); row.appendChild(mm); det.appendChild(row);
       });
     }
     else { det.appendChild(Object.assign(document.createElement('div'),{className:'none',textContent:t('no_notes')})); }
   }
   $("#calPrev").onclick=function(){ loadCalendar(shiftMonth(calMonth,-1)); };
   $("#calNext").onclick=function(){ loadCalendar(shiftMonth(calMonth,1)); };
+
+  /* ---------- 90-day heat ribbon ----------
+     Built from the same /api/calendar months the calendar uses -- current plus the two before
+     it -- so it costs two extra requests and no server change. Weeks run across, weekdays down. */
+  function loadRibbon(){
+    var now=new Date(), months=[ymNow(),shiftMonth(ymNow(),-1),shiftMonth(ymNow(),-2)];
+    Promise.all(months.map(fetchMonth)).then(function(maps){
+      var all={}; maps.forEach(function(m){ Object.keys(m).forEach(function(k){ all[k]=m[k]; }); });
+      var start=new Date(now); start.setDate(start.getDate()-89);
+      var maxMin=1; Object.keys(all).forEach(function(k){ maxMin=Math.max(maxMin,all[k].minutes); });
+      var g=$("#ribbon"); g.innerHTML='';
+      // pad to the weekday the window opens on, so each row is one weekday all the way across
+      for(var i=0;i<start.getDay();i++){ var pad=document.createElement('div'); pad.className='rc pad in'; g.appendChild(pad); }
+      for(var d=0;d<90;d++){
+        var day=new Date(start); day.setDate(start.getDate()+d);
+        var key=iso(day), cell=all[key];
+        var el=document.createElement('div'); el.className='rc';
+        el.style.transitionDelay=(d*7)+'ms';
+        if(cell&&cell.minutes>0){
+          var pct=Math.round(cell.minutes/maxMin*72)+16;
+          el.style.background='color-mix(in oklch, var(--accent) '+pct+'%, var(--surface-2))';
+          el.title=new Date(key+'T00:00').toLocaleDateString(I.locale(),{month:'short',day:'numeric'})+' · '+durM(cell.minutes);
+        }
+        g.appendChild(el);
+      }
+      watch();
+    });
+  }
 
   /* ---------- subjects ---------- */
   var SUBJ_COLORS=["#d9a24e","#5b8def","#3a9d5d","#c05fd6","#e0685a","#4bb3c4"];

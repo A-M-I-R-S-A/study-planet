@@ -321,6 +321,77 @@
      already has its own chip in the header there. */
   html:not(.native) #secStatusBar,html:not(.native) #dashBtn{display:none}
 
+  /* ---- appearance: Glass (Settings -> Appearance) ----
+     Opt-in and purely additive: without html.glass not one rule above is touched, so an
+     account that never picks it renders exactly as it always has.
+
+     The cream surfaces are token-driven, so redefining --cream/--cream2/--ink/--muted on the
+     shell repaints everything nested inside it in one go. What follows is only the handful of
+     colours written as literals -- black hairlines, #fff plates, the muted brown -- which no
+     token can reach and which would be invisible or wrong on a dark surface.
+
+     .music-panel is deliberately absent from the token block: it is `.panel` but not
+     `.panel.light`, and it uses --cream as its *text* colour, so inheriting the flip would
+     turn it dark-on-dark. It gets its own shell rule further down instead. */
+  html.glass .sheet,
+  html.glass .panel.light{
+    --cream:rgba(18,24,30,.72);
+    --cream2:rgba(255,255,255,.07);
+    --ink:#f1f5f8;
+    --muted:rgba(233,240,246,.58);
+    --line:rgba(255,255,255,.14);
+    background:var(--cream);
+    border:1px solid var(--line);
+    color:var(--ink);
+    backdrop-filter:blur(26px) saturate(1.5);
+    -webkit-backdrop-filter:blur(26px) saturate(1.5);
+    box-shadow:0 24px 64px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.1);
+  }
+  /* The sheet does the blurring, so the overlay drops its own: a backdrop-filter parent
+     becomes the backdrop root for its children, which would leave the sheet frosting a flat
+     tint instead of the app behind it. One blur pass, and the timer stays legible around the
+     sheet rather than being smeared twice. */
+  html.glass .overlay{background:rgba(6,12,18,.42);backdrop-filter:none;-webkit-backdrop-filter:none}
+  html.glass .music-panel{
+    background:rgba(18,24,30,.72);border:1px solid rgba(255,255,255,.14);
+    backdrop-filter:blur(26px) saturate(1.5);-webkit-backdrop-filter:blur(26px) saturate(1.5);
+    box-shadow:0 24px 64px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.1);
+  }
+
+  /* literals the token flip cannot reach */
+  html.glass .sheet ::placeholder,
+  html.glass .panel.light ::placeholder{color:rgba(233,240,246,.42)}
+  html.glass .stepper button{border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.1);color:var(--ink)}
+  html.glass .seg button.active{background:rgba(255,255,255,.18);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22)}
+  html.glass .upload label{border-color:rgba(255,255,255,.22)}
+  html.glass .switch .tr{background:rgba(255,255,255,.2)}
+  html.glass .reset-all{color:#ff7a6a}
+  html.glass .perm-row{background:color-mix(in oklch,var(--accent) 16%,transparent);border-color:color-mix(in oklch,var(--accent) 40%,transparent)}
+  html.glass .app-search,
+  html.glass .task-form input{border-color:rgba(255,255,255,.18)}
+  html.glass .app-row .ck{border-color:rgba(255,255,255,.26)}
+  html.glass .task .check{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.24)}
+  html.glass .task.done .txt{color:rgba(233,240,246,.38)}
+  html.glass .task .rm{color:rgba(233,240,246,.45)}
+  html.glass .empty-tasks{color:var(--muted)}
+  html.glass .tk::-webkit-scrollbar-thumb,
+  html.glass .cofocus::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18)}
+  html.glass .co.me{background:linear-gradient(90deg,color-mix(in oklch,var(--accent) 26%,transparent),rgba(255,255,255,.06))}
+  html.glass .co-av{background:rgba(255,255,255,.14)}
+  /* the ring that punches the live dot out of the avatar has to match the panel, not the row */
+  html.glass .co-av .co-live,
+  html.glass .co.me .co-av .co-live{border-color:rgba(18,24,30,.92)}
+  html.glass .co-bar{background:rgba(255,255,255,.12)}
+
+  /* No blur available (older WebView, or GPU compositing off): lean on opacity instead, so
+     the text keeps its contrast rather than sitting on a see-through card. */
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    html.glass .sheet,
+    html.glass .panel.light{--cream:rgba(18,24,30,.95)}
+    html.glass .music-panel{background:rgba(18,24,30,.95)}
+    html.glass .overlay{background:rgba(6,12,18,.6)}
+  }
+
   /* ---- responsive: tablets & phones ---- */
   @media(max-width:640px){
     .app{padding:calc(16px + env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
@@ -488,12 +559,18 @@
       <div class="sec-label" data-i18n="background">Background</div>
       <div class="swatches" id="swatches"></div>
       <div class="upload"><label for="bgUpload" id="uploadLabel">↑ Upload your own image</label><input type="file" id="bgUpload" accept="image/*"></div>
+      <div class="dim-row"><div class="top"><span data-i18n="blur">Blur</span><span class="r" id="blurVal">0%</span></div><input type="range" id="blur" min="0" max="100" value="0"></div>
       <div class="dim-row"><div class="top"><span data-i18n="dim">Dim</span><span class="r" id="dimVal">0%</span></div><input type="range" id="dim" min="0" max="85" value="0"></div>
     </div>
 
     <div class="sec">
       <div class="sec-label" data-i18n="button_color">Button color</div>
       <div class="accents" id="accents"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-label" data-i18n="appearance">Appearance</div>
+      <div class="seg"><button id="apSolid" class="active" data-i18n="ap_classic">Classic</button><button id="apGlass" data-i18n="ap_glass">Glass</button></div>
     </div>
 
     <div class="sec" id="secStatusBar">
@@ -590,9 +667,10 @@
       rain:"Rain",ocean:"Ocean",wind:"Wind",forest:"Forest",
       sessions_today:"sessions today",minutes_today:"minutes today",day_streak:"day streak",
       settings:"Settings",durations:"Durations (min)",dur_focus:"Focus",dur_short:"Short break",dur_long:"Long break",
-      background:"Background",upload:"↑ Upload your own image",dim:"Dim",button_color:"Button color",
+      background:"Background",upload:"↑ Upload your own image",blur:"Blur",dim:"Dim",button_color:"Button color",
       clock_format:"Clock format",h12:"12-hour",h24:"24-hour",
       status_bar:"Top of screen",sb_show:"System bar",sb_hide:"Fullscreen",
+      appearance:"Appearance",ap_classic:"Classic",ap_glass:"Glass",
       sb_note:"Fullscreen hides Android's bar — the clock moves into the app.",
       sound:"Sound",chime:"Chime when timer ends",done:"Done",reset_all:"Reset everything",
       add_task:"Add a task…",empty:"Nothing yet — add one above.",
@@ -626,9 +704,10 @@
       rain:"باران",ocean:"اقیانوس",wind:"باد",forest:"جنگل",
       sessions_today:"جلسه امروز",minutes_today:"دقیقه امروز",day_streak:"روز پیاپی",
       settings:"تنظیمات",durations:"مدت‌زمان (دقیقه)",dur_focus:"تمرکز",dur_short:"استراحت کوتاه",dur_long:"استراحت بلند",
-      background:"پس‌زمینه",upload:"↑ بارگذاری تصویر",dim:"تیرگی",button_color:"رنگ دکمه‌ها",
+      background:"پس‌زمینه",upload:"↑ بارگذاری تصویر",blur:"تاری",dim:"تیرگی",button_color:"رنگ دکمه‌ها",
       clock_format:"قالب ساعت",h12:"۱۲-ساعته",h24:"۲۴-ساعته",
       status_bar:"بالای صفحه",sb_show:"نوار سیستم",sb_hide:"تمام‌صفحه",
+      appearance:"ظاهر",ap_classic:"کلاسیک",ap_glass:"شیشه‌ای",
       sb_note:"در حالت تمام‌صفحه نوار اندروید پنهان می‌شود و ساعت به داخل برنامه می‌آید.",
       sound:"صدا",chime:"زنگ در پایان تایمر",done:"تمام",reset_all:"بازنشانی همه",
       add_task:"افزودن کار…",empty:"هنوز کاری نیست — یکی اضافه کنید.",
@@ -757,11 +836,19 @@
   const isFocus=()=>mode==="focus";
 
   /* ---- background ---- */
+  /* Acrylic blur on the background layer. A blurred fixed layer fades out at the viewport
+     edges, because the filter has nothing beyond them to sample -- scaling it up pushes that
+     soft margin off-screen. Kept in step with blurLayer() in theme.js. */
+  const BLUR_MAX_PX=32;
   function applyBg(){
     const el=$("#bg");
     if(bg.type==="image"){el.style.background="";el.style.backgroundImage="url("+bg.value+")";}
     else{el.style.background=BGS[bg.value]||BGS.warm;}
-    el.style.backgroundSize="cover";el.style.backgroundPosition="center";
+    // the `background` shorthand above resets these, so they go back on every time
+    el.style.backgroundSize="cover";el.style.backgroundPosition="center";el.style.backgroundRepeat="no-repeat";
+    const px=Math.max(0,Math.min(100,+bg.blur||0))/100*BLUR_MAX_PX;
+    el.style.filter=px?"blur("+px.toFixed(1)+"px)":"";
+    el.style.transform=px?"scale(1.12)":"";
     $("#scrim").style.opacity=(bg.dim/100).toString();
   }
   function buildSwatches(){
@@ -770,7 +857,7 @@
       const b=document.createElement("button");
       b.className="swatch"+(bg.type==="preset"&&bg.value===id?" active":"");
       b.style.background=BGS[id]; b.title=id;
-      b.onclick=()=>{bg={type:"preset",value:id,dim:bg.dim};store.set("ff_bg",bg);applyBg();buildSwatches();};
+      b.onclick=()=>{bg={type:"preset",value:id,dim:bg.dim,blur:bg.blur||0};store.set("ff_bg",bg);applyBg();buildSwatches();};
       w.appendChild(b);
     });
   }
@@ -787,7 +874,7 @@
         const cv=document.createElement("canvas");cv.width=cw;cv.height=ch;
         cv.getContext("2d").drawImage(img,0,0,cw,ch);
         let url;try{url=cv.toDataURL("image/jpeg",0.82);}catch(_){url=rd.result;}
-        const dim=bg.dim<25?40:bg.dim;bg={type:"image",value:url,dim};
+        const dim=bg.dim<25?40:bg.dim;bg={type:"image",value:url,dim,blur:bg.blur||0};
         const saved=store.set("ff_bg",bg);   // saved to localStorage (guest) and pushed to the account (signed in)
         if(!saved && !Cloud.enabled) alert(T.img_big);
         $("#dim").value=dim;$("#dimVal").textContent=L(dim)+"%";applyBg();buildSwatches();
@@ -798,6 +885,7 @@
     rd.readAsDataURL(f);
   });
   $("#dim").addEventListener("input",e=>{bg.dim=+e.target.value;$("#dimVal").textContent=L(bg.dim)+"%";store.set("ff_bg",bg);applyBg();});
+  $("#blur").addEventListener("input",e=>{bg.blur=+e.target.value;$("#blurVal").textContent=L(bg.blur)+"%";store.set("ff_bg",bg);applyBg();});
 
   function accent(){return ACCENTS[prefs.accent]||ACCENTS.amber;}
   function applyAccent(){const a=accent();document.documentElement.style.setProperty("--accent",isFocus()?a.focus:a.brk);}
@@ -1481,6 +1569,19 @@
   $("#sbShow").onclick=()=>setBarMode(false);
   $("#sbHide").onclick=()=>setBarMode(true);
 
+  /* Appearance. Same shape as the top-of-screen setting above: a flag in prefs, a class on
+     <html>, and the CSS does the rest. Undefined means Classic, so an account saved before
+     this existed keeps the look it had -- there is nothing to migrate. theme.js applies the
+     same class on the dashboard, rooms and login pages. */
+  function applyGlass(){document.documentElement.classList.toggle("glass",!!prefs.glass);}
+  function renderGlass(){
+    $("#apSolid").classList.toggle("active",!prefs.glass);
+    $("#apGlass").classList.toggle("active",!!prefs.glass);
+  }
+  const setGlass=v=>{prefs.glass=v;store.set("ff_prefs",prefs);renderGlass();applyGlass();};
+  $("#apSolid").onclick=()=>setGlass(false);
+  $("#apGlass").onclick=()=>setGlass(true);
+
   function renderFmt(){$("#fmt12").classList.toggle("active",!prefs.clock24);$("#fmt24").classList.toggle("active",prefs.clock24);}
   $("#fmt12").onclick=()=>{prefs.clock24=false;store.set("ff_prefs",prefs);renderFmt();renderClock();};
   $("#fmt24").onclick=()=>{prefs.clock24=true;store.set("ff_prefs",prefs);renderFmt();renderClock();};
@@ -1653,6 +1754,7 @@
     $("#langLabel").textContent=T.lang_switch;
     renderClock();renderTimer();renderQuote();renderTasks();renderStats();renderCfg();renderMusicNow();
     $("#dimVal").textContent=L(bg.dim)+"%";
+    $("#blurVal").textContent=L(bg.blur||0)+"%";
     initAccount();
   }
   $("#langBtn").onclick=()=>{lang=(lang==="en")?"fa":"en";prefs.lang=lang;store.set("ff_prefs",prefs);applyLang();};
@@ -1660,7 +1762,8 @@
   /* ---- init ---- */
   $("#chime").checked=prefs.chime;
   $("#dim").value=bg.dim;
-  applyAccent();applyBg();buildSwatches();buildAccents();renderFmt();renderBarMode();applyBars();renderDock();
+  $("#blur").value=bg.blur||0;   // absent on backgrounds saved before the setting existed
+  applyAccent();applyBg();buildSwatches();buildAccents();renderFmt();renderGlass();applyGlass();renderBarMode();applyBars();renderDock();
   applyLang();
   if(_cfgRepaired) store.set("ff_cfg",cfg);   // push the repaired durations back so the stored/cloud copy stops being broken
   // In the app, pick the session back up from the notification bar *before* deciding whether
