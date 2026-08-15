@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Focus</string>
-    <string name="title_activity_main">Focus</string>
+    <string name="app_name">Study Planet</string>
+    <string name="title_activity_main">Study Planet</string>
     <string name="package_name">com.focus.app</string>
     <string name="custom_url_scheme">com.focus.app</string>
 
@@ -37,6 +37,6 @@
     <string name="block_title">Stay focused</string>
     <string name="block_msg">%1$s is blocked until your session ends.</string>
     <string name="block_msg_generic">This app is blocked until your session ends.</string>
-    <string name="block_open">Back to Focus</string>
+    <string name="block_open">Back to Study Planet</string>
     <string name="block_home">Go to the home screen</string>
 </resources>

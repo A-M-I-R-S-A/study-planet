@@ -26,11 +26,12 @@
      The cosmos is built from four layers, cheapest first:
        1. body + .neb   — CSS gradients. No filters on big surfaces; the softness
                           is in the gradient stops, so nothing is rasterised twice.
-       2. #stars        — ONE canvas. Every star, every shooting star. Parallax is
-                          computed per star from its depth, so there is no stack
-                          of scrolling DOM layers.
-       3. .system       — the planet, its rings and the orbiting subjects. CSS 3D
-                          transforms only, which stay on the compositor.
+       2. #stars        — ONE canvas. Every star, dust mote, meteor and comet.
+                          Parallax is computed per particle from its depth, so there
+                          is no stack of scrolling DOM layers.
+       3. .planets      — the four academic fields as planets, page-wide and fixed.
+                          CSS gradients and composited transforms only. Hidden
+                          outright below 900px.
        4. content       — glass where it earns its keep, flat where it doesn't.
      =========================================================================== */
   :root{
@@ -71,10 +72,19 @@
 
   /* ============================ 1. deep space ============================ */
   /* Fixed, so a 4000px page doesn't stretch the gradient into bands. */
-  .cosmos{position:fixed;inset:0;z-index:-3;overflow:hidden;pointer-events:none;
+  .cosmos{position:fixed;inset:0;z-index:-4;overflow:hidden;pointer-events:none;
     background:
       radial-gradient(120% 80% at 50% -20%,#131a3d 0%,#0a0d22 38%,var(--void) 72%),
       var(--void)}
+  /* Always on, under the per-region clouds: the deep structure of the galaxy, so the
+     backdrop is never a flat dark field even between regions. */
+  .neb-base{position:absolute;inset:-20%;opacity:.9;
+    background:
+      radial-gradient(38% 26% at 12% 8%,rgba(70,110,220,.16),transparent 70%),
+      radial-gradient(34% 30% at 88% 16%,rgba(140,80,220,.14),transparent 72%),
+      radial-gradient(46% 22% at 62% 52%,rgba(40,90,170,.12),transparent 74%),
+      radial-gradient(30% 24% at 30% 84%,rgba(120,70,200,.13),transparent 72%),
+      radial-gradient(26% 18% at 78% 92%,rgba(30,140,170,.10),transparent 74%)}
   /* Regions of space. One per section; the observer lights the matching one, and the
      1.6s fade is what makes scrolling feel like crossing into somewhere else. */
   .neb{position:absolute;inset:-20%;opacity:0;transition:opacity 1.6s ease;will-change:opacity}
@@ -101,17 +111,27 @@
     background:
       radial-gradient(50% 40% at 50% 42%,rgba(150,80,240,.26),transparent 68%),
       radial-gradient(40% 32% at 82% 78%,rgba(240,150,90,.12),transparent 72%)}
-  /* Distant galaxies: two soft ellipses, tilted. Purely gradient, no filter. */
-  .galaxy{position:absolute;border-radius:50%;opacity:.5;
-    background:radial-gradient(closest-side,rgba(226,235,255,.5),rgba(150,130,255,.22) 42%,transparent 72%)}
-  .g1{width:340px;height:96px;top:16%;left:8%;transform:rotate(-24deg)}
-  .g2{width:220px;height:64px;top:64%;right:10%;transform:rotate(16deg)}
-  @media (max-width:720px){.g1{width:200px;height:60px}.g2{display:none}}
+  /* Distant galaxies. The core is a radial gradient; the arms are a conic gradient
+     masked down to a disc, which reads as a spiral without a single image or filter.
+     One very slow rotation each — 3 to 4 minutes a turn, so it is felt, not watched. */
+  .galaxy{position:absolute;border-radius:50%;pointer-events:none;
+    background:radial-gradient(closest-side,rgba(232,240,255,.55),rgba(150,130,255,.22) 40%,transparent 72%)}
+  .galaxy::before{content:"";position:absolute;inset:-10%;border-radius:50%;
+    background:conic-gradient(from 0deg,transparent 0deg,rgba(196,212,255,.20) 38deg,transparent 88deg,
+      transparent 178deg,rgba(196,212,255,.17) 216deg,transparent 268deg);
+    -webkit-mask:radial-gradient(closest-side,#000 18%,rgba(0,0,0,.55) 52%,transparent 78%);
+    mask:radial-gradient(closest-side,#000 18%,rgba(0,0,0,.55) 52%,transparent 78%);
+    animation:galspin var(--gs,200s) linear infinite}
+  @keyframes galspin{to{transform:rotate(360deg)}}
+  .g1{width:360px;height:104px;top:14%;left:6%;transform:rotate(-24deg);opacity:.5}
+  .g2{width:230px;height:70px;top:62%;right:8%;transform:rotate(16deg);opacity:.42;--gs:260s}
+  .g3{width:150px;height:150px;top:38%;left:64%;opacity:.22;--gs:320s}
+  @media (max-width:720px){.g1{width:200px;height:60px;opacity:.34}.g2,.g3{display:none}}
 
   /* width/height come from CSS, never from window.innerWidth — that measurement
      includes the scrollbar, and a fixed element sized to it juts past the content
      box and raises a horizontal scrollbar of its own. build() reads this box back. */
-  #stars{position:fixed;inset:0;width:100%;height:100%;z-index:-2;pointer-events:none;display:block}
+  #stars{position:fixed;inset:0;width:100%;height:100%;z-index:-3;pointer-events:none;display:block}
 
   /* A thin vignette keeps the corners quiet so text always wins. */
   .vignette{position:fixed;inset:0;z-index:-1;pointer-events:none;
@@ -149,106 +169,154 @@
   .langsw:hover{color:var(--ink);background:rgba(150,180,255,.18)}
   @media (max-width:860px){.nav .hide-sm{display:none}}
 
-  /* ============================ 3. the system ============================ */
-  .stage{position:relative;display:flex;align-items:center;justify-content:center;
-    perspective:1200px;perspective-origin:50% 50%}
-  .system{position:relative;width:min(100%,560px);aspect-ratio:1;transform-style:preserve-3d;
-    /* --mx/--my come from the pointer; 0 until JS says otherwise. */
-    transform:translate3d(calc(var(--mx,0)*-16px),calc(var(--my,0)*-12px),0)
-              rotateY(calc(var(--mx,0)*5deg)) rotateX(calc(var(--my,0)*-4deg));
-    transition:transform .5s cubic-bezier(.22,.61,.36,1)}
+  /* ================= 3. the four fields, as planets =================
+     Biology ≫ Mathematics > Humanities > Technical. The sizes are deliberately far
+     apart rather than evenly stepped, so the hierarchy is legible at a glance and the
+     four never read as one planet drawn at four scales. Each keeps the same art
+     direction but owns a palette, a band structure and a piece of furniture — a ring,
+     a satellite, a warm haze — so they are siblings, not copies.
 
-  /* volumetric glow — one soft disc behind everything */
-  .halo{position:absolute;left:50%;top:50%;width:120%;height:120%;transform:translate(-50%,-50%);
-    border-radius:50%;pointer-events:none;
-    background:radial-gradient(closest-side,rgba(243,198,125,.20),rgba(120,90,255,.16) 44%,transparent 72%);
-    animation:pulse 9s ease-in-out infinite}
-  @keyframes pulse{0%,100%{opacity:.75;transform:translate(-50%,-50%) scale(1)}
-                   50%{opacity:1;transform:translate(-50%,-50%) scale(1.06)}}
-
-  .planet{position:absolute;left:50%;top:50%;width:38%;height:38%;
-    transform:translate(-50%,-50%);border-radius:50%;overflow:hidden;
-    background:radial-gradient(circle at 33% 27%,
-      #fff3d8 0%,#f6cd8a 16%,#e5a05a 34%,#b96b3f 54%,#6d3a3f 74%,#2b1a3c 92%,#1b1230 100%);
-    box-shadow:
-      inset -22px -18px 54px rgba(4,6,18,.9),
-      inset 12px 10px 34px rgba(255,222,175,.16),
-      0 0 44px rgba(243,198,125,.30),
-      0 0 120px rgba(120,90,255,.24)}
+     The layer is fixed and page-wide: these are the environment the whole page sits
+     inside, not hero decoration. --sy (scroll) and --mx/--my (pointer) are written once
+     per frame on this one element; each planet derives its own drift from them through
+     --pd (depth) and --pm (pointer response), so the whole system costs four composited
+     transforms and no per-planet JS. Placement is intentionally uneven — different
+     sides, different depths, one always cropped by an edge — to keep it organic. */
+  .planets{position:fixed;inset:0;z-index:-2;overflow:hidden;pointer-events:none;
+    --sy:0;--mx:0;--my:0}
+  .pl{position:absolute;width:var(--size);height:var(--size);
+    transform:translate3d(calc(var(--mx) * var(--pm) * -1px),
+                          calc(var(--sy) * var(--pd) * -1px + var(--my) * var(--pm) * -.55px),0);
+    will-change:transform}
+  .pl-body{position:absolute;inset:0;border-radius:50%;overflow:hidden}
   /* Bands drift sideways to read as rotation. The layer is twice as wide and the
      pattern is periodic, so translating it exactly -50% loops seamlessly. */
-  .surface{position:absolute;top:0;left:0;width:200%;height:100%;opacity:.5;
-    background:repeating-linear-gradient(97deg,
-      rgba(255,255,255,.07) 0 5px,transparent 5px 13px,
-      rgba(60,24,30,.16) 13px 19px,transparent 19px 34px);
-    animation:drift 46s linear infinite}
+  .pl-surface{position:absolute;top:0;left:0;width:200%;height:100%;
+    animation:drift var(--spin,120s) linear infinite}
   @keyframes drift{to{transform:translateX(-50%)}}
-  /* Atmospheric rim: a ring of light just outside the disc, cyan on the lit side. */
-  .atmo{position:absolute;left:50%;top:50%;width:44%;height:44%;transform:translate(-50%,-50%);
-    border-radius:50%;pointer-events:none;
-    background:radial-gradient(closest-side,transparent 78%,rgba(120,215,255,.30) 87%,rgba(167,139,250,.16) 93%,transparent 100%)}
+  /* Atmospheric rim: a ring of light sitting just outside the disc. */
+  .pl-atmo{position:absolute;inset:-7%;border-radius:50%;pointer-events:none}
+  .pl-glow{position:absolute;inset:-26%;border-radius:50%;pointer-events:none;
+    animation:pulse var(--pulse,11s) ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}}
 
-  /* orbital rings — tilted circles, drawn above the planet at low opacity */
-  .ring{position:absolute;left:50%;top:50%;border-radius:50%;
-    border:1px solid rgba(170,200,255,.22);
-    transform:translate(-50%,-50%) rotateX(72deg) rotateZ(-14deg)}
-  .ring.r1{width:58%;height:58%;border-color:rgba(243,198,125,.30);
-    box-shadow:0 0 22px rgba(243,198,125,.14),inset 0 0 22px rgba(243,198,125,.08)}
-  .ring.r2{width:78%;height:78%;border-color:rgba(150,190,255,.20)}
-  .ring.r3{width:98%;height:98%;border-style:dashed;border-color:rgba(150,190,255,.13)}
+  /* Field name, set like an instrument reading rather than a caption. Sits on the
+     planet's outer side, away from the centred content column. */
+  .pl-tag{position:absolute;display:flex;align-items:center;gap:9px;
+    font-family:'DM Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.22em;
+    text-transform:uppercase;color:rgba(214,228,255,.5);white-space:nowrap}
+  .pl-tag::before{content:"";width:26px;height:1px;background:linear-gradient(90deg,transparent,rgba(180,205,255,.5))}
+  html[lang="fa"] .pl-tag{letter-spacing:normal;text-transform:none;font-family:'Vazirmatn',sans-serif;font-size:12px}
 
-  /* Orbiting subjects. Three nested elements per satellite:
-       .track  tilts the orbit into the screen
-       .spin   carries it round
-       .sat    undoes both, so the label stays upright and face-on
-     --f is where on the orbit it starts (0–1); it seeds both the static angle and
-     the negative animation-delay, so the reduced-motion layout matches the moving one. */
-  .track{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotateX(72deg) rotateZ(-14deg);
-    transform-style:preserve-3d;pointer-events:none}
-  .track.t2{width:78%;height:78%;--dur:38s}
-  .track.t3{width:98%;height:98%;--dur:56s}
-  /* Both endpoints are written out. With only a `to` frame the implicit `from` is the
-     element's own base transform — which is rotateZ(f·360deg) here, so each satellite
-     would sweep a different partial arc and drift out of step with its counter-rotation.
-     Phase belongs to animation-delay alone; the keyframes are always a full turn. */
-  .spin{position:absolute;inset:0;transform-style:preserve-3d;
-    transform:rotateZ(calc(var(--f) * 360deg));
-    animation:orbit var(--dur) linear infinite;
-    animation-delay:calc(var(--f) * var(--dur) * -1)}
-  @keyframes orbit{from{transform:rotateZ(0deg)}to{transform:rotateZ(360deg)}}
-  /* To face the screen, .sat has to invert everything above it, in reverse order:
-     the spin (−f·360°), then the track's roll (+14°), then its tilt (−72°). Leaving
-     the roll out leaves the label rotated about a near-vertical axis — a subtle
-     squeeze that reads as "slightly wrong" without ever looking obviously broken. */
-  .sat{position:absolute;top:0;left:50%;transform-style:preserve-3d;
-    transform:translate(-50%,-50%) rotateZ(calc(14deg - var(--f) * 360deg)) rotateX(-72deg);
-    animation:unorbit var(--dur) linear infinite;
-    animation-delay:calc(var(--f) * var(--dur) * -1)}
-  @keyframes unorbit{
-    from{transform:translate(-50%,-50%) rotateZ(14deg) rotateX(-72deg)}
-    to{transform:translate(-50%,-50%) rotateZ(-346deg) rotateX(-72deg)}}
-  /* The far half of the orbit is smaller and dimmer — that, not the tilt, is what
-     sells the depth, and it costs one more compositor animation. */
-  .sat-in{display:flex;align-items:center;gap:7px;padding:6px 12px 6px 8px;border-radius:99px;
-    border:1px solid rgba(170,200,255,.24);background:rgba(14,20,44,.72);
-    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-    font-size:12px;font-weight:600;white-space:nowrap;color:var(--ink);
-    box-shadow:0 4px 20px rgba(0,0,0,.4);
-    animation:depth var(--dur) ease-in-out infinite;
-    animation-delay:calc(var(--f) * var(--dur) * -1)}
-  @keyframes depth{
-    0%{opacity:.4;transform:scale(.8)}
-    50%{opacity:1;transform:scale(1.06)}
-    100%{opacity:.4;transform:scale(.8)}}
-  .sat-in i{width:7px;height:7px;border-radius:50%;flex:none;background:var(--sc);
-    box-shadow:0 0 8px 1px var(--sc)}
+  /* ---- Biology: the largest, and the only one cropped by the viewport edge.
+          Living colour — jade through deep sea — with soft organic mottling. ---- */
+  /* --pd values are tuned against the real page height so each planet gets a scroll
+     window of its own and the coverage never gaps: Biology owns the top, Mathematics
+     crosses the middle, and Humanities and Technical arrive together — on opposite
+     sides — for the last third. They are a composition setting, not a physical one. */
+  .pl-bio{--size:clamp(460px,44vw,780px);--pd:.44;--pm:26;top:2vh;inset-inline-end:-11%}
+  .pl-bio .pl-body{
+    background:radial-gradient(circle at 34% 27%,
+      #eafff6 0%,#96ecc6 12%,#45c79a 30%,#1e9273 50%,#0f5a55 70%,#0a2f45 88%,#07182c 100%);
+    box-shadow:
+      inset -34px -28px 78px rgba(3,10,20,.9),
+      inset 18px 15px 50px rgba(195,255,230,.17),
+      0 0 90px rgba(60,200,150,.26),0 0 230px rgba(40,150,180,.20)}
+  .pl-bio .pl-surface{opacity:.42;
+    background:
+      radial-gradient(ellipse 22% 9% at 24% 34%,rgba(8,60,50,.55),transparent 70%),
+      radial-gradient(ellipse 16% 7% at 61% 58%,rgba(8,60,50,.5),transparent 70%),
+      radial-gradient(ellipse 12% 5% at 82% 26%,rgba(10,70,60,.45),transparent 70%),
+      radial-gradient(ellipse 20% 8% at 42% 76%,rgba(6,50,44,.4),transparent 70%),
+      repeating-linear-gradient(94deg,rgba(255,255,255,.05) 0 7px,transparent 7px 26px)}
+  .pl-bio .pl-atmo{background:radial-gradient(closest-side,transparent 79%,
+    rgba(120,255,215,.30) 88%,rgba(80,200,255,.16) 94%,transparent 100%)}
+  .pl-bio .pl-glow{background:radial-gradient(closest-side,rgba(50,200,160,.20),rgba(40,120,200,.12) 46%,transparent 72%)}
+  .pl-bio .pl-tag{inset-inline-start:6%;bottom:11%}
+
+  /* ---- Mathematics: second largest, and the structured one — a crisp ring system
+          and fine latitude lines. Violet through indigo. ---- */
+  .pl-math{--size:clamp(250px,23vw,400px);--pd:.58;--pm:19;--spin:150s;top:126vh;inset-inline-start:-8%}
+  .pl-math .pl-body{
+    background:radial-gradient(circle at 36% 26%,
+      #f3efff 0%,#c2b0ff 14%,#8a72f5 34%,#5341b8 56%,#2d2168 78%,#150f33 100%);
+    box-shadow:
+      inset -26px -22px 60px rgba(3,6,20,.9),
+      inset 14px 12px 38px rgba(220,210,255,.16),
+      0 0 70px rgba(130,105,255,.24),0 0 180px rgba(90,70,220,.16)}
+  .pl-math .pl-surface{opacity:.5;
+    background:repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 1px,transparent 1px 15px),
+               repeating-linear-gradient(92deg,rgba(255,255,255,.06) 0 4px,transparent 4px 18px)}
+  .pl-math .pl-atmo{background:radial-gradient(closest-side,transparent 79%,
+    rgba(180,160,255,.28) 88%,rgba(120,140,255,.14) 94%,transparent 100%)}
+  .pl-math .pl-glow{background:radial-gradient(closest-side,rgba(130,100,255,.18),transparent 70%)}
+  /* The ring reads correctly at low opacity without half-splitting it around the disc. */
+  .pl-ring{position:absolute;left:50%;top:50%;border-radius:50%;pointer-events:none;
+    transform:translate(-50%,-50%) rotateX(74deg) rotateZ(-18deg)}
+  .pl-math .pl-ring.a{width:172%;height:172%;border:1.5px solid rgba(190,180,255,.30);
+    box-shadow:0 0 26px rgba(150,130,255,.16)}
+  .pl-math .pl-ring.b{width:200%;height:200%;border:1px dashed rgba(180,175,255,.18)}
+  .pl-math .pl-tag{inset-inline-start:78%;top:14%}
+
+  /* ---- Humanities: third, and the softest — warm amber into rose, wide hazy bands,
+          no hard furniture. ---- */
+  .pl-hum{--size:clamp(180px,16vw,280px);--pd:.52;--pm:14;--spin:170s;--pulse:14s;top:224vh;inset-inline-end:3%}
+  .pl-hum .pl-body{
+    background:radial-gradient(circle at 33% 26%,
+      #fff6e8 0%,#f8d3a2 14%,#e5a273 34%,#b96a55 56%,#6f3450 78%,#331a35 100%);
+    box-shadow:
+      inset -22px -18px 52px rgba(10,4,16,.88),
+      inset 12px 10px 34px rgba(255,230,200,.18),
+      0 0 64px rgba(240,170,110,.22),0 0 160px rgba(200,110,140,.14)}
+  .pl-hum .pl-surface{opacity:.4;
+    background:repeating-linear-gradient(99deg,
+      rgba(255,235,205,.10) 0 12px,transparent 12px 30px,
+      rgba(120,50,60,.14) 30px 44px,transparent 44px 68px)}
+  .pl-hum .pl-atmo{background:radial-gradient(closest-side,transparent 78%,
+    rgba(255,205,150,.26) 88%,rgba(230,140,160,.14) 95%,transparent 100%)}
+  .pl-hum .pl-glow{background:radial-gradient(closest-side,rgba(240,170,110,.17),transparent 70%)}
+  .pl-hum .pl-tag{inset-inline-end:76%;bottom:18%;flex-direction:row-reverse}
+  .pl-hum .pl-tag::before{background:linear-gradient(90deg,rgba(180,205,255,.5),transparent)}
+
+  /* ---- Technical: smallest, hardest edged. Steel and cyan, a tight specular, and a
+          single satellite on a bare orbit. ---- */
+  .pl-tech{--size:clamp(120px,11vw,180px);--pd:.60;--pm:10;--spin:110s;top:265vh;inset-inline-start:9%}
+  .pl-tech .pl-body{
+    background:radial-gradient(circle at 35% 24%,
+      #f2fbff 0%,#b8d8ea 11%,#6a9cb6 30%,#3d647c 54%,#20374b 78%,#0f1c28 100%);
+    box-shadow:
+      inset -18px -15px 42px rgba(2,6,14,.9),
+      inset 10px 8px 26px rgba(225,245,255,.2),
+      0 0 52px rgba(100,180,220,.22),0 0 130px rgba(60,120,180,.14)}
+  .pl-tech .pl-surface{opacity:.55;
+    background:repeating-linear-gradient(90deg,rgba(255,255,255,.09) 0 2px,transparent 2px 9px),
+               repeating-linear-gradient(0deg,rgba(10,30,45,.3) 0 1px,transparent 1px 11px)}
+  .pl-tech .pl-atmo{background:radial-gradient(closest-side,transparent 80%,
+    rgba(140,215,255,.30) 89%,transparent 100%)}
+  .pl-tech .pl-glow{background:radial-gradient(closest-side,rgba(100,180,230,.16),transparent 70%)}
+  .pl-tech .pl-orbit{position:absolute;left:50%;top:50%;width:190%;height:190%;border-radius:50%;
+    border:1px solid rgba(150,205,240,.20);pointer-events:none;
+    transform:translate(-50%,-50%) rotateX(70deg) rotateZ(24deg);
+    animation:techspin 26s linear infinite}
+  @keyframes techspin{
+    from{transform:translate(-50%,-50%) rotateX(70deg) rotateZ(24deg)}
+    to{transform:translate(-50%,-50%) rotateX(70deg) rotateZ(384deg)}}
+  .pl-tech .pl-orbit::after{content:"";position:absolute;top:-3.5px;left:50%;width:7px;height:7px;
+    margin-inline-start:-3.5px;border-radius:50%;background:var(--cyan);
+    box-shadow:0 0 10px 2px rgba(99,220,255,.6)}
+  .pl-tech .pl-tag{inset-inline-start:118%;top:44%}
 
   /* ============================ hero ============================ */
   /* padding-block, not the padding shorthand: this element is also a .wrap, whose
      horizontal padding the shorthand would reset to 0 (edge-to-edge text on a phone). */
   .hero{position:relative;padding-block:clamp(28px,5vh,64px) clamp(48px,8vh,96px)}
-  .hero-grid{display:grid;grid-template-columns:minmax(0,1.02fr) minmax(0,.98fr);
-    gap:clamp(24px,4vw,56px);align-items:center}
+  /* The hero's second column used to hold the planet. The planets are page-wide now,
+     so the grid carries one column and the copy keeps its old measure through a
+     max-width instead — the text block reads at the same width it always did, with
+     the right of the screen left to Biology. */
+  .hero-grid{display:grid;grid-template-columns:minmax(0,1fr);
+    gap:clamp(24px,4vw,56px);align-items:center;min-height:min(76vh,700px)}
+  .hero-copy{max-width:min(100%,620px)}
 
   .eyebrow{display:inline-flex;align-items:center;gap:9px;font-size:11px;letter-spacing:.18em;
     text-transform:uppercase;font-weight:600;color:var(--dim);
@@ -416,15 +484,25 @@
      Tablet drops to one column and simplifies the system; phone recomposes the hero
      entirely — the planet becomes a header element above the words rather than a
      backdrop behind them, so nothing decorative ever sits on top of text. */
+  @media (max-width:1180px){
+    /* The tags need clear space beside their planet; below this the planets start
+       cropping and the labels would sit under the content column. */
+    .pl-tag{display:none}
+  }
   @media (max-width:980px){
-    .hero-grid{grid-template-columns:1fr;gap:clamp(26px,5vw,40px)}
-    .stage{order:-1}
-    .system{width:min(76vw,400px)}
+    .hero-grid{gap:clamp(26px,5vw,40px);min-height:0}
     .hero{padding-block:clamp(20px,3vh,36px) clamp(40px,7vh,72px)}
     .panel-grid{grid-template-columns:1fr;gap:30px}
     .steps{grid-template-columns:1fr}
     .orbit-path{display:none}
     h1,.lede,.eyebrow,.ctas,.undercta{text-align:start}
+  }
+  /* Phones and portrait tablets: the planets come out entirely. At this width they
+     crowd the single content column instead of surrounding it, and they are the most
+     expensive thing on the page for the hardware least able to afford them. The
+     galaxy — stars, dust, nebulae, meteors — stays. */
+  @media (max-width:900px){
+    .planets{display:none}
   }
   @media (max-width:760px){
     .steps{gap:14px}
@@ -434,14 +512,6 @@
     .cta{flex:1 1 100%;justify-content:flex-start}
   }
   @media (max-width:640px){
-    /* Phone: a smaller system, one satellite per ring, no dashed outer ring.
-       Fewer moving parts on the hardware least able to afford them. */
-    .system{width:min(70vw,290px)}
-    .ring.r3{display:none}
-    .track.t3 .spin:nth-child(2){display:none}
-    .track.t2 .spin:nth-child(2){display:none}
-    .sat-in{font-size:11px;padding:5px 10px 5px 7px}
-    .halo{width:150%;height:150%}
     .card{padding:22px 19px}
     .g1{opacity:.35}
   }
@@ -451,10 +521,16 @@
      --f seed gives them, so the composition is identical — just still. */
   @media (prefers-reduced-motion:reduce){
     html{scroll-behavior:auto}
-    .surface,.halo,.spin,.sat,.sat-in,.eyebrow .d,.scroll-hint .rail::after,.constel line{animation:none!important}
+    .pl-surface,.pl-glow,.pl-tech .pl-orbit,.galaxy::before,
+    .eyebrow .d,.scroll-hint .rail::after,.constel line{animation:none!important}
     .constel line{stroke-dashoffset:0}
-    .sat-in{opacity:.9;transform:none}
-    .system{transition:none;transform:none}
+    .pl-glow{opacity:.85}
+    /* --pd is how far a planet lags the scroll. At 1 it keeps pace exactly, which
+       makes a fixed layer behave like ordinary page content: the planets simply
+       scroll past with everything else, so there is no parallax at all and all four
+       are still reachable. Pinning them instead (--pd:0) would strand the three
+       that live further down the page. */
+    .pl{--pd:1}
     html.reveal .rise{opacity:1;transform:none;transition:none}
     .cta:hover,.card:hover,.step:hover{transform:none}
   }
@@ -464,6 +540,7 @@
 
 <!-- ---------------- the cosmos: three fixed layers, no scroll cost ---------------- -->
 <div class="cosmos" aria-hidden="true">
+  <div class="neb-base"></div>
   <div class="neb neb-hero on" data-region="hero"></div>
   <div class="neb neb-features" data-region="features"></div>
   <div class="neb neb-android" data-region="android"></div>
@@ -471,8 +548,43 @@
   <div class="neb neb-close" data-region="close"></div>
   <div class="galaxy g1"></div>
   <div class="galaxy g2"></div>
+  <div class="galaxy g3"></div>
 </div>
 <canvas id="stars" aria-hidden="true"></canvas>
+
+<!-- The four academic fields as planets. Decorative and page-wide: the names are
+     labels rather than links, and the whole layer is hidden from assistive tech and
+     from screens too small to hold it (see the max-width:900px rule). -->
+<div class="planets" id="planets" aria-hidden="true">
+  <div class="pl pl-bio">
+    <div class="pl-glow"></div>
+    <div class="pl-body"><span class="pl-surface"></span></div>
+    <div class="pl-atmo"></div>
+    <span class="pl-tag" data-i18n="pl_bio">Biology</span>
+  </div>
+  <div class="pl pl-math">
+    <div class="pl-glow"></div>
+    <div class="pl-body"><span class="pl-surface"></span></div>
+    <div class="pl-atmo"></div>
+    <div class="pl-ring a"></div>
+    <div class="pl-ring b"></div>
+    <span class="pl-tag" data-i18n="pl_math">Mathematics</span>
+  </div>
+  <div class="pl pl-hum">
+    <div class="pl-glow"></div>
+    <div class="pl-body"><span class="pl-surface"></span></div>
+    <div class="pl-atmo"></div>
+    <span class="pl-tag" data-i18n="pl_hum">Humanities</span>
+  </div>
+  <div class="pl pl-tech">
+    <div class="pl-glow"></div>
+    <div class="pl-body"><span class="pl-surface"></span></div>
+    <div class="pl-atmo"></div>
+    <div class="pl-orbit"></div>
+    <span class="pl-tag" data-i18n="pl_tech">Technical</span>
+  </div>
+</div>
+
 <div class="vignette" aria-hidden="true"></div>
 
 <header id="top">
@@ -533,31 +645,6 @@
         </a>
       </div>
 
-      <!-- The planet and everything in orbit around it. Decorative: the subjects are
-           labels, not links, and the whole stage is hidden from assistive tech. -->
-      <div class="stage" aria-hidden="true">
-        <div class="system" id="system">
-          <div class="halo"></div>
-          <div class="planet"><span class="surface"></span></div>
-          <div class="atmo"></div>
-          <div class="ring r1"></div>
-          <div class="ring r2"></div>
-          <div class="ring r3"></div>
-
-          <div class="track t2">
-            <div class="spin" style="--f:.06"><div class="sat" style="--f:.06">
-              <span class="sat-in" style="--sc:#63dcff"><i></i><span data-i18n="sat_math">Math</span></span></div></div>
-            <div class="spin" style="--f:.58"><div class="sat" style="--f:.58">
-              <span class="sat-in" style="--sc:#f3c67d"><i></i><span data-i18n="sat_physics">Physics</span></span></div></div>
-          </div>
-          <div class="track t3">
-            <div class="spin" style="--f:.33"><div class="sat" style="--f:.33">
-              <span class="sat-in" style="--sc:#7ee0a8"><i></i><span data-i18n="sat_bio">Biology</span></span></div></div>
-            <div class="spin" style="--f:.81"><div class="sat" style="--f:.81">
-              <span class="sat-in" style="--sc:#a78bfa"><i></i><span data-i18n="sat_history">History</span></span></div></div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -770,7 +857,9 @@ var LINKS = {
       undercta: "No account needed to try the timer — sign in when you want your stats, rooms and library.",
       planet_alt: "An illustration of a ringed planet",
       scroll_hint: "Scroll to explore",
-      sat_math: "Math", sat_physics: "Physics", sat_bio: "Biology", sat_history: "History",
+      // The four fields, largest planet first. These match the majors the app itself
+      // targets library material at (تجربی / ریاضی / انسانی / فنی).
+      pl_bio: "Biology", pl_math: "Mathematics", pl_hum: "Humanities", pl_tech: "Technical",
 
       k_features: "What's inside",
       feat_h: "Everything a study day needs, and nothing it doesn't.",
@@ -830,7 +919,7 @@ var LINKS = {
       undercta: "برای امتحان کردن تایمر لازم نیست حساب بسازی — وقتی آمار، اتاق‌ها و کتابخانه را خواستی وارد شو.",
       planet_alt: "تصویری از یک سیارهٔ حلقه‌دار",
       scroll_hint: "برای گشتن، اسکرول کن",
-      sat_math: "ریاضی", sat_physics: "فیزیک", sat_bio: "زیست", sat_history: "تاریخ",
+      pl_bio: "زیست", pl_math: "ریاضی", pl_hum: "انسانی", pl_tech: "فنی",
 
       k_features: "چه چیزهایی دارد",
       feat_h: "هرچه یک روزِ درس خواندن لازم دارد، نه بیشتر.",
@@ -982,9 +1071,10 @@ var LINKS = {
   var cvs = document.getElementById("stars");
   var ctx = cvs.getContext("2d");
   var W = 0, H = 0, DPR = 1;
-  var stars = [], shoots = [], glow = null, sized = false;
+  var stars = [], dust = [], shoots = [], comets = [], glow = null, sized = false;
   var mx = 0, my = 0, tmx = 0, tmy = 0;      // pointer, smoothed → target
-  var sy = 0, raf = 0, last = 0, nextShoot = 4000;
+  var sy = 0, raf = 0, last = 0, nextShoot = 5000, nextComet = 26000;
+  var planets = document.getElementById("planets");
 
   var HUES = ["#ffffff", "#dbe9ff", "#b7cdff", "#ffe7c6", "#e0d0ff"];
 
@@ -1015,38 +1105,72 @@ var LINKS = {
     cvs.width = Math.round(W * DPR); cvs.height = Math.round(H * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-    var n = Math.round(W * H / 4200);
-    n = Math.min(n, fine ? 260 : 110);
     // A margin either side so parallax never drags an empty edge into view.
-    var mgn = 90;
+    var mgn = 90, i;
+
+    var n = Math.round(W * H / 2600);
+    n = Math.min(n, fine ? 420 : 130);
     stars.length = 0;
-    for (var i = 0; i < n; i++) {
+    for (i = 0; i < n; i++) {
       var z = Math.pow(Math.random(), 1.7);          // biased far: a deep field, a few near
       stars.push({
         x: -mgn + Math.random() * (W + mgn * 2),
         y: -mgn + Math.random() * (H + mgn * 2),
         z: z,
-        r: 0.5 + z * 1.7,
-        b: 0.30 + z * 0.70,
+        r: 0.45 + z * 1.9,
+        b: 0.26 + z * 0.74,
         c: HUES[(Math.random() * HUES.length) | 0],
         tw: 0.4 + Math.random() * 1.5,               // twinkle speed
-        tp: Math.random() * 6.28                     // twinkle phase
+        tp: Math.random() * 6.28,                    // twinkle phase
+        // A handful get diffraction spikes. Only the very brightest, or the sky
+        // starts to look like a lens flare rather than a sky.
+        sp: z > 0.955 && Math.random() < 0.5
+      });
+    }
+
+    // Dust: far dimmer than any star and slowly adrift on its own, which is what
+    // separates "deep field" from "black paper with dots on it".
+    var dn = Math.min(Math.round(W * H / 12000), fine ? 110 : 34);
+    dust.length = 0;
+    for (i = 0; i < dn; i++) {
+      dust.push({
+        x: -mgn + Math.random() * (W + mgn * 2),
+        y: -mgn + Math.random() * (H + mgn * 2),
+        z: 0.15 + Math.random() * 0.5,
+        r: 0.4 + Math.random() * 0.9,
+        b: 0.05 + Math.random() * 0.16,
+        vx: (Math.random() - 0.5) * 0.05,
+        vy: (Math.random() - 0.5) * 0.035,
+        c: Math.random() < 0.3 ? "#c9b8ff" : "#bcd2ff"
       });
     }
     if (!glow) glow = buildGlow();
   }
 
+  /* Meteors enter from either side or over the top edge, at a different height every
+     time, so they are never the same streak twice. Infrequent by design. */
   function spawnShoot() {
-    // Always downward-ish, from the top half, crossing with the reading direction.
+    var side = Math.random();
+    var sp = 7 + Math.random() * 5, x, y, vx, vy;
+    if (side < .42)      { x = -60;    y = Math.random() * H * .45; vx =  sp; vy = sp * (.3 + Math.random() * .35); }
+    else if (side < .84) { x = W + 60; y = Math.random() * H * .45; vx = -sp; vy = sp * (.3 + Math.random() * .35); }
+    else                 { x = Math.random() * W; y = -60; vx = (Math.random() - .5) * sp * .9; vy = sp; }
+    shoots.push({ x: x, y: y, vx: vx, vy: vy,
+      len: 110 + Math.random() * 150, life: 0, max: 62 + Math.random() * 34 });
+  }
+
+  /* A comet is not a fast meteor: it crosses slowly over several seconds, carries a
+     lit coma and a long soft tail, and shows up rarely enough to be an event. */
+  function spawnComet() {
     var fromLeft = Math.random() < .5;
-    var sp = 7 + Math.random() * 5;
-    shoots.push({
-      x: fromLeft ? -60 : W + 60,
-      y: Math.random() * H * 0.5,
+    var sp = 1.5 + Math.random() * 1.1;
+    comets.push({
+      x: fromLeft ? -140 : W + 140,
+      y: H * (.08 + Math.random() * .5),
       vx: (fromLeft ? 1 : -1) * sp,
-      vy: sp * (0.32 + Math.random() * 0.3),
-      len: 90 + Math.random() * 130,
-      life: 0, max: 60 + Math.random() * 30
+      vy: sp * (0.14 + Math.random() * 0.22),
+      len: 230 + Math.random() * 190,
+      life: 0, max: 520 + Math.random() * 260
     });
   }
 
@@ -1074,13 +1198,40 @@ var LINKS = {
 
       if (s.z > 0.86) {
         ctx.globalAlpha = a * 0.55;
-        var gs = 10 + s.z * 20;
+        var gs = 10 + s.z * 22;
         ctx.drawImage(glow, x - gs / 2, y - gs / 2, gs, gs);
       }
       ctx.globalAlpha = a;
       ctx.fillStyle = s.c;
       if (s.r < 1.15) ctx.fillRect(x, y, s.r * 1.5, s.r * 1.5);
       else { ctx.beginPath(); ctx.arc(x, y, s.r, 0, 6.2832); ctx.fill(); }
+
+      // Two hairlines on the few brightest — the suggestion of a telescope's spikes.
+      if (s.sp) {
+        var sl = 4 + s.z * 7;
+        ctx.globalAlpha = a * 0.4;
+        ctx.strokeStyle = s.c; ctx.lineWidth = 0.7;
+        ctx.beginPath();
+        ctx.moveTo(x - sl, y); ctx.lineTo(x + sl, y);
+        ctx.moveTo(x, y - sl); ctx.lineTo(x, y + sl);
+        ctx.stroke();
+      }
+    }
+
+    // Dust drifts on its own as well as with the parallax, one shade cooler than
+    // the stars and an order of magnitude dimmer.
+    for (i = 0; i < dust.length; i++) {
+      var p = dust[i];
+      if (!reduce) { p.x += p.vx; p.y += p.vy; }
+      x = p.x + mx * (4 + p.z * 20);
+      y = p.y + my * (3 + p.z * 15) - sy * (0.008 + p.z * 0.05);
+      var dspan = H + 180;
+      y = ((y + 90) % dspan + dspan) % dspan - 90;
+      var dwide = W + 180;
+      x = ((x + 90) % dwide + dwide) % dwide - 90;
+      ctx.globalAlpha = p.b;
+      ctx.fillStyle = p.c;
+      ctx.fillRect(x, y, p.r, p.r);
     }
 
     // Shooting stars: at most two at a time, one gradient each.
@@ -1099,11 +1250,41 @@ var LINKS = {
       ctx.strokeStyle = lg; ctx.lineWidth = 1.6; ctx.lineCap = "round";
       ctx.beginPath(); ctx.moveTo(sh.x, sh.y); ctx.lineTo(tx, ty); ctx.stroke();
     }
+    // Comets: slow, lit head, long soft tail. At most one on screen.
+    for (i = comets.length - 1; i >= 0; i--) {
+      var cm = comets[i];
+      cm.x += cm.vx; cm.y += cm.vy; cm.life++;
+      if (cm.life > cm.max || cm.x < -400 || cm.x > W + 400 || cm.y > H + 400) { comets.splice(i, 1); continue; }
+      // Long fade in and out, so it never pops into or out of existence.
+      var cf = Math.min(1, Math.min(cm.life, cm.max - cm.life) / 90);
+      var cd = Math.hypot(cm.vx, cm.vy), cux = cm.vx / cd, cuy = cm.vy / cd;
+      var ctx2 = cm.x - cux * cm.len, cty = cm.y - cuy * cm.len;
+      var cg = ctx.createLinearGradient(cm.x, cm.y, ctx2, cty);
+      cg.addColorStop(0, "rgba(214,240,255," + (0.5 * cf) + ")");
+      cg.addColorStop(.28, "rgba(150,205,255," + (0.20 * cf) + ")");
+      cg.addColorStop(1, "rgba(140,180,255,0)");
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = cg; ctx.lineWidth = 5; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(cm.x, cm.y); ctx.lineTo(ctx2, cty); ctx.stroke();
+      ctx.globalAlpha = 0.85 * cf;
+      ctx.drawImage(glow, cm.x - 17, cm.y - 17, 34, 34);
+    }
     ctx.globalAlpha = 1;
 
     if (!reduce) {
       nextShoot -= dt;
-      if (nextShoot <= 0 && shoots.length < 2) { spawnShoot(); nextShoot = 6500 + Math.random() * 9000; }
+      if (nextShoot <= 0 && shoots.length < 2) { spawnShoot(); nextShoot = 9000 + Math.random() * 13000; }
+      nextComet -= dt;
+      if (nextComet <= 0 && !comets.length) { spawnComet(); nextComet = 52000 + Math.random() * 48000; }
+    }
+
+    // One write per frame feeds every planet: each derives its own drift from --sy
+    // and --mx/--my through its own --pd/--pm, so this stays four composited
+    // transforms rather than four style writes.
+    if (planets) {
+      planets.style.setProperty("--sy", sy.toFixed(1));
+      planets.style.setProperty("--mx", mx.toFixed(3));
+      planets.style.setProperty("--my", my.toFixed(3));
     }
   }
 
@@ -1151,14 +1332,11 @@ var LINKS = {
      listener would just cost. Feeds both the canvas and the hero system, which
      reads --mx/--my straight out of CSS. */
   if (fine && !reduce) {
-    var sys = document.getElementById("system");
     window.addEventListener("mousemove", function (e) {
+      // Only the target is set here; the loop eases mx/my toward it and hands the
+      // smoothed value to both the canvas and the planet layer.
       tmx = (e.clientX / window.innerWidth - .5) * 2;
       tmy = (e.clientY / window.innerHeight - .5) * 2;
-      if (sys) {
-        sys.style.setProperty("--mx", tmx.toFixed(3));
-        sys.style.setProperty("--my", tmy.toFixed(3));
-      }
     }, { passive: true });
   }
 

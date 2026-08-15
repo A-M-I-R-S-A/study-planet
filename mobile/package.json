@@ -1,9 +1,9 @@
 {
-  "name": "focus-mobile",
+  "name": "study-planet-mobile",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Capacitor Android wrapper for the Focus study timer",
+  "description": "Capacitor Android wrapper for the Study Planet study timer",
   "scripts": {
     "copy": "node copy-www.mjs",
     "sync": "node copy-www.mjs && cap sync android",

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Study Planet's mark. One file, linked from every page, so the tab icon is the
+       same drawing as the wordmark's logo rather than a second copy that can drift.
+       The dark rounded square is here and not in the inline logo: a favicon needs its
+       own ground to read against a browser's chrome, the in-page mark does not. -->
+  <defs>
+    <radialGradient id="p" cx="34%" cy="30%">
+      <stop offset="0%" stop-color="#ffe9c2"/>
+      <stop offset="58%" stop-color="#eda75c"/>
+      <stop offset="100%" stop-color="#7b3a52"/>
+    </radialGradient>
+  </defs>
+  <rect width="32" height="32" rx="8" fill="#070a1c"/>
+  <circle cx="16" cy="15.5" r="7" fill="url(#p)"/>
+  <ellipse cx="16" cy="15.5" rx="12" ry="4.3" fill="none" stroke="#8cc8ff" stroke-opacity=".85"
+           stroke-width="1.7" transform="rotate(-20 16 15.5)"/>
+</svg>

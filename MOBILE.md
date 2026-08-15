@@ -1,4 +1,4 @@
-# Focus on Android (Capacitor)
+# Study Planet on Android (Capacitor)
 
 This wraps the existing web app in a native Android shell with **Capacitor**. No rewrite —
 the same HTML/JS runs inside a WebView, plus native notifications for the session-end alert.
@@ -103,7 +103,7 @@ to pin the app in the vendor's own battery screen.
 
 ### App lock (`Settings → App lock`)
 Optional, off by default. While a focus block runs, opening an app outside the user's allow list
-covers it with a full-screen reminder (`BlockOverlay`) offering **Back to Focus** or **home**.
+covers it with a full-screen reminder (`BlockOverlay`) offering **Back to Study Planet** or **home**.
 
 - The service polls the foreground app once a second via `UsageStatsManager` and draws the panel as
   a `TYPE_APPLICATION_OVERLAY` window — an Activity can't be used, because Android 10+ blocks
@@ -112,7 +112,7 @@ covers it with a full-screen reminder (`BlockOverlay`) offering **Back to Focus*
   screen: **Usage access** (`PACKAGE_USAGE_STATS`) and **Display over other apps**
   (`SYSTEM_ALERT_WINDOW`). The settings section shows a row with an "Allow" button for whichever
   is missing and re-checks when the app regains focus.
-- The launcher, the system UI, the dialer and Focus itself are **always** allowed, whatever the
+- The launcher, the system UI, the dialer and Study Planet itself are **always** allowed, whatever the
   user picked — otherwise there'd be no way out and no way to call anyone.
 - "Keep blocking during breaks" is a separate toggle; by default breaks are unlocked.
 - The app picker lists every launchable app with its icon (rasterised natively, handed over as

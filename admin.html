@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#16303a">
 <meta name="robots" content="noindex, nofollow">
-<title>Focus — Admin panel</title>
+<title>Study Planet — Admin panel</title>
+<link rel="icon" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -39,7 +40,8 @@
     display:flex;flex-direction:column;position:fixed;inset:0 auto 0 0;z-index:40;
     border-right:1px solid rgba(255,255,255,.07);transition:transform .22s ease}
   .side-head{padding:24px 22px 18px;display:flex;align-items:center;gap:10px}
-  .side-head .dot{width:11px;height:11px;border-radius:50%;background:var(--accent);flex:none}
+  .side-head .dot{width:21px;height:21px;flex:none}
+  .side-head .dot svg{display:block;width:21px;height:21px}
   .side-head b{font-size:17px;letter-spacing:-.01em}
   .side-head .badge{font-size:9.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
     background:rgba(255,255,255,.12);padding:3px 7px;border-radius:6px;color:var(--shell-muted)}
@@ -293,7 +295,16 @@
 <div class="shell">
   <aside id="side">
     <div class="side-head">
-      <span class="dot"></span><b>Focus</b><span class="badge">Admin</span>
+      <span class="dot">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <defs><radialGradient id="spMark" cx="34%" cy="30%">
+            <stop offset="0%" stop-color="#ffe9c2"/><stop offset="58%" stop-color="#eda75c"/><stop offset="100%" stop-color="#7b3a52"/>
+          </radialGradient></defs>
+          <circle cx="16" cy="16" r="7.5" fill="url(#spMark)"/>
+          <ellipse cx="16" cy="16" rx="13" ry="4.6" fill="none" stroke="#8cc8ff" stroke-opacity=".85"
+                   stroke-width="1.7" transform="rotate(-20 16 16)"/>
+        </svg>
+      </span><b>Study Planet</b><span class="badge">Admin</span>
     </div>
     <nav class="side" id="nav">
       <a href="#/dashboard"   data-v="dashboard"><span class="ic">▤</span>Dashboard</a>
@@ -323,7 +334,7 @@
       <button class="burger" id="burger" aria-label="Menu">☰</button>
       <div>
         <h1 id="ttl">Dashboard</h1>
-        <div class="sub" id="sub">Overview of your Focus app</div>
+        <div class="sub" id="sub">Overview of your Study Planet app</div>
       </div>
       <div class="grow"></div>
       <button class="btn ghost sm" id="refresh" style="background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.16);color:#fff">↻ Refresh</button>
@@ -470,7 +481,7 @@ function bgStyle(kind,value){
 /* ============================ views ============================ */
 var VIEWS={};
 var TITLES={
-  dashboard:["Dashboard","Overview of your Focus app"],
+  dashboard:["Dashboard","Overview of your Study Planet app"],
   users:["Users","Everyone registered on this server"],
   themes:["Themes","Colour tokens the app renders from"],
   backgrounds:["Backgrounds","Images and gradients available to the app"],
@@ -621,7 +632,7 @@ function loadUsers(){
     if(!d.users.length){
       box.innerHTML=(uState.q||uState.filter!=="all"||uState.grade)
         ? emptyState("⌕","No matches","No user fits that search or filter. Try widening it.")
-        : emptyState("◍","No users yet","Once people sign up for Focus they'll be listed here.");
+        : emptyState("◍","No users yet","Once people sign up for Study Planet they'll be listed here.");
       return;
     }
     var rows=d.users.map(function(u){

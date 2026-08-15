@@ -1,6 +1,6 @@
 {
   "appId": "com.focus.app",
-  "appName": "Focus",
+  "appName": "Study Planet",
   "webDir": "www",
   "server": {
     "androidScheme": "https",

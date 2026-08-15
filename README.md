@@ -1,4 +1,4 @@
-# Focus — study timer with accounts, rooms & a study calendar
+# Study Planet — study timer with accounts, rooms & a study calendar
 
 A Pomodoro study timer (timer, live clock, quotes, tasks, ambient sound,
 choosable backgrounds, animated progress, English/Farsi) plus a Python backend

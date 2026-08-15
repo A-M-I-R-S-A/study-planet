@@ -7,7 +7,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Focus</title>
+<title>Study Planet</title>
+<link rel="icon" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&family=Lalezar&display=swap" rel="stylesheet">
@@ -60,6 +61,11 @@
   .brand{display:flex;align-items:center;gap:11px}
   .dot{width:13px;height:13px;border-radius:50%;background:var(--accent)}
   .dot.run{animation:breathe 2.4s ease-in-out infinite}
+  /* The brand mark is the app logo, not a plain dot. Scoped to .brand so the subject
+     swatches further down (.subj .dot) keep the circle they have always drawn, and
+     `animation` is left alone so .dot.run still breathes while a session runs. */
+  .brand .dot{width:23px;height:23px;border-radius:0;background:none}
+  .brand .dot svg{display:block;width:23px;height:23px}
   .wordmark{font-weight:600;font-size:17px;letter-spacing:-.01em;color:var(--white)}
   .streak{font-size:13px;color:rgba(255,255,255,.72);padding-inline-start:10px;border-inline-start:1px solid rgba(255,255,255,.28);margin-inline-start:2px}
   .head-right{display:flex;align-items:center;gap:12px}
@@ -444,8 +450,17 @@
 <div class="app">
   <header>
     <div class="brand">
-      <div class="dot" id="dot"></div>
-      <span class="wordmark" data-i18n="brand">Focus</span>
+      <div class="dot" id="dot">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <defs><radialGradient id="spMark" cx="34%" cy="30%">
+            <stop offset="0%" stop-color="#ffe9c2"/><stop offset="58%" stop-color="#eda75c"/><stop offset="100%" stop-color="#7b3a52"/>
+          </radialGradient></defs>
+          <circle cx="16" cy="16" r="7.5" fill="url(#spMark)"/>
+          <ellipse cx="16" cy="16" rx="13" ry="4.6" fill="none" stroke="#8cc8ff" stroke-opacity=".85"
+                   stroke-width="1.7" transform="rotate(-20 16 16)"/>
+        </svg>
+      </div>
+      <span class="wordmark" data-i18n="brand">Study Planet</span>
       <span class="streak" id="streak">0-day streak</span>
     </div>
     <div class="head-right">
@@ -636,7 +651,7 @@
 <div class="overlay hidden" id="appsOverlay">
   <div class="sheet">
     <div class="sheet-head"><b data-i18n="allowed_apps">Allowed apps</b><button class="x" id="closeApps" aria-label="Close">×</button></div>
-    <div class="sec-note" data-i18n="allow_note">Your phone, the home screen and Focus itself are always allowed.</div>
+    <div class="sec-note" data-i18n="allow_note">Your phone, the home screen and Study Planet itself are always allowed.</div>
     <input type="search" id="appSearch" class="app-search" placeholder="Search apps…">
     <div class="app-list" id="appList"></div>
     <button class="done-btn" id="appsDone" style="margin-top:14px" data-i18n="done">Done</button>
@@ -681,7 +696,7 @@
 
   /* ---- i18n ---- */
   const I18N={
-    en:{brand:"Focus",mode_focus:"Focus",mode_short:"Short",mode_long:"Long",
+    en:{brand:"Study Planet",mode_focus:"Focus",mode_short:"Short",mode_long:"Long",
       tasks:"Tasks",music:"Music",stats:"Stats",ambient:"Ambient sound",
       tracks:"Tracks",tracks_hint:"Saved on your phone after the first play",
       tracks_hint_web:"Streamed — install the app to keep them offline",
@@ -716,14 +731,14 @@
       app_lock:"App lock",lock_note:"While a focus session runs, opening anything outside your allowed list shows a reminder instead.",
       lock_enable:"Block other apps while focusing",lock_breaks:"Keep blocking during breaks",allowed_apps:"Allowed apps",
       lock_mute:"Silence notifications while focusing",
-      perm_dnd:"Do Not Disturb",perm_dnd_d:"Lets Focus mute other apps while you study. Alarms and your priority contacts still get through.",
-      allow_note:"Your phone, the home screen and Focus itself are always allowed.",search_apps:"Search apps…",grant:"Allow",
-      perm_usage:"Usage access",perm_usage_d:"Lets Focus see which app is in front. Nothing leaves your phone.",
+      perm_dnd:"Do Not Disturb",perm_dnd_d:"Lets Study Planet mute other apps while you study. Alarms and your priority contacts still get through.",
+      allow_note:"Your phone, the home screen and Study Planet itself are always allowed.",search_apps:"Search apps…",grant:"Allow",
+      perm_usage:"Usage access",perm_usage_d:"Lets Study Planet see which app is in front. Nothing leaves your phone.",
       perm_overlay:"Display over other apps",perm_overlay_d:"Needed to show the reminder on top of a blocked app.",
       perm_notif:"Notifications",perm_notif_d:"Needed for the timer in the notification bar.",
       perm_battery:"Ignore battery saver",perm_battery_d:"Stops Android pausing the timer while your screen is off.",
       no_apps:"No apps match that.",apps_failed:"Couldn't read the app list.",session_saved:"Session saved."},
-    fa:{brand:"تمرکز",mode_focus:"تمرکز",mode_short:"کوتاه",mode_long:"بلند",
+    fa:{brand:"استادی پلنت",mode_focus:"تمرکز",mode_short:"کوتاه",mode_long:"بلند",
       tasks:"کارها",music:"موسیقی",stats:"آمار",ambient:"صدای محیط",
       tracks:"آهنگ‌ها",tracks_hint:"بعد از پخش اول روی گوشی ذخیره می‌شود",
       tracks_hint_web:"پخش آنلاین — برای ذخیره آفلاین برنامه را نصب کنید",
@@ -758,9 +773,9 @@
       app_lock:"قفل برنامه‌ها",lock_note:"در طول جلسهٔ تمرکز، باز کردن هر برنامه‌ای خارج از فهرست مجاز، به‌جای آن یک یادآوری نشان می‌دهد.",
       lock_enable:"مسدود کردن برنامه‌های دیگر هنگام تمرکز",lock_breaks:"مسدودسازی در زمان استراحت هم ادامه یابد",allowed_apps:"برنامه‌های مجاز",
       lock_mute:"بی‌صدا کردن اعلان‌ها هنگام تمرکز",
-      perm_dnd:"مزاحم نشوید",perm_dnd_d:"تا «تمرکز» بتواند اعلان‌های بقیه برنامه‌ها را هنگام مطالعه بی‌صدا کند. زنگ هشدار و مخاطبان اولویت‌دار همچنان می‌رسند.",
-      allow_note:"تلفن، صفحهٔ اصلی و خود «تمرکز» همیشه مجازند.",search_apps:"جست‌وجوی برنامه‌ها…",grant:"اجازه",
-      perm_usage:"دسترسی به آمار استفاده",perm_usage_d:"تا «تمرکز» بداند کدام برنامه باز است. چیزی از گوشی شما خارج نمی‌شود.",
+      perm_dnd:"مزاحم نشوید",perm_dnd_d:"تا «استادی پلنت» بتواند اعلان‌های بقیه برنامه‌ها را هنگام مطالعه بی‌صدا کند. زنگ هشدار و مخاطبان اولویت‌دار همچنان می‌رسند.",
+      allow_note:"تلفن، صفحهٔ اصلی و خود «استادی پلنت» همیشه مجازند.",search_apps:"جست‌وجوی برنامه‌ها…",grant:"اجازه",
+      perm_usage:"دسترسی به آمار استفاده",perm_usage_d:"تا «استادی پلنت» بداند کدام برنامه باز است. چیزی از گوشی شما خارج نمی‌شود.",
       perm_overlay:"نمایش روی برنامه‌های دیگر",perm_overlay_d:"برای نشان دادن یادآوری روی برنامهٔ مسدودشده لازم است.",
       perm_notif:"اعلان‌ها",perm_notif_d:"برای نمایش تایمر در نوار اعلان لازم است.",
       perm_battery:"نادیده گرفتن بهینه‌سازی باتری",perm_battery_d:"جلوی متوقف‌شدن تایمر هنگام خاموش‌بودن صفحه را می‌گیرد.",

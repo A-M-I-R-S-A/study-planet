@@ -15,7 +15,8 @@
   var DICT = {
     en: {
       /* -- login -- */
-      login_title: "Focus — Sign in",
+      brand: "Study Planet",
+      login_title: "Study Planet — Sign in",
       login_tag: "Your sessions, streaks & settings — saved to your account.",
       sign_in: "Sign in",
       create_account: "Create account",
@@ -246,7 +247,8 @@
 
     fa: {
       /* -- login -- */
-      login_title: "فوکوس — ورود",
+      brand: "استادی پلنت",
+      login_title: "استادی پلنت — ورود",
       login_tag: "جلسه‌ها، رکوردها و تنظیمات شما — ذخیره‌شده در حساب کاربری.",
       sign_in: "ورود",
       create_account: "ساخت حساب",

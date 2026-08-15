@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Focus — backend server (Python standard library only, no pip installs).
+Study Planet — backend server (Python standard library only, no pip installs).
 
 Run:   python server.py         (defaults to http://localhost:8000)
        PORT=9000 python server.py
@@ -1563,7 +1563,7 @@ class Handler(SimpleHTTPRequestHandler):
         print("  %s - %s" % (self.command, self.path))
 
     def version_string(self):
-        return "Focus"  # don't advertise the Python/stdlib version in the Server header
+        return "Study Planet"  # don't advertise the Python/stdlib version in the Server header
 
     def end_headers(self):
         for k, v in SECURITY_HEADERS:
@@ -3647,7 +3647,7 @@ def main():
     init_db()
     purge_expired()  # clear anything already expired, then keep it tidy hourly
     threading.Thread(target=cleanup_loop, daemon=True).start()
-    print("Focus server running:  http://localhost:%d" % PORT)
+    print("Study Planet server running:  http://localhost:%d" % PORT)
     if HOST not in ("127.0.0.1", "localhost"):
         print("Listening on:          %s:%d  (reachable from the LAN)" % (HOST, PORT))
     print("Database:              %s" % DB_PATH)
