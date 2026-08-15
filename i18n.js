@@ -21,7 +21,9 @@
       sign_in: "Sign in",
       create_account: "Create account",
       name: "Name",
-      name_ph: "What should we call you?",
+      // An example name rather than a question, so the expected format (first + last) is
+      // obvious at a glance. Placeholders are greyed sample text, never a stored value.
+      name_ph: "AmirHossein Sadeghi",
       email: "Email",
       password: "Password",
       back_timer: "← Back to the timer",
@@ -56,7 +58,7 @@
       bad_code: "Type the 5-digit code from the text.",
       bad_email: "That email doesn't look right — or leave it empty.",
       short_pw: "A password needs at least 6 characters — or leave it empty.",
-      need_name: "What should we call you?",
+      need_name: "Type your name.",
       need_both: "Fill in both boxes.",
 
       /* -- what you study --
@@ -253,7 +255,7 @@
       sign_in: "ورود",
       create_account: "ساخت حساب",
       name: "نام",
-      name_ph: "شما را چه صدا کنیم؟",
+      name_ph: "امیرحسین صادقی",
       email: "ایمیل",
       password: "رمز عبور",
       back_timer: "→ بازگشت به تایمر",
@@ -286,7 +288,7 @@
       bad_code: "کد ۵ رقمی داخل پیامک را وارد کن.",
       bad_email: "ایمیل درست به‌نظر نمی‌رسد — یا خالی بگذارش.",
       short_pw: "رمز عبور باید حداقل ۶ کاراکتر باشد — یا خالی بگذارش.",
-      need_name: "شما را چه صدا کنیم؟",
+      need_name: "نامت را وارد کن.",
       need_both: "هر دو کادر را پر کن.",
 
       /* -- رشته و پایه -- */

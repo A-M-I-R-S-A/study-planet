@@ -8,7 +8,8 @@
 <link rel="icon" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&family=Lalezar&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&family=Lalezar&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&family=Lalezar&display=swap" rel="stylesheet"></noscript>
 <style>
   :root{--accent:oklch(0.7 0.12 62);--accent-ink:#16303a;--cream:#faf6ee;--cream2:#efe9de;--ink:#2b2824;--muted:#8a8175;--white:#fbfdfd;--danger:#c0392b}
   *{box-sizing:border-box}
@@ -190,7 +191,7 @@
       <div class="sent" id="regFor"></div>
       <div class="field">
         <label for="name" data-i18n="name">Name</label>
-        <input id="name" name="name" type="text" data-i18n-ph="name_ph" placeholder="What should we call you?" maxlength="60">
+        <input id="name" name="name" type="text" data-i18n-ph="name_ph" placeholder="AmirHossein Sadeghi" maxlength="60">
       </div>
       <!-- Asked at sign-up because it is what decides which shelf of the library this
            account gets. The keys sent to the server are the fixed ones (school/uni,
@@ -259,7 +260,7 @@
 
     <div class="msg" id="msg"></div>
     <div class="foot">
-      <a href="/" data-i18n="back_timer">← Back to the timer</a>
+      <a href="/app" data-i18n="back_timer">← Back to the timer</a>
       <button type="button" class="langsw" id="langBtn">🌐 English</button>
     </div>
   </form>

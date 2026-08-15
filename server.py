@@ -76,6 +76,11 @@ SECURE_COOKIES = os.environ.get("SECURE_COOKIES", "").lower() in ("1", "true", "
 DAY_OFFSET_MIN = int(os.environ.get("DAY_OFFSET_MIN", "0"))
 MAX_DAY_SECONDS = 24 * 3600   # per-user daily ceiling on logged focus time (anti-inflation sanity cap)
 STREAK_MIN_SECONDS = 45 * 60  # a day has to reach this much focus time to count toward the streak
+# Don't re-write `last_seen` if it is already younger than this. The client beats every 30s,
+# so the freshest a skipped row can be is this + one interval = 75s -- still inside the 90s
+# window _recent() calls "online", so nobody's presence dot changes. Any change of focus
+# state ignores this and writes at once. Must stay below 60 to keep that guarantee.
+HEARTBEAT_MIN_WRITE = 45
 
 # --- admin panel --------------------------------------------------------------------
 # The first admin is seeded once, from the environment when it is set, otherwise from
@@ -185,6 +190,13 @@ QUOTES_CATEGORIES = [c.strip() for c in os.environ.get(
     "success,wisdom,motivational,education,learning,knowledge,time,work,perseverance,discipline"
 ).split(",") if c.strip()]
 QUOTES_TTL = 6 * 3600   # refresh the pool at most this often (≈40 calls/day)
+# api-ninjas is reachable from some networks and not others -- from Iran it usually is not.
+# An unreachable API must cost a page load almost nothing, so a refresh pass is bounded on
+# three axes: each call gets a short timeout, the pass as a whole gets a wall-clock budget,
+# and a failed pass is remembered so the next request doesn't try again for QUOTES_RETRY.
+QUOTES_TIMEOUT = 2.0    # per-call ceiling (was 5s x 10 categories = 50s worst case)
+QUOTES_BUDGET = 6.0     # total wall-clock ceiling for one refresh pass
+QUOTES_RETRY = 600      # after a failed pass, serve the cache and don't retry for 10 min
 _quotes = {"at": 0.0, "items": []}
 _quotes_lock = threading.Lock()
 
@@ -236,13 +248,19 @@ def fetch_quotes():
     """One quote per category. Returns [] on failure -- callers fall back to the cache."""
     import urllib.request
     out, seen = [], set()
+    deadline = time.time() + QUOTES_BUDGET
     for cat in QUOTES_CATEGORIES:
+        # Stop early rather than walk every category: when the host can't reach api-ninjas
+        # each call burns its full timeout, and ten of those in a row is a minute of a
+        # worker's life for a decorative quote.
+        if time.time() >= deadline:
+            break
         req = urllib.request.Request(
             QUOTES_URL + "?" + urlencode({"categories": cat}),
             headers={"X-Api-Key": QUOTES_API_KEY},
         )
         try:
-            with urllib.request.urlopen(req, timeout=5) as r:
+            with urllib.request.urlopen(req, timeout=QUOTES_TIMEOUT) as r:
                 data = json.loads(r.read().decode("utf-8"))
         except Exception:
             continue   # a bad category or a network hiccup shouldn't sink the whole batch
@@ -267,20 +285,38 @@ def fetch_quotes():
 
 
 def quotes_cached():
-    """Pool of quotes, refreshed at most every QUOTES_TTL. Never raises."""
+    """Pool of quotes, refreshed at most every QUOTES_TTL. Never raises.
+
+    Freshness is decided by the timestamp *alone*. It used to also require a non-empty pool
+    (`... and _quotes["items"]`), which quietly defeated the whole cache whenever the API was
+    unreachable: `items` stayed empty, so every single request re-ran the full refresh, and
+    the back-off written on the line below it could never be read. On a host that can't reach
+    api-ninjas that meant every page load spent ~50s inside this function -- with the lock
+    held -- which is enough to pin every Passenger worker the app has.
+
+    The network call is also made outside the lock now. Holding a global lock across a
+    blocking socket read serialised all callers behind the slowest possible one.
+    """
     now = time.time()
     with _quotes_lock:
-        fresh = (now - _quotes["at"]) < QUOTES_TTL and _quotes["items"]
-        if fresh or not QUOTES_API_KEY:
+        if not QUOTES_API_KEY or (now - _quotes["at"]) < QUOTES_TTL:
             return _quotes["items"]
-        got = fetch_quotes()
+        # Claim the refresh slot before releasing the lock, so that concurrent callers see a
+        # fresh timestamp and return the cache instead of piling into the same fetch.
+        _quotes["at"] = now
+        stale = _quotes["items"]
+
+    got = fetch_quotes()   # outside the lock: this is the part that can block for seconds
+
+    with _quotes_lock:
         if got:
             _quotes["items"] = got
-            _quotes["at"] = now
+            _quotes["at"] = time.time()
         else:
-            # keep serving the stale pool, but retry sooner than a full TTL
-            _quotes["at"] = now - QUOTES_TTL + 300
-        return _quotes["items"]
+            # Keep serving whatever we had, and try again in QUOTES_RETRY rather than a full
+            # TTL -- backdating the timestamp is what makes the next attempt due early.
+            _quotes["at"] = time.time() - QUOTES_TTL + QUOTES_RETRY
+        return _quotes["items"] or stale
 
 # Sent on every response. 'unsafe-inline' is unavoidable (the pages use inline <script>/<style>),
 # but the remaining directives still block framing, plugins, <base> hijacking and off-origin form
@@ -306,6 +342,21 @@ SECURITY_HEADERS = [
      "frame-ancestors 'none'"),
 ]
 
+# The only file types ever served as static assets. Everything the frontend needs — the
+# pages, the favicon, the two shared scripts, uploaded background images — is one of these.
+# Source (server.py), the database and its backups (focus.db, focus.db.bak-*), the secret
+# files (admin_credentials.txt, smsir_credentials.txt, quotes_api_key.txt) and the docs
+# (README.md, MOBILE.md) are none of them. This is an allow-list on purpose: a deny-list of
+# extensions kept letting things through — a backup named focus.db.bak-preotp doesn't end in
+# ".db", and every secret here is a .txt — whereas a new file dropped next to the app can
+# only be downloaded if its type is on this short list.
+STATIC_OK_EXT = (".html", ".htm", ".css", ".js", ".mjs", ".svg", ".png",
+                 ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".woff", ".woff2", ".ttf",
+                 # The Android build, offered for direct download from the landing page
+                 # (the "Download for Android" button). Drop the signed release at a stable
+                 # path — e.g. /study-planet.apk — and point landing.html's LINKS.apk at it.
+                 ".apk")
+
 
 # ---------------------------------------------------------------- database ----
 def db():
@@ -313,6 +364,13 @@ def db():
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
     conn.execute("PRAGMA busy_timeout=5000")  # wait, don't fail, if another writer holds the lock
+    # With WAL on, the default synchronous=FULL fsyncs the log on every single commit, which
+    # on shared hosting (network-backed disks, 5-20ms a flush) caps the WHOLE app at a few
+    # dozen writes a second -- and heartbeats alone are one write per user per 30s. NORMAL
+    # stops fsyncing per commit and lets the checkpoint do it instead: an app or process
+    # crash is still safe (WAL replays), only a kernel panic or power cut can lose the last
+    # commits, which for a focus timer's presence data is the right trade.
+    conn.execute("PRAGMA synchronous=NORMAL")
     return conn
 
 
@@ -563,7 +621,40 @@ def init_db():
     seed_admin(conn)
     seed_appearance(conn)
     conn.commit()
+    ensure_indexes(conn)
     conn.close()
+
+
+def ensure_indexes(conn):
+    """The covering indexes for every per-user lookup on a hot path.
+
+    Without these each of these queries is a full table scan, and the tables they scan grow
+    with the whole user base rather than with one user: `session_log` gains a row per finished
+    session from everybody, so one student opening their dashboard walked every session every
+    other student had ever logged. That is invisible with ten accounts and fatal with a
+    thousand. Created after the migrations above, because some of the columns are added there.
+
+    CREATE INDEX IF NOT EXISTS is idempotent, so this is safe to re-run on every start; on an
+    existing database the first run backfills them, which takes a moment and then never again.
+    """
+    conn.executescript(
+        """
+        /* tasks/subjects: read on every dashboard and timer load */
+        CREATE INDEX IF NOT EXISTS idx_tasks_user          ON tasks(user_id);
+        CREATE INDEX IF NOT EXISTS idx_subjects_user       ON subjects(user_id);
+        /* session_log: the biggest table, and subjects_for() hits it once per subject */
+        CREATE INDEX IF NOT EXISTS idx_session_log_user    ON session_log(user_id, day, subject_id);
+        /* room_members' PK is (room_id,user_id), which cannot answer "which room is this
+           user in" -- the lookup /api/rooms/current makes on every room poll. */
+        CREATE INDEX IF NOT EXISTS idx_room_members_user   ON room_members(user_id);
+        /* the admin dashboard's online/focusing counters and its sign-ups-per-day loop */
+        CREATE INDEX IF NOT EXISTS idx_users_last_seen     ON users(last_seen);
+        CREATE INDEX IF NOT EXISTS idx_users_created       ON users(created_at);
+        /* sessions.token is the PK, but expiry sweeps scan by date */
+        CREATE INDEX IF NOT EXISTS idx_sessions_expires    ON sessions(expires);
+        """
+    )
+    conn.commit()
 
 
 def migrate_users(conn):
@@ -673,27 +764,19 @@ SEED_ACCENTS = {
     "sky":    ("oklch(0.7 0.13 235)", "oklch(0.75 0.08 205)"),
     "green":  ("oklch(0.7 0.14 150)", "oklch(0.75 0.08 168)"),
 }
-# The 14 gradient presets index.html and theme.js already offer, seeded so the panel manages
-# the same list the app shows instead of a second one beside it.
+# The built-in gradient presets, seeded so the panel manages the same list the app shows
+# instead of a second one beside it. Kept deliberately to two: everything else a deployment
+# wants is uploaded from the admin panel, which is the supported way to add backgrounds.
+# This list must stay in step with BGS in index.html, theme.js and dashboard.html.
 SEED_BACKGROUNDS = [
-    ("warm", "Warm", "linear-gradient(180deg,#887326EB,#382C1F,#1F2838),#16303a"),
     ("midnight", "Midnight", "linear-gradient(180deg,#1f2838,#0d1420)"),
-    ("forest", "Forest", "linear-gradient(180deg,#1c3a2e,#0b1a14)"),
-    ("ocean", "Ocean", "linear-gradient(180deg,#123246,#06131f)"),
-    ("plum", "Plum", "linear-gradient(180deg,#2a1f38,#140d1c)"),
-    ("slate", "Slate", "linear-gradient(180deg,#2a2f38,#111418)"),
-    ("ember", "Ember", "linear-gradient(180deg,#3a2418,#160b08)"),
-    ("rose", "Rose", "linear-gradient(180deg,#3a2028,#160a10)"),
-    ("sand", "Sand", "linear-gradient(180deg,#4a3a28,#1d1610)"),
-    ("mint", "Mint", "linear-gradient(180deg,#1e3a38,#0a1a19)"),
     ("indigo", "Indigo", "linear-gradient(180deg,#232a4a,#0d1024)"),
-    ("crimson", "Crimson", "linear-gradient(180deg,#3d1c22,#170a0c)"),
-    ("moss", "Moss", "linear-gradient(180deg,#2f3a24,#131a0e)"),
-    ("charcoal", "Charcoal", "linear-gradient(180deg,#2c2c2e,#0b0b0c)"),
 ]
 # Defaults the app falls back to when no admin default is configured — the values the
 # frontend has always hardcoded, so an empty app_settings table changes nothing.
-FALLBACK_BG_SLUG = "warm"
+# Must name a slug that actually exists in SEED_BACKGROUNDS, or every fallback path
+# resolves to nothing and pages paint with no background at all.
+FALLBACK_BG_SLUG = "midnight"
 FALLBACK_THEME_SLUG = "classic-amber"
 SETTING_KEYS = ("default_theme", "web_default_background", "mobile_default_background",
                 "default_dim", "default_blur", "default_language", "library_enabled")
@@ -1170,7 +1253,7 @@ def user_picked_bg(bg):
 
     New choices carry `chosen:true`, written the moment a swatch is tapped or an image is
     uploaded. Accounts that predate that flag are read by their content instead: an uploaded
-    image, or any preset other than the original `warm` at its default dim/blur, can only
+    image, or any preset other than the default `midnight` at its default dim/blur, can only
     have got there by someone picking it. A settings blob that still holds exactly the
     shipped default is treated as "never chose", which is what lets a global default reach
     long-standing accounts that never touched the setting.
@@ -1568,13 +1651,35 @@ class Handler(SimpleHTTPRequestHandler):
     def end_headers(self):
         for k, v in SECURITY_HEADERS:
             self.send_header(k, v)
-        # Without this the pages carry only Last-Modified, so clients (notably the Android
-        # WebView) invent a heuristic freshness window and serve a stale copy for hours --
-        # deployed changes silently never arrive. "no-cache" still allows conditional
-        # requests, so unchanged files come back as a cheap 304 rather than a full re-download.
-        # It also keeps per-user HTML (dashboard, rooms) out of shared caches.
-        self.send_header("Cache-Control", "no-cache")
+        # Only add a Cache-Control if the handler hasn't already chosen one. _json() and the
+        # admin pages send their own ("no-store"), and this used to append a second, weaker
+        # header next to it -- two Cache-Control lines on one response, with which of them
+        # wins left to the client.
+        already = any(line[:14].lower() == b"cache-control:"
+                      for line in getattr(self, "_headers_buffer", []))
+        if not already:
+            self.send_header("Cache-Control", self._cache_control())
         super().end_headers()
+
+    def _cache_control(self):
+        """Caching policy for whatever this response is about to send.
+
+        Uploaded backgrounds are the one genuinely immutable thing served here: the filename
+        is a random token minted per upload (see the upload handler), so replacing a
+        background produces a *new* URL rather than new bytes at the old one. That makes a
+        one-year immutable cache safe, and it is what lets a phone keep a background across
+        launches instead of re-downloading a megabyte of JPEG on every single page load.
+
+        Everything else keeps "no-cache". The pages must stay on it: they carry only
+        Last-Modified otherwise, and clients -- the Android WebView especially -- invent a
+        freshness window from that and serve a stale copy for hours, so deployed changes
+        silently never arrive. "no-cache" still permits conditional requests, so an unchanged
+        page still comes back as a cheap 304.
+        """
+        path = urlparse(self.path).path
+        if path.startswith("/media/backgrounds/"):
+            return "public, max-age=31536000, immutable"
+        return "no-cache"
 
     def list_directory(self, path):
         # never expose directory listings
@@ -1666,15 +1771,25 @@ class Handler(SimpleHTTPRequestHandler):
         return [("Set-Cookie", "sid=; HttpOnly; SameSite=Lax; Path=/%s; Max-Age=0" % sec)]
 
     # -- routing --
-    def do_GET(self):
+    def _resolve_static(self):
+        """Shared gate for GET and HEAD. Returns True if it has already sent a response
+        (an API/admin reply or a 404) and the caller must stop; returns False after
+        rewriting self.path to the vetted static file the caller should serve. HEAD goes
+        through the same allow-list as GET so it can never confirm the existence or size
+        of a file GET would refuse — secrets, the database, or another student's material."""
         p = urlparse(self.path).path
+        head = self.command == "HEAD"
         if p.startswith("/api/"):
-            return self.api()
+            # The API isn't meant for HEAD; only GET/POST/… carry it. Answer 404 rather
+            # than run a read handler with no body to return.
+            self._json(404, {"error": "not found"}) if head else self.api()
+            return True
         # Never serve dotfiles/dot-directories (.git, .gitignore, .env, …) or bytecode caches.
         # Decode first so a percent-encoded dot (%2e) can't slip past the check.
         dp = unquote(p)
         if any(seg.startswith(".") or seg == "__pycache__" for seg in dp.split("/") if seg):
-            return self._json(404, {"error": "not found"})
+            self._json(404, {"error": "not found"})
+            return True
         clean = p.rstrip("/") or "/"
         # The admin panel is served by the server, never as a static file: /admin hands back
         # the dashboard only to a live admin session and the sign-in form to everyone else,
@@ -1682,28 +1797,52 @@ class Handler(SimpleHTTPRequestHandler):
         # visitor. The static blocklist below then makes the two files unreachable by name,
         # which is what stops /admin.html from being an unguarded way in.
         if clean == "/admin" or clean.startswith("/admin/"):
-            if clean == "/admin/logout":
-                return self._serve_file("admin-login.html")
-            return self._serve_file("admin.html" if self._admin() else "admin-login.html")
+            if head:
+                self._json(404, {"error": "not found"})
+            elif clean == "/admin/logout":
+                self._serve_file("admin-login.html")
+            else:
+                self._serve_file("admin.html" if self._admin() else "admin-login.html")
+            return True
         pretty = {"/login": "/login.html", "/dashboard": "/dashboard.html",
                   "/rooms": "/rooms.html", "/library": "/library.html", "/app": "/index.html",
-                  # The public landing page. "/" stays the timer, because the Android shell
-                  # remote-loads the site root -- see server.url in mobile/capacitor.config.json.
-                  # To make this the homepage instead, map "/" here too and point the shell at
-                  # the /app route, which already exists for exactly that.
-                  "/landing": "/landing.html"}
+                  # The public landing page is the homepage: "/" and "/landing" both serve it,
+                  # and the timer lives at "/app" (its CTA buttons already point there).
+                  # The Android shell must therefore remote-load "/app", NOT the site root --
+                  # see server.url in mobile/capacitor.config.json before building the APK.
+                  "/": "/landing.html", "/landing": "/landing.html",
+                  "/about": "/about.html", "/contact": "/contact.html"}
         if clean in pretty:
             self.path = pretty[clean]
-        if self.path.endswith((".py", ".pyc", ".db")):
-            return self._json(404, {"error": "not found"})
+        # Serve only known-safe static asset types (see STATIC_OK_EXT). self.path is the
+        # file that would actually be sent — pretty routes have already been rewritten to
+        # their .html above — so anything that isn't a whitelisted asset (source, the
+        # database, its backups, the secret .txt files, the docs) is refused here.
+        served = unquote(urlparse(self.path).path)
+        low = served.lower()
+        if not (low.endswith("/") or low.endswith(STATIC_OK_EXT)):
+            self._json(404, {"error": "not found"})
+            return True
         # Library files are never static. /api/library/file/<id> is the only route to them,
         # because that is where "is this material meant for this student" is decided — a
         # served path would hand a private grade's material to anyone who knew the name.
-        if unquote(clean).lower().startswith("/media/library"):
-            return self._json(404, {"error": "not found"})
-        if os.path.basename(unquote(clean)).lower() in ("admin.html", "admin-login.html"):
-            return self._json(404, {"error": "not found"})
+        if low.startswith("/media/library"):
+            self._json(404, {"error": "not found"})
+            return True
+        if os.path.basename(served).lower() in ("admin.html", "admin-login.html"):
+            self._json(404, {"error": "not found"})
+            return True
+        return False
+
+    def do_GET(self):
+        if self._resolve_static():
+            return
         return super().do_GET()
+
+    def do_HEAD(self):
+        if self._resolve_static():
+            return
+        return super().do_HEAD()
 
     def do_POST(self):
         return self.api()
@@ -2530,8 +2669,20 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(200, {"ok": False})
         d = self._read_json()
         f = 1 if d.get("focusing") else 0
+        now = time.time()
+        # Skip the write when nothing anyone can see would change. `u` is the row _user()
+        # already loaded, so the comparison is free -- no extra query to decide this.
+        #
+        # Every one of these used to be a committed write, i.e. one per signed-in user per
+        # 30s funnelled through SQLite's single writer. Presence is only ever read through
+        # two thresholds (_recent() at 90s, and the admin panel's 300s "online"), so
+        # refreshing a timestamp that is already inside the tighter of them changes no
+        # answer. A change of focus state always writes immediately.
+        fresh = (now - (col(u, "last_seen", 0) or 0)) < HEARTBEAT_MIN_WRITE
+        if f == (1 if col(u, "focusing", 0) else 0) and fresh:
+            return self._json(200, {"ok": True})
         conn = db()
-        conn.execute("UPDATE users SET focusing=?, last_seen=? WHERE id=?", (f, time.time(), u["id"]))
+        conn.execute("UPDATE users SET focusing=?, last_seen=? WHERE id=?", (f, now, u["id"]))
         conn.commit()
         conn.close()
         return self._json(200, {"ok": True})
@@ -2799,8 +2950,13 @@ class Handler(SimpleHTTPRequestHandler):
             return self.admin_overview()
         if seg == ["users"] and m == "GET":
             return self.admin_users()
-        if len(seg) == 2 and seg[0] == "users" and seg[1].isdigit() and m == "GET":
-            return self.admin_user_detail(int(seg[1]))
+        if len(seg) == 2 and seg[0] == "users" and seg[1].isdigit():
+            if m == "GET":
+                return self.admin_user_detail(int(seg[1]))
+            if m == "PATCH":
+                return self.admin_user_update(int(seg[1]))
+            if m == "DELETE":
+                return self.admin_user_delete(int(seg[1]))
         if seg == ["themes"] and m == "GET":
             return self.admin_themes()
         if seg == ["themes"] and m == "POST":
@@ -3121,6 +3277,64 @@ class Handler(SimpleHTTPRequestHandler):
             "stats": stats_summary(uid), "prefs": prefs, "subjects": subjects,
             "tasks": {"total": tasks["n"], "done": tasks["d"]}, "rooms": rooms, "history": history,
         }})
+
+    def admin_user_update(self, uid):
+        """Rename an account. Only `name` is editable from here on purpose.
+
+        Phone is the identity an account signs in with and email is unique, so letting the
+        panel rewrite either would be a way to take over someone else's login rather than a
+        way to fix a typo. The name is display text and nothing authenticates against it.
+        """
+        d = self._read_json()
+        if "name" not in d:
+            return self._json(400, {"error": "Nothing to change."})
+        # Same cleaning the user's own PATCH /api/profile applies, plus control characters
+        # stripped so a name can't smuggle newlines into the panel's tables.
+        name = re.sub(r"[\x00-\x1f\x7f]", "", str(d.get("name") or "")).strip()[:60]
+        conn = db()
+        row = conn.execute("SELECT id FROM users WHERE id=?", (uid,)).fetchone()
+        if not row:
+            conn.close()
+            return self._json(404, {"error": "User not found."})
+        conn.execute("UPDATE users SET name=? WHERE id=?", (name, uid))
+        conn.commit()
+        fresh = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+        conn.close()
+        # An emptied name is legitimate — display_name() then falls back to the email local
+        # part or the last digits of the phone, exactly as for someone who never set one.
+        return self._json(200, {"ok": True, "id": uid, "name": name,
+                                "displayName": display_name(fresh)})
+
+    def admin_user_delete(self, uid):
+        """Delete an account and everything belonging to it.
+
+        Every child table declares ON DELETE CASCADE and db() turns foreign keys on, so this
+        one statement also clears sessions (signing them out), tasks, subjects, stats, the
+        session log, and their room memberships and assignments.
+
+        One consequence is worth being explicit about: `rooms.owner_id` cascades too, so
+        deleting someone who owns a room deletes that room for everyone in it. The counts
+        below are gathered first so the panel can say precisely that before it happens.
+        """
+        conn = db()
+        row = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+        if not row:
+            conn.close()
+            return self._json(404, {"error": "User not found."})
+        owned = [dict(r) for r in conn.execute(
+            "SELECT r.id, r.name, (SELECT COUNT(*) FROM room_members m WHERE m.room_id=r.id) AS members "
+            "FROM rooms r WHERE r.owner_id=?", (uid,))]
+        summary = {
+            "name": display_name(row),
+            "phone": row["phone"] or "",
+            "rooms_deleted": owned,
+            "sessions_logged": conn.execute(
+                "SELECT COUNT(*) AS n FROM session_log WHERE user_id=?", (uid,)).fetchone()["n"],
+        }
+        conn.execute("DELETE FROM users WHERE id=?", (uid,))
+        conn.commit()
+        conn.close()
+        return self._json(200, {"ok": True, "deleted": summary})
 
     # ---- themes ----
     def admin_themes(self):

@@ -14,7 +14,8 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23070a1c'/%3E%3Ccircle cx='16' cy='15' r='7' fill='%23f3c67d'/%3E%3Cellipse cx='16' cy='15' rx='12' ry='4.2' fill='none' stroke='%237fc9ff' stroke-width='1.6' transform='rotate(-20 16 15)'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&family=Lalezar&family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&family=Lalezar&family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&family=Lalezar&family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet"></noscript>
 <style>
   /* ===========================================================================
      STUDY PLANET — the landing page.
@@ -640,6 +641,8 @@
       <a class="lnk hide-sm" href="#features" data-nav="features" data-i18n="nav_features">Features</a>
       <a class="lnk hide-sm" href="#android" data-nav="android" data-i18n="nav_android">Android</a>
       <a class="lnk hide-sm" href="#start" data-nav="start" data-i18n="nav_start">Get started</a>
+      <a class="lnk hide-sm" href="/about" data-i18n="nav_about">About</a>
+      <a class="lnk hide-sm" href="/contact" data-i18n="nav_contact">Contact</a>
       <button class="langsw" id="langSw" type="button">فارسی</button>
       <a class="go" id="navWeb" href="/app" data-i18n="nav_open">Open the app</a>
     </nav>
@@ -845,6 +848,8 @@
     <div class="foot-links">
       <a id="footWeb" href="/app" data-i18n="foot_web">Web version</a>
       <a id="footApk" href="#" data-i18n="foot_apk">Android APK</a>
+      <a href="/about" data-i18n="nav_about">About</a>
+      <a href="/contact" data-i18n="nav_contact">Contact</a>
       <a id="footIn" href="/login" data-i18n="foot_signin">Sign in</a>
     </div>
     <div class="copy" data-i18n="copy">Study Planet — made for students.</div>
@@ -869,7 +874,7 @@
    ============================================================================ */
 var LINKS = {
   web: "/app",
-  apk: "",
+  apk: "/study-planet.apk",
   apkNote: ""
 };
 
@@ -884,6 +889,7 @@ var LINKS = {
     en: {
       title: "Study Planet — a calmer place to study",
       nav_features: "Features", nav_android: "Android", nav_start: "Get started", nav_open: "Open the app",
+      nav_about: "About", nav_contact: "Contact",
       eyebrow: "Web & Android · Free",
       h1: ["A calmer place to ", "study", "."],
       lede: "A Pomodoro timer that keeps count for you, study rooms you share with friends, a calendar of everything you've done, and a library filled with the material for your own grade.",
@@ -946,6 +952,7 @@ var LINKS = {
     fa: {
       title: "استادی پلنت — جایی آرام برای درس خواندن",
       nav_features: "امکانات", nav_android: "اندروید", nav_start: "شروع", nav_open: "باز کردن برنامه",
+      nav_about: "درباره ما", nav_contact: "تماس با ما",
       eyebrow: "وب و اندروید · رایگان",
       h1: ["جایی آرام برای ", "درس خواندن", "."],
       lede: "یک تایمر پومودورو که حساب وقتت را نگه می‌دارد، اتاق‌های مطالعه برای درس خواندن با دوستان، تقویمی از هر چه خوانده‌ای، و کتابخانه‌ای پر از منابعِ پایهٔ خودت.",

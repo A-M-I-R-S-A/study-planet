@@ -8,7 +8,8 @@
 <link rel="icon" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&family=Lalezar&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&family=Lalezar&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&family=Lalezar&display=swap" rel="stylesheet"></noscript>
 <style>
   /* ---- surface tokens ----
      The page carries both appearances. Classic is the default and reproduces the cream cards
@@ -261,7 +262,7 @@
         </div>
       </div>
       <div class="navbtns">
-        <a class="nbtn" href="/">⏱ <span data-i18n="timer">Timer</span></a>
+        <a class="nbtn" href="/app">⏱ <span data-i18n="timer">Timer</span></a>
         <a class="nbtn" href="/rooms">👥 <span data-i18n="rooms">Rooms</span></a>
         <a class="nbtn" href="/library">📚 <span data-i18n="library">Library</span></a>
         <button class="nbtn" id="langBtn">🌐 <span id="langLabel">English</span></button>
@@ -362,20 +363,8 @@
   "use strict";
   const $=s=>document.querySelector(s);
   const BGS={
-    warm:"linear-gradient(180deg,#887326EB,#382C1F,#1F2838),#16303a",
     midnight:"linear-gradient(180deg,#1f2838,#0d1420)",
-    forest:"linear-gradient(180deg,#1c3a2e,#0b1a14)",
-    ocean:"linear-gradient(180deg,#123246,#06131f)",
-    plum:"linear-gradient(180deg,#2a1f38,#140d1c)",
-    slate:"linear-gradient(180deg,#2a2f38,#111418)",
-    ember:"linear-gradient(180deg,#3a2418,#160b08)",
-    rose:"linear-gradient(180deg,#3a2028,#160a10)",
-    sand:"linear-gradient(180deg,#4a3a28,#1d1610)",
-    mint:"linear-gradient(180deg,#1e3a38,#0a1a19)",
-    indigo:"linear-gradient(180deg,#232a4a,#0d1024)",
-    crimson:"linear-gradient(180deg,#3d1c22,#170a0c)",
-    moss:"linear-gradient(180deg,#2f3a24,#131a0e)",
-    charcoal:"linear-gradient(180deg,#2c2c2e,#0b0b0c)"
+    indigo:"linear-gradient(180deg,#232a4a,#0d1024)"
   };
   const I=window.FocusI18n, t=k=>I.t(k), N=v=>I.num(v);
   // Units live in i18n.js: "1h 20m" in English, "۱ ساعت ۲۰ دقیقه" in Persian.
@@ -501,9 +490,9 @@
 
     // ---- personalized setup
     const cfg=s.cfg||{}, prefs=s.prefs||{};
-    const bgId = s.bg && s.bg.type==="image" ? "image" : (s.bg&&s.bg.value)||"warm";
+    const bgId = s.bg && s.bg.type==="image" ? "image" : (s.bg&&s.bg.value)||"midnight";
     const bgSwatch = bgId==="image" ? '<span class="swatch" style="background:#333"></span>'+t("custom_image")
-      : '<span class="swatch" style="background:'+(BGS[bgId]||BGS.warm)+'"></span>'+t("bg_"+bgId);
+      : '<span class="swatch" style="background:'+(BGS[bgId]||BGS.midnight)+'"></span>'+t("bg_"+bgId);
     // durations can arrive null from an older corrupted config, so fall back per-field
     const dur=(v,d)=>N(Number.isFinite(Number(v))&&Number(v)>0?Number(v):d);
     const items=[

@@ -8,7 +8,8 @@
 <link rel="icon" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&family=Lalezar&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&family=Lalezar&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&family=Lalezar&display=swap" rel="stylesheet"></noscript>
 <style>
   :root{
     --accent:oklch(0.72 0.13 62);--accent-2:oklch(0.66 0.11 220);--accent-ink:#16303a;
@@ -300,7 +301,7 @@
       </div>
     </div>
     <div class="hbtns">
-      <a class="hbtn" href="/">⏱ <span data-i18n="timer">Timer</span></a>
+      <a class="hbtn" href="/app">⏱ <span data-i18n="timer">Timer</span></a>
       <a class="hbtn" href="/dashboard">📊 <span data-i18n="dashboard">Dashboard</span></a>
       <a class="hbtn" href="/library">📚 <span data-i18n="library">Library</span></a>
       <button class="hbtn" id="langBtn">🌐 <span id="langLabel">English</span></button>
@@ -522,7 +523,11 @@
   }
 
   /* ---------- DETAIL ---------- */
-  var curRoom=null, poll=null;
+  var curRoom=null, poll=null, curLoad=null;
+  // One listener for the life of the page. It calls curLoad rather than closing over a
+  // particular load(), because opening a second room replaces that function -- capturing
+  // the first one would keep refreshing the room the user already left.
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden&&poll&&curLoad) curLoad(); });
 
   /* A deadline is either a date or a date and a time; show whichever was given, in the
      reader's own locale rather than the ISO string the field produced. */
@@ -544,7 +549,11 @@
   function showDetail(rid){
     $('#loading').classList.add('hidden'); $('#detailView').classList.remove('hidden');
     var descDirty=false;   // never overwrite what the owner is typing with a poll refresh
-    load(); if(poll)clearInterval(poll); poll=setInterval(load,15000);
+    // Poll only while the page is actually on screen; a hidden tab refreshing a roster
+    // nobody is looking at is pure server load. Becoming visible reloads at once (see the
+    // visibilitychange listener above), so the view is never seen stale.
+    curLoad=load;
+    load(); if(poll)clearInterval(poll); poll=setInterval(function(){ if(!document.hidden) load(); },15000);
     function load(){
       api('/api/rooms/'+rid).then(function(r){
         if(!r.ok){ $('#detailView').innerHTML='<a class="hbtn back" href="/rooms">'+t('all_rooms')+'</a><section class="panel"><div class="empty"><span class="big">🚪</span><span class="etx"></span></div></section>'; $('#detailView').querySelector('.etx').textContent=r.j.error?I.serverError(r.j.error):t('room_unavailable'); if(poll)clearInterval(poll); return; }

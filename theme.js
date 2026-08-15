@@ -9,20 +9,8 @@
 (function () {
   "use strict";
   var BGS = {
-    warm: "linear-gradient(180deg,#887326EB,#382C1F,#1F2838),#16303a",
     midnight: "linear-gradient(180deg,#1f2838,#0d1420)",
-    forest: "linear-gradient(180deg,#1c3a2e,#0b1a14)",
-    ocean: "linear-gradient(180deg,#123246,#06131f)",
-    plum: "linear-gradient(180deg,#2a1f38,#140d1c)",
-    slate: "linear-gradient(180deg,#2a2f38,#111418)",
-    ember: "linear-gradient(180deg,#3a2418,#160b08)",
-    rose: "linear-gradient(180deg,#3a2028,#160a10)",
-    sand: "linear-gradient(180deg,#4a3a28,#1d1610)",
-    mint: "linear-gradient(180deg,#1e3a38,#0a1a19)",
     indigo: "linear-gradient(180deg,#232a4a,#0d1024)",
-    crimson: "linear-gradient(180deg,#3d1c22,#170a0c)",
-    moss: "linear-gradient(180deg,#2f3a24,#131a0e)",
-    charcoal: "linear-gradient(180deg,#2c2c2e,#0b0b0c)"
   };
   // The accent the user picked on the timer page, so buttons match on every other page too.
   // Only the focus tone is used here -- nothing outside the timer has a break state.
@@ -49,7 +37,7 @@
     if (!bg || !bg.value) return false;
     if (bg.chosen) return true;
     if (bg.type === "image") return true;
-    return !(bg.value === "warm" && !bg.dim && !bg.blur);
+    return !(bg.value === "midnight" && !bg.dim && !bg.blur);
   }
   function chosenTheme(p) {
     if (!p) return false;
@@ -103,7 +91,7 @@
   }
 
   function apply() {
-    var bg = get("ff_bg", { type: "preset", value: "warm", dim: 0 });
+    var bg = get("ff_bg", { type: "preset", value: "midnight", dim: 0 });
     var prefs = get("ff_prefs", { lang: "en" });
     var el = layers();
 
@@ -117,7 +105,7 @@
     }
     // An admin preset arrives as the CSS value itself; a locally stored one is a key into BGS.
     var css = (useBg && useBg.type === "preset")
-      ? (BGS[useBg.value] || (/[(#]/.test(useBg.value || "") ? useBg.value : BGS.warm))
+      ? (BGS[useBg.value] || (/[(#]/.test(useBg.value || "") ? useBg.value : BGS.midnight))
       : null;
     if (useBg && useBg.type === "image") { el.style.background = ""; el.style.backgroundImage = "url(" + useBg.value + ")"; }
     else { el.style.background = css; }
@@ -188,5 +176,19 @@
         apply();
       })
       .catch(function () {});
+
+    /* Keep uploaded backgrounds on the device. sw.js caches /media/backgrounds/ and leaves
+       every other request to the network, so the pages themselves are never held in a cache
+       that could outlive a deploy. Registered from here because this file is the one every
+       page showing a background already loads. Silently absent where service workers are
+       not available (an insecure origin, or a WebView without them) -- the images simply
+       come from the network as before.
+       Registered immediately rather than from window's "load": that event waits on the
+       Google Fonts stylesheet, which on a network that cannot reach fonts.googleapis.com
+       never resolves -- so a "load" handler would never run for the very users this is
+       meant to help. register() is async and delays nothing. */
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(function () {});
+    }
   } catch (e) {}
 })();

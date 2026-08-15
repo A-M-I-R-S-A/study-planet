@@ -2,8 +2,8 @@
 <resources>
     <string name="app_name">Study Planet</string>
     <string name="title_activity_main">Study Planet</string>
-    <string name="package_name">com.focus.app</string>
-    <string name="custom_url_scheme">com.focus.app</string>
+    <string name="package_name">ir.studyplanet.app</string>
+    <string name="custom_url_scheme">ir.studyplanet.app</string>
 
     <!-- Notification-bar timer -->
     <string name="ch_timer">Session timer</string>

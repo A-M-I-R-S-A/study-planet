@@ -22,6 +22,13 @@ focus.db.bak-*
 # admin-uploaded background images (served from /media, referenced by path in the database)
 media/
 
+# the Android signing key — never commit this. Losing it means never being able to
+# update the published app; leaking it means someone else can sign as you. Keep it
+# outside the repo entirely; these rules are only a backstop against a stray copy.
+*.jks
+*.keystore
+keystore.properties
+
 # python
 __pycache__/
 *.pyc

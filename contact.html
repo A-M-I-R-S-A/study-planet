@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#04050d">
+<title>Contact — Study Planet</title>
+<meta name="description" content="Reach Study Planet directly — bug reports, feature ideas, and questions about the app all go to the one person who built it.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Contact — Study Planet">
+<meta property="og:description" content="Reach Study Planet directly — bug reports, feature ideas, and questions about the app all go to the one person who built it.">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23070a1c'/%3E%3Ccircle cx='16' cy='15' r='7' fill='%23f3c67d'/%3E%3Cellipse cx='16' cy='15' rx='12' ry='4.2' fill='none' stroke='%237fc9ff' stroke-width='1.6' transform='rotate(-20 16 15)'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&family=Lalezar&family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&family=Lalezar&family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet"></noscript>
+<style>
+  /* STUDY PLANET — Contact. Same trimmed cosmic system as about.html; see
+     landing.html's script header for the full four-layer build-up this reuses. */
+  :root{
+    --void:#04050d;--ink:#e9efff;--dim:rgba(203,216,246,.72);--dimmer:rgba(184,199,234,.5);
+    --line:rgba(150,175,255,.15);--glass:rgba(120,150,235,.06);
+    --cyan:#63dcff;--violet:#a78bfa;--indigo:#5b6cf9;--gold:#f3c67d;--good:#7ee0a8;
+    --maxw:1120px;--gut:clamp(20px,4vw,40px);
+  }
+  *{box-sizing:border-box}
+  html{-webkit-tap-highlight-color:transparent;scroll-behavior:smooth}
+  :focus:not(:focus-visible){outline:none}
+  :focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:8px}
+  body{margin:0;font-family:'Instrument Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    color:var(--ink);background:var(--void);-webkit-font-smoothing:antialiased;overflow-x:hidden;line-height:1.62}
+  html[lang="fa"] body{font-family:'Vazirmatn','Segoe UI',Tahoma,sans-serif}
+  html[lang="fa"] h1,html[lang="fa"] h2,html[lang="fa"] .wordmark{font-family:'Lalezar','Vazirmatn',sans-serif;font-weight:400;letter-spacing:0}
+  html[lang="fa"] .eyebrow,html[lang="fa"] .kicker{letter-spacing:normal;text-transform:none}
+  .mono{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace}
+  img,svg{max-width:100%}
+
+  .cosmos{position:fixed;inset:0;z-index:-4;overflow:hidden;pointer-events:none;
+    background:radial-gradient(120% 80% at 50% -20%,#131a3d 0%,#0a0d22 38%,var(--void) 72%),var(--void)}
+  .neb-base{position:absolute;inset:-20%;opacity:.9;
+    background:
+      radial-gradient(38% 26% at 12% 8%,rgba(70,110,220,.16),transparent 70%),
+      radial-gradient(34% 30% at 88% 16%,rgba(140,80,220,.14),transparent 72%),
+      radial-gradient(46% 22% at 62% 52%,rgba(40,90,170,.12),transparent 74%),
+      radial-gradient(30% 24% at 30% 84%,rgba(120,70,200,.13),transparent 72%),
+      radial-gradient(26% 18% at 78% 92%,rgba(30,140,170,.10),transparent 74%)}
+  .neb-page{position:absolute;inset:-20%;
+    background:
+      radial-gradient(46% 36% at 78% 18%,rgba(30,190,190,.20),transparent 70%),
+      radial-gradient(42% 34% at 18% 72%,rgba(120,86,255,.22),transparent 70%)}
+  .galaxy{position:absolute;border-radius:50%;pointer-events:none;
+    background:radial-gradient(closest-side,rgba(232,240,255,.55),rgba(150,130,255,.22) 40%,transparent 72%)}
+  .galaxy::before{content:"";position:absolute;inset:-10%;border-radius:50%;
+    background:conic-gradient(from 0deg,transparent 0deg,rgba(196,212,255,.20) 38deg,transparent 88deg,
+      transparent 178deg,rgba(196,212,255,.17) 216deg,transparent 268deg);
+    -webkit-mask:radial-gradient(closest-side,#000 18%,rgba(0,0,0,.55) 52%,transparent 78%);
+    mask:radial-gradient(closest-side,#000 18%,rgba(0,0,0,.55) 52%,transparent 78%);
+    animation:galspin var(--gs,200s) linear infinite}
+  @keyframes galspin{to{transform:rotate(360deg)}}
+  .g1{width:320px;height:92px;top:16%;right:6%;transform:rotate(18deg);opacity:.44}
+  .g2{width:210px;height:62px;top:68%;left:8%;transform:rotate(-16deg);opacity:.36;--gs:260s}
+  @media (max-width:720px){.g1{width:180px;height:52px;opacity:.3}.g2{display:none}}
+
+  #stars{position:fixed;inset:0;width:100%;height:100%;z-index:-3;pointer-events:none;display:block}
+  .vignette{position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:radial-gradient(120% 90% at 50% 40%,transparent 52%,rgba(2,3,10,.55) 100%)}
+
+  .wrap{width:100%;max-width:var(--maxw);margin:0 auto;
+    padding-inline:max(var(--gut),env(safe-area-inset-left)) max(var(--gut),env(safe-area-inset-right))}
+
+  header{position:sticky;top:0;z-index:60;padding-top:env(safe-area-inset-top);
+    transition:background .3s,border-color .3s,backdrop-filter .3s;border-bottom:1px solid transparent}
+  header.stuck{background:rgba(6,9,24,.72);border-bottom-color:var(--line);
+    backdrop-filter:blur(18px) saturate(1.3);-webkit-backdrop-filter:blur(18px) saturate(1.3)}
+  .bar{display:flex;align-items:center;justify-content:space-between;gap:16px;height:70px}
+  .brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--ink);flex:none}
+  .brand .mark{width:28px;height:28px;flex:none}
+  .wordmark{font-weight:600;font-size:17.5px;letter-spacing:-.015em}
+  .nav{display:flex;align-items:center;gap:4px}
+  .nav .lnk{position:relative;color:var(--dim);text-decoration:none;font-size:14px;font-weight:500;
+    padding:9px 14px;border-radius:10px;display:flex;align-items:center;gap:8px;transition:color .2s,background .2s}
+  .nav .lnk::before{content:"";width:5px;height:5px;border-radius:50%;background:rgba(160,185,255,.3);
+    box-shadow:0 0 0 0 rgba(99,220,255,0);transition:background .3s,box-shadow .3s,transform .3s}
+  .nav .lnk:hover{color:var(--ink);background:rgba(140,170,255,.08)}
+  .nav .lnk.here{color:var(--ink)}
+  .nav .lnk.here::before{background:var(--cyan);box-shadow:0 0 10px 2px rgba(99,220,255,.6);transform:scale(1.25)}
+  .nav .go{margin-inline-start:6px;border:1px solid rgba(160,185,255,.24);background:rgba(140,170,255,.1);
+    color:var(--ink);text-decoration:none;font-size:14px;font-weight:600;padding:10px 16px;border-radius:11px;
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:.2s}
+  .nav .go:hover{background:rgba(150,180,255,.2);box-shadow:0 0 24px rgba(99,180,255,.25)}
+  .langsw{border:1px solid rgba(160,185,255,.2);background:rgba(140,170,255,.07);color:var(--dim);
+    font-family:inherit;font-size:13px;font-weight:600;height:36px;padding:0 13px;border-radius:99px;cursor:pointer;transition:.2s}
+  .langsw:hover{color:var(--ink);background:rgba(150,180,255,.18)}
+  @media (max-width:860px){.nav .hide-sm{display:none}}
+
+  .hero{position:relative;padding-block:clamp(48px,9vh,96px) clamp(36px,5vh,60px)}
+  .eyebrow{display:inline-flex;align-items:center;gap:9px;font-size:11px;letter-spacing:.18em;
+    text-transform:uppercase;font-weight:600;color:var(--dim);border:1px solid var(--line);
+    background:rgba(120,150,235,.07);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    padding:8px 15px;border-radius:99px;margin-bottom:24px}
+  .eyebrow .d{width:6px;height:6px;border-radius:50%;background:var(--cyan);flex:none;
+    box-shadow:0 0 10px 2px rgba(99,220,255,.7);animation:breathe 2.8s ease-in-out infinite}
+  @keyframes breathe{0%,100%{opacity:.35}50%{opacity:1}}
+  h1{margin:0;font-size:clamp(36px,5.6vw,58px);line-height:1.06;letter-spacing:-.035em;font-weight:700;
+    max-width:16ch;text-wrap:balance}
+  html[lang="fa"] h1{line-height:1.3;font-size:clamp(32px,5vw,50px);letter-spacing:0}
+  h1 em{font-style:normal;background:linear-gradient(105deg,var(--gold) 0%,#ffd9a0 30%,var(--cyan) 68%,var(--violet) 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  @supports not ((-webkit-background-clip:text) or (background-clip:text)){h1 em{color:var(--gold);background:none}}
+  .lede{margin:22px 0 0;font-size:clamp(15.5px,1.4vw,18px);color:var(--dim);max-width:52ch}
+
+  section{position:relative;padding-block:clamp(28px,6vh,60px)}
+  .kicker{display:inline-flex;align-items:center;gap:9px;font-family:'DM Mono',ui-monospace,monospace;
+    font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--cyan);margin-bottom:16px}
+  .kicker::before{content:"";width:22px;height:1px;background:linear-gradient(90deg,transparent,var(--cyan))}
+  h2{margin:0;font-size:clamp(25px,3.2vw,36px);line-height:1.16;letter-spacing:-.03em;font-weight:700;
+    max-width:22ch;text-wrap:balance}
+  html[lang="fa"] h2{line-height:1.4;letter-spacing:0}
+  .sec-lede{margin:14px 0 0;color:var(--dim);font-size:15.5px;max-width:56ch}
+  .sec-head{margin-bottom:32px}
+
+  /* ---- the contact card: three direct channels, one glass surface ---- */
+  .contact-card{position:relative;overflow:hidden;border-radius:28px;padding:clamp(10px,2vw,16px);
+    border:1px solid var(--line);background:linear-gradient(155deg,rgba(60,70,160,.12),rgba(40,90,120,.10));
+    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 30px 80px rgba(2,4,16,.5)}
+  .contact-card::after{content:"";position:absolute;top:0;left:8%;right:8%;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(120,215,255,.45),transparent)}
+  .crow{display:flex;align-items:center;gap:18px;padding:20px 18px;border-radius:20px;transition:background .2s}
+  .crow:hover{background:rgba(140,170,255,.06)}
+  .crow + .crow{border-top:1px solid rgba(150,180,255,.12)}
+  .crow .ic{flex:none;width:48px;height:48px;border-radius:15px;display:flex;align-items:center;justify-content:center;
+    color:var(--cyan);background:linear-gradient(150deg,rgba(99,220,255,.18),rgba(167,139,250,.12));
+    border:1px solid rgba(150,200,255,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.14)}
+  .crow .cbody{flex:1;min-width:0}
+  .crow .clabel{font-family:'DM Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--dimmer);margin-bottom:5px}
+  .crow .cvalue{font-size:17px;font-weight:600;color:var(--ink);text-decoration:none;letter-spacing:-.01em;
+    display:block;overflow-wrap:anywhere}
+  a.cvalue:hover{color:var(--cyan)}
+  .crow .csub{font-size:13px;color:var(--dim);margin-top:3px}
+  /* A phone number reads left-to-right in both languages — flipping its digit order
+     in RTL would make it wrong, not just mirrored. Same rule login.html uses. */
+  .tel{direction:ltr;unicode-bidi:isolate;display:inline-block}
+  .copy-btn{flex:none;border:1px solid rgba(160,185,255,.24);background:rgba(140,170,255,.1);
+    color:var(--ink);font-family:inherit;font-size:12.5px;font-weight:600;padding:9px 14px;border-radius:10px;
+    cursor:pointer;transition:.2s;display:flex;align-items:center;gap:7px}
+  .copy-btn:hover{background:rgba(150,180,255,.2)}
+  .copy-btn.done{background:rgba(126,224,168,.16);border-color:rgba(126,224,168,.4);color:var(--good)}
+  @media (max-width:560px){
+    .crow{flex-wrap:wrap}
+    .copy-btn{margin-inline-start:66px}
+  }
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:36px}
+  .card{position:relative;overflow:hidden;border-radius:20px;padding:24px 22px;
+    border:1px solid var(--line);background:var(--glass);
+    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    transition:border-color .25s,transform .25s,box-shadow .25s}
+  .card::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s;
+    background:radial-gradient(240px circle at var(--cx,50%) var(--cy,0%),rgba(140,190,255,.16),transparent 70%)}
+  .card:hover{transform:translateY(-3px);border-color:rgba(160,195,255,.34);
+    box-shadow:0 18px 46px rgba(2,4,16,.5),0 0 40px rgba(80,140,255,.1)}
+  .card:hover::before{opacity:1}
+  .card::after{content:"";position:absolute;top:0;left:12%;right:12%;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(180,210,255,.4),transparent)}
+  .card .ic{position:relative;width:40px;height:40px;border-radius:12px;display:flex;align-items:center;
+    justify-content:center;color:var(--cyan);margin-bottom:15px;
+    background:linear-gradient(150deg,rgba(99,220,255,.18),rgba(167,139,250,.12));
+    border:1px solid rgba(150,200,255,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.14)}
+  .card h3{position:relative;margin:0 0 7px;font-size:15.5px;font-weight:600;letter-spacing:-.015em}
+  .card p{position:relative;margin:0;font-size:13.8px;color:var(--dim);line-height:1.62}
+
+  .ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:32px}
+  .cta{display:flex;align-items:center;gap:13px;text-decoration:none;border-radius:16px;
+    padding:13px 22px;min-height:62px;border:1px solid transparent;
+    transition:transform .18s,box-shadow .18s,background .18s,border-color .18s}
+  .cta .ic{flex:none;display:flex;align-items:center;justify-content:center}
+  .cta .tx{display:flex;flex-direction:column;line-height:1.25;text-align:start}
+  .cta b{font-size:15.5px;font-weight:700;letter-spacing:-.012em}
+  .cta i{font-style:normal;font-size:12.5px;opacity:.8;font-weight:500;margin-top:2px}
+  .cta.primary{color:#060a1c;background:linear-gradient(135deg,#8fe9ff 0%,#a99bff 52%,#c79bff 100%);
+    box-shadow:0 10px 34px rgba(110,170,255,.30),inset 0 1px 0 rgba(255,255,255,.45)}
+  .cta.primary:hover{transform:translateY(-2px);box-shadow:0 18px 50px rgba(130,170,255,.44),inset 0 1px 0 rgba(255,255,255,.5)}
+  .cta.ghost{background:rgba(130,160,255,.08);color:var(--ink);border-color:rgba(160,185,255,.22);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+  .cta.ghost:hover{transform:translateY(-2px);background:rgba(150,180,255,.16);
+    border-color:rgba(170,200,255,.4);box-shadow:0 0 34px rgba(99,180,255,.2)}
+
+  footer{position:relative;border-top:1px solid var(--line);margin-top:clamp(40px,7vh,90px);
+    padding-block:36px calc(36px + env(safe-area-inset-bottom))}
+  .foot{display:flex;flex-wrap:wrap;gap:18px;align-items:center;justify-content:space-between}
+  .foot-links{display:flex;flex-wrap:wrap;gap:4px}
+  .foot-links a{color:var(--dim);text-decoration:none;font-size:14px;padding:8px 12px;border-radius:9px;transition:.2s}
+  .foot-links a:hover{color:var(--ink);background:rgba(140,170,255,.1)}
+  .foot-links a.soon{opacity:.45;pointer-events:none}
+  .copy{font-size:13px;color:var(--dimmer)}
+
+  html.reveal .rise{opacity:0;transform:translateY(28px) scale(.97);
+    transition:opacity .75s cubic-bezier(.22,.61,.36,1),transform .75s cubic-bezier(.22,.61,.36,1)}
+  html.reveal .rise.in{opacity:1;transform:none}
+
+  @media (max-width:760px){
+    .cards{gap:13px}
+    .ctas{gap:10px}
+    .cta{flex:1 1 100%;justify-content:flex-start}
+  }
+  @media (max-width:640px){.g1{opacity:.3}}
+
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    .galaxy::before,.eyebrow .d{animation:none!important}
+    html.reveal .rise{opacity:1;transform:none;transition:none}
+    .cta:hover,.card:hover{transform:none}
+  }
+</style>
+</head>
+<body>
+
+<div class="cosmos" aria-hidden="true">
+  <div class="neb-base"></div>
+  <div class="neb-page"></div>
+  <div class="galaxy g1"></div>
+  <div class="galaxy g2"></div>
+</div>
+<canvas id="stars" aria-hidden="true"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+
+<header id="top">
+  <div class="wrap bar">
+    <a class="brand" href="/">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+        <defs><radialGradient id="bm" cx="34%" cy="30%">
+          <stop offset="0%" stop-color="#ffe9c2"/><stop offset="60%" stop-color="#eda75c"/><stop offset="100%" stop-color="#7b3a52"/>
+        </radialGradient></defs>
+        <circle cx="16" cy="16" r="7.5" fill="url(#bm)"/>
+        <ellipse cx="16" cy="16" rx="13" ry="4.6" fill="none" stroke="rgba(140,200,255,.75)" stroke-width="1.6" transform="rotate(-20 16 16)"/>
+      </svg>
+      <span class="wordmark">Study Planet</span>
+    </a>
+    <nav class="nav">
+      <a class="lnk hide-sm" href="/#features" data-i18n="nav_features">Features</a>
+      <a class="lnk hide-sm" href="/#android" data-i18n="nav_android">Android</a>
+      <a class="lnk hide-sm" href="/about" data-i18n="nav_about">About</a>
+      <a class="lnk hide-sm here" href="/contact" data-i18n="nav_contact">Contact</a>
+      <button class="langsw" id="langSw" type="button">فارسی</button>
+      <a class="go" id="navWeb" href="/app" data-i18n="nav_open">Open the app</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap hero">
+    <span class="eyebrow"><span class="d"></span><span data-i18n="eyebrow">Contact</span></span>
+    <h1 data-i18n="h1">Talk to <em>a person</em>, not a form.</h1>
+    <p class="lede" data-i18n="lede">Study Planet is built and run by one person. Bug reports, feature ideas, and questions about bringing it to a school or library all land in the same place.</p>
+  </div>
+
+  <section id="reach">
+    <div class="wrap">
+      <div class="sec-head rise">
+        <div class="kicker" data-i18n="k_reach">Reach out</div>
+        <h2 data-i18n="reach_h">Every channel goes to the same person.</h2>
+      </div>
+
+      <div class="contact-card rise">
+        <div class="crow">
+          <div class="ic" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 3h4l2 5-2.5 1.5a12 12 0 0 0 6 6L15.5 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3.5 5a2 2 0 0 1 2-2Z"/></svg></div>
+          <div class="cbody">
+            <div class="clabel" data-i18n="l_phone">Phone</div>
+            <a class="cvalue" id="telLink" href="tel:+989375317743"><span class="tel">0937 531 7743</span></a>
+            <div class="csub" data-i18n="phone_sub">Call, or text if that's easier</div>
+          </div>
+          <button class="copy-btn" id="copyBtn" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span id="copyLabel" data-i18n="copy_btn">Copy</span>
+          </button>
+        </div>
+        <div class="crow">
+          <div class="ic" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div>
+          <div class="cbody">
+            <div class="clabel" data-i18n="l_loc">Location</div>
+            <span class="cvalue" data-i18n="loc_val">Shiraz, Fars, Iran</span>
+            <div class="csub" data-i18n="loc_sub">Iran Standard Time, UTC+3:30</div>
+          </div>
+        </div>
+        <div class="crow">
+          <div class="ic" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></div>
+          <div class="cbody">
+            <div class="clabel" data-i18n="l_who">Who you'll reach</div>
+            <span class="cvalue">AmirHossein Sadeghi</span>
+            <div class="csub" data-i18n="who_sub">The person who built Study Planet — no support queue in between</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cards rise">
+        <div class="card">
+          <div class="ic" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg></div>
+          <h3 data-i18n="r1_h">Found a bug</h3>
+          <p data-i18n="r1_p">What you were doing and what happened instead — that's usually enough to track it down.</p>
+        </div>
+        <div class="card">
+          <div class="ic" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2.3h6c0-1.1.4-1.8 1-2.3A7 7 0 0 0 12 2Z"/></svg></div>
+          <h3 data-i18n="r2_h">Have an idea</h3>
+          <p data-i18n="r2_p">Most of what's in the app started as exactly this kind of message.</p>
+        </div>
+        <div class="card">
+          <div class="ic" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5v13A1.5 1.5 0 0 0 5.5 19H20"/><path d="M20 3H7.5A1.5 1.5 0 0 0 6 4.5v13A1.5 1.5 0 0 1 4.5 19"/><path d="M9.5 7.5h7M9.5 11h5"/></svg></div>
+          <h3 data-i18n="r3_h">A school or library</h3>
+          <p data-i18n="r3_p">Want material published for your own students' grade and major? Say so and it can be arranged.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="ctas" style="justify-content:center">
+        <a class="cta primary" id="ctaWeb2" href="/app">
+          <span class="ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18"/></svg></span>
+          <span class="tx"><b data-i18n="cta_web">Open the web version</b><i data-i18n="cta_web_sub">Works in any browser</i></span>
+        </a>
+        <a class="cta ghost" href="/about">
+          <span class="ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></span>
+          <span class="tx"><b data-i18n="cta_about">Read the story</b><i data-i18n="cta_about_sub">Who's behind Study Planet</i></span>
+        </a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <a class="brand" href="/">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="7.5" fill="#eda75c"/>
+        <ellipse cx="16" cy="16" rx="13" ry="4.6" fill="none" stroke="rgba(140,200,255,.55)" stroke-width="1.6" transform="rotate(-20 16 16)"/>
+      </svg>
+      <span class="wordmark">Study Planet</span>
+    </a>
+    <div class="foot-links">
+      <a id="footWeb" href="/app" data-i18n="foot_web">Web version</a>
+      <a id="footApk" href="#" data-i18n="foot_apk">Android APK</a>
+      <a href="/about" data-i18n="nav_about">About</a>
+      <a href="/contact" data-i18n="nav_contact">Contact</a>
+      <a id="footIn" href="/login" data-i18n="foot_signin">Sign in</a>
+    </div>
+    <div class="copy" data-i18n="copy">Study Planet — made for students.</div>
+  </div>
+</footer>
+
+<script>
+var LINKS = { web: "/app", apk: "/study-planet.apk", apkNote: "" };
+
+(function () {
+  "use strict";
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var fine   = window.matchMedia("(pointer: fine)").matches;
+
+  var DICT = {
+    en: {
+      title: "Contact — Study Planet",
+      nav_features: "Features", nav_android: "Android", nav_about: "About", nav_contact: "Contact", nav_open: "Open the app",
+      eyebrow: "Contact",
+      h1: ["Talk to ", "a person", ", not a form."],
+      lede: "Study Planet is built and run by one person. Bug reports, feature ideas, and questions about bringing it to a school or library all land in the same place.",
+      k_reach: "Reach out",
+      reach_h: "Every channel goes to the same person.",
+      l_phone: "Phone", phone_sub: "Call, or text if that's easier", copy_btn: "Copy", copied_btn: "Copied",
+      l_loc: "Location", loc_val: "Shiraz, Fars, Iran", loc_sub: "Iran Standard Time, UTC+3:30",
+      l_who: "Who you'll reach", who_sub: "The person who built Study Planet — no support queue in between",
+      r1_h: "Found a bug", r1_p: "What you were doing and what happened instead — that's usually enough to track it down.",
+      r2_h: "Have an idea", r2_p: "Most of what's in the app started as exactly this kind of message.",
+      r3_h: "A school or library", r3_p: "Want material published for your own students' grade and major? Say so and it can be arranged.",
+      cta_web: "Open the web version", cta_web_sub: "Works in any browser",
+      cta_about: "Read the story", cta_about_sub: "Who's behind Study Planet",
+      foot_web: "Web version", foot_apk: "Android APK", foot_signin: "Sign in",
+      copy: "Study Planet — made for students.", other_lang: "فارسی"
+    },
+    fa: {
+      title: "تماس با ما — استادی پلنت",
+      nav_features: "امکانات", nav_android: "اندروید", nav_about: "درباره ما", nav_contact: "تماس با ما", nav_open: "باز کردن برنامه",
+      eyebrow: "تماس با ما",
+      h1: ["با ", "یک آدم", " حرف بزن، نه یک فرم."],
+      lede: "استادی پلنت را یک نفر می‌سازد و اداره می‌کند. گزارش باگ، ایدهٔ جدید، و سؤال دربارهٔ آوردنش به یک مدرسه یا کتابخانه — همه به یک جا می‌رسد.",
+      k_reach: "در تماس باش",
+      reach_h: "هر راهی، به همان یک نفر می‌رسد.",
+      l_phone: "تلفن", phone_sub: "زنگ بزن، یا اگر راحت‌تری پیامک بده", copy_btn: "کپی", copied_btn: "کپی شد",
+      l_loc: "موقعیت", loc_val: "شیراز، فارس، ایران", loc_sub: "به وقت ایران، UTC+3:30",
+      l_who: "به دست چه کسی می‌رسد", who_sub: "همان کسی که استادی پلنت را ساخته — بدون هیچ صف پشتیبانی",
+      r1_h: "باگ پیدا کردی", r1_p: "بگو داشتی چه کار می‌کردی و به‌جایش چه اتفاقی افتاد — معمولاً همین کافی است.",
+      r2_h: "ایده‌ای داری", r2_p: "بیشتر چیزهایی که الان در برنامه هست، دقیقاً از همین جور پیام‌ها شروع شده‌اند.",
+      r3_h: "یک مدرسه یا کتابخانه", r3_p: "می‌خواهی منابعی مخصوص پایه و رشتهٔ دانش‌آموزهای خودتان منتشر شود؟ بگو تا هماهنگ شود.",
+      cta_web: "باز کردن نسخهٔ وب", cta_web_sub: "در هر مرورگری کار می‌کند",
+      cta_about: "خواندن داستانش", cta_about_sub: "پشت استادی پلنت کیست",
+      foot_web: "نسخهٔ وب", foot_apk: "فایل اندروید", foot_signin: "ورود",
+      copy: "استادی پلنت — ساخته‌شده برای دانش‌آموزها.", other_lang: "English"
+    }
+  };
+
+  function stored() {
+    try {
+      var own = localStorage.getItem("sp_lang");
+      if (own === "en" || own === "fa") return own;
+      var p = JSON.parse(localStorage.getItem("ff_prefs") || "null");
+      if (p && (p.lang === "en" || p.lang === "fa")) return p.lang;
+    } catch (e) {}
+    return (navigator.language || "").toLowerCase().indexOf("fa") === 0 ? "fa" : "en";
+  }
+  var lang = stored();
+
+  function paint() {
+    var d = DICT[lang] || DICT.en;
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === "fa" ? "rtl" : "ltr";
+    document.title = d.title;
+
+    var h1 = document.querySelector("h1");
+    if (h1) {
+      h1.textContent = "";
+      h1.appendChild(document.createTextNode(d.h1[0]));
+      var em = document.createElement("em");
+      em.textContent = d.h1[1];
+      h1.appendChild(em);
+      h1.appendChild(document.createTextNode(d.h1[2]));
+    }
+    document.querySelectorAll("[data-i18n]").forEach(function (el) {
+      var k = el.getAttribute("data-i18n");
+      if (k === "h1" || k === "copy_btn") return;   // copy_btn is the copy button's own transient state
+      if (d[k] !== undefined) el.textContent = d[k];
+    });
+    // Copy button repaints only when it isn't mid-"copied" confirmation.
+    var lbl = document.getElementById("copyLabel");
+    if (lbl && !lbl.dataset.done) lbl.textContent = d.copy_btn;
+
+    var sw = document.getElementById("langSw");
+    if (sw) { sw.textContent = d.other_lang; sw.setAttribute("aria-label", d.other_lang); }
+    wireLinks();
+  }
+  document.getElementById("langSw").addEventListener("click", function () {
+    lang = lang === "fa" ? "en" : "fa";
+    try { localStorage.setItem("sp_lang", lang); } catch (e) {}
+    paint();
+  });
+
+  function wireLinks() {
+    ["ctaWeb2", "navWeb", "footWeb"].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el && LINKS.web) el.href = LINKS.web;
+    });
+    var fa = document.getElementById("footApk");
+    if (fa) {
+      if (LINKS.apk) { fa.href = LINKS.apk; fa.setAttribute("download", ""); fa.classList.remove("soon"); }
+      else { fa.removeAttribute("href"); fa.classList.add("soon"); }
+    }
+  }
+
+  /* ======================= copy the phone number =======================
+     navigator.clipboard needs a secure context (HTTPS, or localhost for dev) — it
+     is simply absent otherwise, so this is a client-side nicety, never the only way
+     to get the number: the row is a real tel: link regardless of whether this works. */
+  var copyBtn = document.getElementById("copyBtn");
+  var copyLabel = document.getElementById("copyLabel");
+  var copyTimer = 0;
+  if (copyBtn && navigator.clipboard) {
+    copyBtn.addEventListener("click", function () {
+      navigator.clipboard.writeText("09375317743").then(function () {
+        var d = DICT[lang] || DICT.en;
+        clearTimeout(copyTimer);
+        copyBtn.classList.add("done");
+        copyLabel.dataset.done = "1";
+        copyLabel.textContent = d.copied_btn;
+        copyTimer = setTimeout(function () {
+          copyBtn.classList.remove("done");
+          delete copyLabel.dataset.done;
+          copyLabel.textContent = d.copy_btn;
+        }, 1800);
+      }).catch(function () {});
+    });
+  } else if (copyBtn) {
+    copyBtn.style.display = "none";      // no Clipboard API: the tel: link still works
+  }
+
+  /* ======================= starfield (same engine as landing.html) ======================= */
+  var cvs = document.getElementById("stars");
+  var ctx = cvs.getContext("2d");
+  var W = 0, H = 0, DPR = 1;
+  var stars = [], dust = [], shoots = [], comets = [], glow = null, sized = false;
+  var mx = 0, my = 0, tmx = 0, tmy = 0;
+  var sy = 0, raf = 0, last = 0, nextShoot = 5000, nextComet = 26000;
+  var HUES = ["#ffffff", "#dbe9ff", "#b7cdff", "#ffe7c6", "#e0d0ff"];
+
+  function buildGlow() {
+    var s = 48, o = document.createElement("canvas");
+    o.width = o.height = s;
+    var g = o.getContext("2d"), rg = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+    rg.addColorStop(0, "rgba(255,255,255,.9)");
+    rg.addColorStop(.25, "rgba(190,220,255,.35)");
+    rg.addColorStop(1, "rgba(160,200,255,0)");
+    g.fillStyle = rg; g.fillRect(0, 0, s, s);
+    return o;
+  }
+
+  function build() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    var box = cvs.getBoundingClientRect();
+    W = Math.round(box.width); H = Math.round(box.height);
+    if (W < 2 || H < 2) { sized = false; return; }
+    sized = true;
+    cvs.width = Math.round(W * DPR); cvs.height = Math.round(H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    var mgn = 90, i;
+    var n = Math.round(W * H / 2600);
+    n = Math.min(n, fine ? 420 : 130);
+    stars.length = 0;
+    for (i = 0; i < n; i++) {
+      var z = Math.pow(Math.random(), 1.7);
+      stars.push({
+        x: -mgn + Math.random() * (W + mgn * 2), y: -mgn + Math.random() * (H + mgn * 2), z: z,
+        r: 0.45 + z * 1.9, b: 0.26 + z * 0.74, c: HUES[(Math.random() * HUES.length) | 0],
+        tw: 0.4 + Math.random() * 1.5, tp: Math.random() * 6.28, sp: z > 0.955 && Math.random() < 0.5
+      });
+    }
+    var dn = Math.min(Math.round(W * H / 12000), fine ? 110 : 34);
+    dust.length = 0;
+    for (i = 0; i < dn; i++) {
+      dust.push({
+        x: -mgn + Math.random() * (W + mgn * 2), y: -mgn + Math.random() * (H + mgn * 2),
+        z: 0.15 + Math.random() * 0.5, r: 0.4 + Math.random() * 0.9, b: 0.05 + Math.random() * 0.16,
+        vx: (Math.random() - 0.5) * 0.05, vy: (Math.random() - 0.5) * 0.035,
+        c: Math.random() < 0.3 ? "#c9b8ff" : "#bcd2ff"
+      });
+    }
+    if (!glow) glow = buildGlow();
+  }
+
+  function spawnShoot() {
+    var side = Math.random();
+    var sp = 7 + Math.random() * 5, x, y, vx, vy;
+    if (side < .42)      { x = -60;    y = Math.random() * H * .45; vx =  sp; vy = sp * (.3 + Math.random() * .35); }
+    else if (side < .84) { x = W + 60; y = Math.random() * H * .45; vx = -sp; vy = sp * (.3 + Math.random() * .35); }
+    else                 { x = Math.random() * W; y = -60; vx = (Math.random() - .5) * sp * .9; vy = sp; }
+    shoots.push({ x: x, y: y, vx: vx, vy: vy, len: 110 + Math.random() * 150, life: 0, max: 62 + Math.random() * 34 });
+  }
+  function spawnComet() {
+    var fromLeft = Math.random() < .5;
+    var sp = 1.5 + Math.random() * 1.1;
+    comets.push({
+      x: fromLeft ? -140 : W + 140, y: H * (.08 + Math.random() * .5),
+      vx: (fromLeft ? 1 : -1) * sp, vy: sp * (0.14 + Math.random() * 0.22),
+      len: 230 + Math.random() * 190, life: 0, max: 520 + Math.random() * 260
+    });
+  }
+
+  function render(dt, t) {
+    if (!sized) return;
+    ctx.clearRect(0, 0, W, H);
+    mx += (tmx - mx) * 0.055;
+    my += (tmy - my) * 0.055;
+    var i, s, x, y, a, tw;
+    for (i = 0; i < stars.length; i++) {
+      s = stars[i];
+      x = s.x + mx * (6 + s.z * 42);
+      y = s.y + my * (5 + s.z * 32) - sy * (0.012 + s.z * 0.085);
+      var span = H + 180;
+      y = ((y + 90) % span + span) % span - 90;
+      tw = reduce ? 1 : 0.72 + 0.28 * Math.sin(t * 0.0011 * s.tw + s.tp);
+      a = s.b * tw;
+      if (s.z > 0.86) {
+        ctx.globalAlpha = a * 0.55;
+        var gs = 10 + s.z * 22;
+        ctx.drawImage(glow, x - gs / 2, y - gs / 2, gs, gs);
+      }
+      ctx.globalAlpha = a;
+      ctx.fillStyle = s.c;
+      if (s.r < 1.15) ctx.fillRect(x, y, s.r * 1.5, s.r * 1.5);
+      else { ctx.beginPath(); ctx.arc(x, y, s.r, 0, 6.2832); ctx.fill(); }
+      if (s.sp) {
+        var sl = 4 + s.z * 7;
+        ctx.globalAlpha = a * 0.4;
+        ctx.strokeStyle = s.c; ctx.lineWidth = 0.7;
+        ctx.beginPath();
+        ctx.moveTo(x - sl, y); ctx.lineTo(x + sl, y);
+        ctx.moveTo(x, y - sl); ctx.lineTo(x, y + sl);
+        ctx.stroke();
+      }
+    }
+    for (i = 0; i < dust.length; i++) {
+      var p = dust[i];
+      if (!reduce) { p.x += p.vx; p.y += p.vy; }
+      x = p.x + mx * (4 + p.z * 20);
+      y = p.y + my * (3 + p.z * 15) - sy * (0.008 + p.z * 0.05);
+      var dspan = H + 180;
+      y = ((y + 90) % dspan + dspan) % dspan - 90;
+      var dwide = W + 180;
+      x = ((x + 90) % dwide + dwide) % dwide - 90;
+      ctx.globalAlpha = p.b; ctx.fillStyle = p.c; ctx.fillRect(x, y, p.r, p.r);
+    }
+    for (i = shoots.length - 1; i >= 0; i--) {
+      var sh = shoots[i];
+      sh.x += sh.vx; sh.y += sh.vy; sh.life++;
+      if (sh.life > sh.max || sh.x < -240 || sh.x > W + 240 || sh.y > H + 240) { shoots.splice(i, 1); continue; }
+      var fade = Math.sin(Math.PI * (sh.life / sh.max));
+      var d = Math.hypot(sh.vx, sh.vy), ux = sh.vx / d, uy = sh.vy / d;
+      var tx = sh.x - ux * sh.len, ty = sh.y - uy * sh.len;
+      var lg = ctx.createLinearGradient(sh.x, sh.y, tx, ty);
+      lg.addColorStop(0, "rgba(255,255,255," + (0.85 * fade) + ")");
+      lg.addColorStop(.35, "rgba(160,215,255," + (0.35 * fade) + ")");
+      lg.addColorStop(1, "rgba(160,215,255,0)");
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = lg; ctx.lineWidth = 1.6; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(sh.x, sh.y); ctx.lineTo(tx, ty); ctx.stroke();
+    }
+    for (i = comets.length - 1; i >= 0; i--) {
+      var cm = comets[i];
+      cm.x += cm.vx; cm.y += cm.vy; cm.life++;
+      if (cm.life > cm.max || cm.x < -400 || cm.x > W + 400 || cm.y > H + 400) { comets.splice(i, 1); continue; }
+      var cf = Math.min(1, Math.min(cm.life, cm.max - cm.life) / 90);
+      var cd = Math.hypot(cm.vx, cm.vy), cux = cm.vx / cd, cuy = cm.vy / cd;
+      var ctx2 = cm.x - cux * cm.len, cty = cm.y - cuy * cm.len;
+      var cg = ctx.createLinearGradient(cm.x, cm.y, ctx2, cty);
+      cg.addColorStop(0, "rgba(214,240,255," + (0.5 * cf) + ")");
+      cg.addColorStop(.28, "rgba(150,205,255," + (0.20 * cf) + ")");
+      cg.addColorStop(1, "rgba(140,180,255,0)");
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = cg; ctx.lineWidth = 5; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(cm.x, cm.y); ctx.lineTo(ctx2, cty); ctx.stroke();
+      ctx.globalAlpha = 0.85 * cf;
+      ctx.drawImage(glow, cm.x - 17, cm.y - 17, 34, 34);
+    }
+    ctx.globalAlpha = 1;
+    if (!reduce) {
+      nextShoot -= dt;
+      if (nextShoot <= 0 && shoots.length < 2) { spawnShoot(); nextShoot = 9000 + Math.random() * 13000; }
+      nextComet -= dt;
+      if (nextComet <= 0 && !comets.length) { spawnComet(); nextComet = 52000 + Math.random() * 48000; }
+    }
+  }
+
+  function frame(t) { var dt = Math.min(t - last, 50); last = t; render(dt, t); raf = requestAnimationFrame(frame); }
+  function start() { if (!raf && !reduce) { last = performance.now(); raf = requestAnimationFrame(frame); } }
+  function stop() { if (raf) { cancelAnimationFrame(raf); raf = 0; } }
+
+  build();
+  if (reduce) render(16, 0); else start();
+  document.addEventListener("visibilitychange", function () { if (document.hidden) stop(); else start(); });
+
+  var rt = 0;
+  function rebuild() {
+    clearTimeout(rt);
+    rt = setTimeout(function () {
+      var was = sized; build();
+      if (!sized) return;
+      if (reduce) render(16, 0); else if (!was) start();
+    }, 180);
+  }
+  window.addEventListener("resize", rebuild);
+  if (window.ResizeObserver) new ResizeObserver(rebuild).observe(document.documentElement);
+  window.addEventListener("scroll", function () {
+    sy = window.scrollY || window.pageYOffset || 0;
+    if (reduce) render(16, 0);
+  }, { passive: true });
+
+  if (fine && !reduce) {
+    window.addEventListener("mousemove", function (e) {
+      tmx = (e.clientX / window.innerWidth - .5) * 2;
+      tmy = (e.clientY / window.innerHeight - .5) * 2;
+    }, { passive: true });
+  }
+  if (fine) {
+    document.querySelectorAll(".cards").forEach(function (cards) {
+      cards.addEventListener("mousemove", function (e) {
+        var card = e.target.closest && e.target.closest(".card");
+        if (!card) return;
+        var r = card.getBoundingClientRect();
+        card.style.setProperty("--cx", ((e.clientX - r.left) / r.width * 100).toFixed(1) + "%");
+        card.style.setProperty("--cy", ((e.clientY - r.top) / r.height * 100).toFixed(1) + "%");
+      }, { passive: true });
+    });
+  }
+
+  var head = document.querySelector("header");
+  function onScroll() { head.classList.toggle("stuck", (window.scrollY || 0) > 10); }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
+  var reveal = document.querySelectorAll(".rise");
+  function revealAll() { reveal.forEach(function (el) { el.classList.add("in"); }); }
+  if (window.IntersectionObserver && !reduce) {
+    document.documentElement.classList.add("reveal");
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e, i) {
+        if (!e.isIntersecting) return;
+        var el = e.target;
+        setTimeout(function () { el.classList.add("in"); }, Math.min(i, 5) * 70);
+        io.unobserve(el);
+      });
+    }, { rootMargin: "0px 0px -8% 0px", threshold: .08 });
+    reveal.forEach(function (el) { io.observe(el); });
+    setTimeout(revealAll, 2600);
+  }
+
+  paint();
+})();
+</script>
+</body>
+</html>

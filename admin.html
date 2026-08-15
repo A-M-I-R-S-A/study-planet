@@ -9,7 +9,8 @@
 <link rel="icon" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
 <style>
   /* The app's own tokens, so the panel reads as the same product: cream surfaces, the amber
      accent, DM Mono for numbers, and the 22px corner radius used everywhere else. The shell
@@ -784,8 +785,15 @@ function openUser(id){
           'serves this view does not select them.'+
         '</div>'+
       '</div>'+
-      '<div class="mfoot"><button class="btn ghost" onclick="void 0" id="uClose">Close</button></div>',"wide");
+      '<div class="mfoot">'+
+        '<button class="btn danger" id="uDel">Delete user</button>'+
+        '<span style="flex:1"></span>'+
+        '<button class="btn ghost" id="uRename">Rename</button>'+
+        '<button class="btn ghost" id="uClose">Close</button>'+
+      '</div>',"wide");
     $("#uClose").onclick=closeModal;
+    $("#uRename").onclick=function(){renameUser(u);};
+    $("#uDel").onclick=function(){deleteUser(u);};
   }).catch(function(e){
     if(e.message==="session") return;
     modal('<div class="mhead"><b>User details</b><button class="x">×</button></div>'+
@@ -793,6 +801,60 @@ function openUser(id){
   });
 
   function kv(k,v){return '<dt>'+esc(k)+'</dt><dd>'+v+'</dd>';}
+}
+
+/* Rename an account. Only the display name is editable: the phone is what someone signs in
+   with and the email is unique, so offering to rewrite either here would be a way to take
+   over a login rather than a way to fix a typo. */
+function renameUser(u){
+  modal('<div class="mhead"><b>Rename user</b><button class="x">×</button></div>'+
+    '<div class="mbody">'+
+      '<div class="fld"><label class="lbl" for="rnName">Display name</label>'+
+      '<input type="text" id="rnName" maxlength="60" value="'+esc(u.name||"")+'" '+
+        'placeholder="Leave empty to fall back to their phone/email"></div>'+
+      '<div class="note" style="margin-top:12px">This is display text only. It does not change '+
+        'how they sign in, and they can still edit it themselves from their own profile.</div>'+
+    '</div>'+
+    '<div class="mfoot"><button class="btn ghost" id="rnCancel">Cancel</button>'+
+    '<button class="btn" id="rnSave">Save</button></div>',"narrow");
+  var inp=$("#rnName");
+  inp.focus(); inp.select();
+  $("#rnCancel").onclick=function(){openUser(u.id);};
+  inp.addEventListener("keydown",function(e){if(e.key==="Enter")$("#rnSave").click();});
+  $("#rnSave").onclick=function(){
+    var b=this; b.disabled=true; b.innerHTML='<span class="spin"></span>';
+    api("/users/"+u.id,{method:"PATCH",body:{name:inp.value}}).then(function(d){
+      toast("Renamed to "+(d.displayName||"—")+".","ok");
+      loadUsers();
+      openUser(u.id);
+    }).catch(function(e){
+      b.disabled=false; b.textContent="Save";
+      if(e.message!=="session") toast(e.message||"That didn't work.","err");
+    });
+  };
+}
+
+/* Delete an account and everything attached to it. The room warning is not decoration:
+   rooms.owner_id cascades, so removing an owner removes their room for every member too. */
+function deleteUser(u){
+  var owned=(u.rooms||[]).filter(function(r){return r.role==="owner";});
+  var body="Deleting "+(u.name||u.displayName||"this user")+" removes their account, stats, "+
+           "tasks, subjects and study history for good. They will be signed out everywhere. "+
+           "This cannot be undone.";
+  if(owned.length){
+    body+="\n\nThey own "+owned.length+" room"+(owned.length===1?"":"s")+" ("+
+          owned.map(function(r){return r.name;}).join(", ")+
+          "), which will be deleted for everyone in "+(owned.length===1?"it":"them")+" as well.";
+  }
+  confirmDialog("Delete this user?",body,"Delete permanently",function(){
+    return api("/users/"+u.id,{method:"DELETE"}).then(function(d){
+      var s=d.deleted||{};
+      var msg="Deleted "+(s.name||"user")+".";
+      if(s.rooms_deleted&&s.rooms_deleted.length) msg+=" "+s.rooms_deleted.length+" room removed.";
+      toast(msg,"ok");
+      loadUsers();
+    });
+  });
 }
 var ACCENT_CSS={amber:"oklch(0.7 0.12 62)",coral:"oklch(0.71 0.14 40)",rose:"oklch(0.68 0.15 15)",
   violet:"oklch(0.66 0.16 300)",sky:"oklch(0.7 0.13 235)",green:"oklch(0.7 0.14 150)"};

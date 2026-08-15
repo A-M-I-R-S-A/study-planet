@@ -1,10 +1,15 @@
 apply plugin: 'com.android.application'
 
 android {
+    // namespace = the Java package the code lives in (internal, never seen by users).
+    // applicationId = the app's identity on the device and in the Play Store — permanent
+    // once published, so it is the reverse of the domain we own rather than a default.
+    // The two are allowed to differ; relative names in the manifest (.MainActivity) still
+    // resolve against the namespace, and ${applicationId}.fileprovider tracks the new id.
     namespace "com.focus.app"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.focus.app"
+        applicationId "ir.studyplanet.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

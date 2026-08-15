@@ -11,7 +11,8 @@
 <link rel="icon" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&family=Lalezar&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&family=Lalezar&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&family=Lalezar&display=swap" rel="stylesheet"></noscript>
 <style>
   :root{
     --accent:oklch(0.7 0.12 62);
@@ -821,20 +822,8 @@
 
   /* ---- backgrounds ---- */
   const BGS={
-    warm:"linear-gradient(180deg,#887326EB,#382C1F,#1F2838),#16303a",
     midnight:"linear-gradient(180deg,#1f2838,#0d1420)",
-    forest:"linear-gradient(180deg,#1c3a2e,#0b1a14)",
-    ocean:"linear-gradient(180deg,#123246,#06131f)",
-    plum:"linear-gradient(180deg,#2a1f38,#140d1c)",
-    slate:"linear-gradient(180deg,#2a2f38,#111418)",
-    ember:"linear-gradient(180deg,#3a2418,#160b08)",
-    rose:"linear-gradient(180deg,#3a2028,#160a10)",
-    sand:"linear-gradient(180deg,#4a3a28,#1d1610)",
-    mint:"linear-gradient(180deg,#1e3a38,#0a1a19)",
     indigo:"linear-gradient(180deg,#232a4a,#0d1024)",
-    crimson:"linear-gradient(180deg,#3d1c22,#170a0c)",
-    moss:"linear-gradient(180deg,#2f3a24,#131a0e)",
-    charcoal:"linear-gradient(180deg,#2c2c2e,#0b0b0c)"
   };
   /* Accent = every button, toggle and highlight in the app. Each option carries its own
      break tone, so breaks keep reading calmer than focus time whichever colour is picked.
@@ -860,7 +849,7 @@
   const prefs=store.get("ff_prefs",{clock24:false,chime:true,lang:"en"});
   let lang=prefs.lang||"en";
   let T=I18N[lang];
-  let bg=store.get("ff_bg",{type:"preset",value:"warm",dim:0});
+  let bg=store.get("ff_bg",{type:"preset",value:"midnight",dim:0});
   // An unrecognised preset key used to be reset to `warm` here. It can now also be a background
   // the admin added, which arrives a moment later from /api/appearance -- so the value is kept
   // and applyBg() falls back visually until the list lands, instead of destroying the choice.
@@ -901,7 +890,7 @@
      Only the second case follows an admin default. Kept in step with user_picked_bg() and
      user_picked_theme() in server.py, and with the same pair in theme.js -- all three have to
      agree or a global default would apply on one screen and not the next. */
-  function chosenBg(b){return !!(b&&b.value&&(b.chosen||b.type==="image"||!(b.value==="warm"&&!b.dim&&!b.blur)));}
+  function chosenBg(b){return !!(b&&b.value&&(b.chosen||b.type==="image"||!(b.value==="midnight"&&!b.dim&&!b.blur)));}
   function chosenTheme(p){return !!(p&&(p.themeChosen||(p.accent&&p.accent!=="amber")||p.glass));}
   /* What is actually on screen: the user's pick when there is one, otherwise the admin default
      for this platform, otherwise whatever is stored locally. */
@@ -916,7 +905,7 @@
             dim:appearanceDefaults.dim||0,blur:appearanceDefaults.blur||0};
   }
   // A preset is either a key into BGS or, for an admin background, the CSS value itself.
-  function bgCss(v){return BGS[v]||(/[(#]/.test(v||"")?v:BGS.warm);}
+  function bgCss(v){return BGS[v]||(/[(#]/.test(v||"")?v:BGS.midnight);}
   function applyBg(){
     const el=$("#bg"), e=effectiveBg();
     if(e.type==="image"){el.style.background="";el.style.backgroundImage="url("+e.value+")";}
@@ -1196,10 +1185,30 @@
     if(document.hidden){ Bar.anchor(); return; }   // last word before the OS may suspend us
     renderClock(); syncTimer();
     if(Bar.on){ Bar.adopt(false); Lock.recheck(); } // catch up on notification buttons / new grants
+    // Coming back is the moment to catch up on everything the loops above skipped while
+    // hidden, so the roster is current on the first frame rather than up to 30s later.
+    if(Cloud.enabled){ Cloud.heartbeat(running); if(roomInfo) refreshRoom(); }
   });
-  // heartbeat + push my accumulating focus time so co-focusers see it; keep the room fresh
-  setInterval(()=>{if(!Cloud.enabled)return;Cloud.heartbeat(running);if(running)flushFocus(false);refreshRoom();},30000);
-  setInterval(()=>{if(Cloud.enabled&&roomInfo&&(running||openPanel==="room"))refreshRoom();},10000);
+  /* heartbeat + push my accumulating focus time so co-focusers see it; keep the room fresh.
+     Both loops stand down while the tab is hidden, which on a phone is most of its life.
+     The distinction matters and is not just "poll less":
+       - refreshRoom() only feeds the on-screen roster. Running it behind a hidden tab is
+         load nobody can see, and returning re-fetches it instantly anyway.
+       - the beat is what OTHER people see -- presence and the focusing flag. A running
+         timer keeps beating even while hidden, because going quiet there would drop me out
+         of my co-focusers' roster after 90s. That would be a behaviour change, not an
+         optimisation, so it is deliberately kept. */
+  setInterval(()=>{
+    if(!Cloud.enabled)return;
+    if(document.hidden&&!running)return;      // nothing running, and nobody looking
+    Cloud.heartbeat(running);
+    if(running)flushFocus(false);
+    if(!document.hidden)refreshRoom();
+  },30000);
+  setInterval(()=>{
+    if(document.hidden)return;
+    if(Cloud.enabled&&roomInfo&&(running||openPanel==="room"))refreshRoom();
+  },10000);
 
   function chime(){try{const c=new (window.AudioContext||window.webkitAudioContext)();[0,.18,.36].forEach(t=>{const o=c.createOscillator(),g=c.createGain();o.type="sine";o.frequency.value=760;o.connect(g);g.connect(c.destination);g.gain.setValueAtTime(.0001,c.currentTime+t);g.gain.exponentialRampToValueAtTime(.35,c.currentTime+t+.02);g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+t+.16);o.start(c.currentTime+t);o.stop(c.currentTime+t+.17);});}catch(e){}}
   function toast(msg){const n=document.createElement("div");n.className="toast";n.textContent=msg;document.body.appendChild(n);setTimeout(()=>{n.style.transition="opacity .4s";n.style.opacity="0";setTimeout(()=>n.remove(),400);},4000);}
@@ -2020,6 +2029,25 @@
         adminBgs.forEach(b=>{if(b.kind==="preset"&&!BGS[b.slug])BGS[b.slug]=b.value;});
         applyThemeTokens();applyBg();buildSwatches();syncBgSliders();renderGlass();applyGlass();
       }).catch(()=>{});
+  }
+
+  /* Keep uploaded backgrounds on the device, so a background survives a reload and a cold
+     launch instead of pulling a megabyte of JPEG down every time. sw.js caches
+     /media/backgrounds/ and passes every other request straight to the network, so nothing
+     about how this page itself is delivered changes -- deliberately, since a cached app
+     shell is what makes a deploy silently fail to arrive.
+     This page carries its own copy of the registration because, unlike the other pages, it
+     loads no external script -- theme.js (which registers it everywhere else) is not here.
+     Not gated on Cloud.served: that only turns true once /api/me answers, which is long
+     after this line runs. The feature check plus the catch is the real guard -- opened from
+     file:// there is no navigator.serviceWorker to begin with. */
+  /* Registered straight away, NOT from window's "load". That event waits on every
+     subresource including the Google Fonts stylesheet, and on a network that cannot reach
+     fonts.googleapis.com it does not fire until that request times out -- minutes, or never.
+     Hanging anything off "load" here silently never runs for exactly the users this is for.
+     register() is async and costs the page nothing, so there is no reason to wait. */
+  if("serviceWorker" in navigator){
+    navigator.serviceWorker.register("/sw.js").catch(()=>{});
   }
 
   /* ---- init ---- */
