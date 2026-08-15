@@ -3,8 +3,24 @@ focus.db
 focus.db-journal
 focus.db-wal
 
+# throwaway database the "codes to console" dev server writes to
+focus-dev.db
+focus-dev.db-*
+
 # secrets — the api-ninjas key the quotes proxy reads (never commit this)
 quotes_api_key.txt
+
+# secrets — the initial admin login, seeded into focus.db on first run (never commit this)
+admin_credentials.txt
+
+# secrets — the SMS.ir key the phone-verification proxy sends codes with (never commit this)
+smsir_credentials.txt
+
+# database backups taken before a schema migration
+focus.db.bak-*
+
+# admin-uploaded background images (served from /media, referenced by path in the database)
+media/
 
 # python
 __pycache__/

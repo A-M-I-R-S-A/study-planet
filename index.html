@@ -156,6 +156,23 @@
   .task .rm{border:none;background:none;color:#a89e8f;font-size:17px;cursor:pointer;padding:0 2px;line-height:1}
   .task .rm:hover{color:#c0392b}
   .empty-tasks{text-align:center;color:#a89e8f;font-size:13px;padding:20px 0}
+  /* work a room owner assigned to you: same row, plus its deadline and a way to start on it */
+  .tk-head{display:flex;align-items:center;gap:9px;margin:0 2px 8px;font-size:10px;font-weight:700;
+    letter-spacing:.09em;text-transform:uppercase;color:#a89e8f}
+  .tk-head::after{content:"";flex:1;height:1px;background:rgba(0,0,0,.08)}
+  .tk-head.later{margin-top:14px}
+  .task.asg{align-items:flex-start}
+  .task.asg .body{flex:1;min-width:0}
+  .task.asg.doing{box-shadow:inset 0 0 0 1.5px var(--accent)}
+  .task .tmeta{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+  .task .tg{font-size:10px;font-weight:700;letter-spacing:.02em;padding:2px 7px;border-radius:99px;
+    background:rgba(0,0,0,.05);color:#a89e8f;white-space:nowrap}
+  .task .tg.late{background:#f6dcd4;color:#c0392b}
+  .task .tg.time{background:#dff0e5;color:#2e7d46}
+  .task .do{flex:none;border:none;border-radius:9px;background:var(--accent);color:var(--accent-ink);
+    font-family:inherit;font-size:11.5px;font-weight:700;padding:7px 11px;cursor:pointer;transition:.15s}
+  .task .do:hover{filter:brightness(1.06)}
+  .task.done .do{display:none}
 
   /* music panel */
   .music-panel{background:#2b2824;color:var(--cream);border-radius:22px;padding:18px 20px;box-shadow:0 18px 52px rgba(0,0,0,.34)}
@@ -218,7 +235,7 @@
   .co.off .co-av{filter:grayscale(.25);opacity:.9}
   .co.off .co-time{color:var(--muted)}
   @keyframes copulse{0%{box-shadow:0 0 0 0 rgba(58,157,93,.5)}70%{box-shadow:0 0 0 6px rgba(58,157,93,0)}100%{box-shadow:0 0 0 0 rgba(58,157,93,0)}}
-  .acct.locked,#roomsBtn.locked,#dashBtn.locked{opacity:.4;pointer-events:none;filter:grayscale(.35)}
+  .acct.locked,#roomsBtn.locked,#dashBtn.locked,#libBtn.locked{opacity:.4;pointer-events:none;filter:grayscale(.35)}
 
   /* dock buttons */
   .dock-btns{pointer-events:auto;display:flex;gap:6px;background:rgba(255,255,255,.16);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.26);padding:7px;border-radius:99px;box-shadow:0 8px 28px rgba(0,0,0,.18)}
@@ -374,6 +391,11 @@
   html.glass .task.done .txt{color:rgba(233,240,246,.38)}
   html.glass .task .rm{color:rgba(233,240,246,.45)}
   html.glass .empty-tasks{color:var(--muted)}
+  html.glass .tk-head{color:var(--muted)}
+  html.glass .tk-head::after{background:rgba(255,255,255,.12)}
+  html.glass .task .tg{background:rgba(255,255,255,.1);color:var(--muted)}
+  html.glass .task .tg.late{background:rgba(255,122,106,.18);color:#ff9c8f}
+  html.glass .task .tg.time{background:rgba(94,196,136,.18);color:#8fe0ae}
   html.glass .tk::-webkit-scrollbar-thumb,
   html.glass .cofocus::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18)}
   html.glass .co.me{background:linear-gradient(90deg,color-mix(in oklch,var(--accent) 26%,transparent),rgba(255,255,255,.06))}
@@ -442,6 +464,9 @@
           </a>
           <a class="menu-item hidden" id="roomsBtn" href="/rooms" role="menuitem">
             <span class="mi">👥</span><span data-i18n="room_tab">Room</span>
+          </a>
+          <a class="menu-item hidden" id="libBtn" href="/library" role="menuitem">
+            <span class="mi">📚</span><span data-i18n="library">Library</span>
           </a>
           <button class="menu-item" id="langBtn" role="menuitem">
             <span class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18"/></svg></span>
@@ -675,6 +700,11 @@
       sound:"Sound",chime:"Chime when timer ends",done:"Done",reset_all:"Reset everything",
       add_task:"Add a task…",empty:"Nothing yet — add one above.",
       all_done:"All done — nice work.",show_done:"Show completed",hide_done:"Hide completed",
+      assigned:"Assigned to you",own_tasks:"Your list",do_it:"Let's do it",
+      set_for:"Timer set to %s — add more time if you need it, then press start.",
+      doing_now:"Started — %s",
+      pause_first:"Finish or pause the session first.",
+      cap_note:"Timer set to 90m, the longest a block can be.",
       start:"Start",pause:"Pause",off:"off",loop:"loop",left:"left",
       phase_focus:"Focus session",phase_short:"Short break",phase_long:"Long break",
       streak_suffix:"-day streak",toast_focus:"Focus complete — take a break.",toast_break:"Break's over — back to it.",
@@ -682,7 +712,7 @@
       confirm_reset:"Reset all settings, tasks, and progress?",img_big:"Image is large — it'll show now but may not persist.",
       am:"AM",pm:"PM",lang_switch:"English",sign_in:"Sign in",dashboard:"Dashboard",studying:"What are you studying?",
       timer_mode:"Timer",stopwatch:"Stopwatch",add_subjects:"＋ Create subjects on your dashboard",sign_in_subjects:"Sign in to track subjects",
-      focus_together:"Focusing together",room_tab:"Room",room_empty:"No one else here yet — invite a friend from the room.",you:"you",locked_hint:"Finish or pause your session to leave the timer.",focusing_now:"focusing now",idle:"idle",
+      focus_together:"Focusing together",room_tab:"Room",library:"Library",room_empty:"No one else here yet — invite a friend from the room.",you:"you",locked_hint:"Finish or pause your session to leave the timer.",focusing_now:"focusing now",idle:"idle",
       app_lock:"App lock",lock_note:"While a focus session runs, opening anything outside your allowed list shows a reminder instead.",
       lock_enable:"Block other apps while focusing",lock_breaks:"Keep blocking during breaks",allowed_apps:"Allowed apps",
       lock_mute:"Silence notifications while focusing",
@@ -712,6 +742,11 @@
       sound:"صدا",chime:"زنگ در پایان تایمر",done:"تمام",reset_all:"بازنشانی همه",
       add_task:"افزودن کار…",empty:"هنوز کاری نیست — یکی اضافه کنید.",
       all_done:"همه انجام شد — عالی بود.",show_done:"نمایش انجام‌شده‌ها",hide_done:"پنهان کردن انجام‌شده‌ها",
+      assigned:"واگذارشده به شما",own_tasks:"فهرست خودت",do_it:"بزن بریم",
+      set_for:"تایمر روی %s تنظیم شد — اگر لازم داری زمان اضافه کن، بعد شروع بزن.",
+      doing_now:"شروع شد — %s",
+      pause_first:"اول جلسه را تمام یا متوقف کن.",
+      cap_note:"تایمر روی ۹۰ دقیقه تنظیم شد؛ بیشترین مدت یک بلوک همین است.",
       start:"شروع",pause:"توقف",off:"خاموش",loop:"تکرار",left:"باقی‌مانده",
       phase_focus:"جلسهٔ تمرکز",phase_short:"استراحت کوتاه",phase_long:"استراحت بلند",
       streak_suffix:" روز پیاپی",toast_focus:"تمرکز کامل شد — کمی استراحت کنید.",toast_break:"استراحت تمام شد — به کار برگردید.",
@@ -719,7 +754,7 @@
       confirm_reset:"همهٔ تنظیمات، کارها و پیشرفت بازنشانی شود؟",img_big:"تصویر بزرگ است — اکنون نمایش داده می‌شود اما شاید ذخیره نشود.",
       am:"ق.ظ",pm:"ب.ظ",lang_switch:"فارسی",sign_in:"ورود",dashboard:"داشبورد",studying:"چه می‌خوانی؟",
       timer_mode:"تایمر",stopwatch:"کرنومتر",add_subjects:"＋ موضوع‌ها را در داشبورد بسازید",sign_in_subjects:"برای موضوع‌ها وارد شوید",
-      focus_together:"تمرکز باهم",room_tab:"روم",room_empty:"هنوز کسی اینجا نیست — از روم یک دوست را دعوت کن.",you:"شما",locked_hint:"برای خروج از تایمر، جلسه را تمام یا متوقف کن.",focusing_now:"در حال تمرکز",idle:"آرام",
+      focus_together:"تمرکز باهم",room_tab:"روم",library:"کتابخانه",room_empty:"هنوز کسی اینجا نیست — از روم یک دوست را دعوت کن.",you:"شما",locked_hint:"برای خروج از تایمر، جلسه را تمام یا متوقف کن.",focusing_now:"در حال تمرکز",idle:"آرام",
       app_lock:"قفل برنامه‌ها",lock_note:"در طول جلسهٔ تمرکز، باز کردن هر برنامه‌ای خارج از فهرست مجاز، به‌جای آن یک یادآوری نشان می‌دهد.",
       lock_enable:"مسدود کردن برنامه‌های دیگر هنگام تمرکز",lock_breaks:"مسدودسازی در زمان استراحت هم ادامه یابد",allowed_apps:"برنامه‌های مجاز",
       lock_mute:"بی‌صدا کردن اعلان‌ها هنگام تمرکز",
@@ -811,13 +846,20 @@
   let lang=prefs.lang||"en";
   let T=I18N[lang];
   let bg=store.get("ff_bg",{type:"preset",value:"warm",dim:0});
-  if(bg.type==="preset" && !BGS[bg.value]) bg={type:"preset",value:"warm",dim:0};
+  // An unrecognised preset key used to be reset to `warm` here. It can now also be a background
+  // the admin added, which arrives a moment later from /api/appearance -- so the value is kept
+  // and applyBg() falls back visually until the list lands, instead of destroying the choice.
+  let adminBgs=[];              // backgrounds the panel publishes for this platform
+  let appearanceDefaults=null;  // {theme,background,dim,blur,source} from /api/appearance
   let tasks=(store.get("ff_tasks",[])||[]).map(t=>({id:t.id||(Date.now()+Math.floor(Math.random()*1e6)),text:t.text,done:!!t.done}));
   let stats=store.get("ff_stats",{date:dayStr(new Date()),sessions:0,mins:0,secs:0});
   if(stats.date!==dayStr(new Date())) stats={date:dayStr(new Date()),sessions:0,mins:0,secs:0};
   if(stats.secs==null) stats.secs=(stats.mins||0)*60;   // migrate older minute-only records
   let streak=store.get("ff_streak",{lastDate:"",count:0});
   let roomInfo=null;   // {id,name,members:[{id,name,avatar,focusing,sec,me}]} when signed in and in a room
+  // Work the room's owner assigned to you, and which one you pressed "Let's do it" on. Both
+  // ride along on the /api/rooms/current poll, so the deck costs no extra request.
+  let roomTasks=[], doingId=null;
 
   const BOUNDS={focusMin:[1,90],shortMin:[1,30],longMin:[1,60]};
   // no dock panel on launch -- the timer opens clean and you pick a panel yourself
@@ -840,26 +882,71 @@
      edges, because the filter has nothing beyond them to sample -- scaling it up pushes that
      soft margin off-screen. Kept in step with blurLayer() in theme.js. */
   const BLUR_MAX_PX=32;
+  /* Has this user actually chosen a background/theme, or are they still on the shipped default?
+     Only the second case follows an admin default. Kept in step with user_picked_bg() and
+     user_picked_theme() in server.py, and with the same pair in theme.js -- all three have to
+     agree or a global default would apply on one screen and not the next. */
+  function chosenBg(b){return !!(b&&b.value&&(b.chosen||b.type==="image"||!(b.value==="warm"&&!b.dim&&!b.blur)));}
+  function chosenTheme(p){return !!(p&&(p.themeChosen||(p.accent&&p.accent!=="amber")||p.glass));}
+  /* What is actually on screen: the user's pick when there is one, otherwise the admin default
+     for this platform, otherwise whatever is stored locally. */
+  function effectiveBg(){
+    if(chosenBg(bg)||!appearanceDefaults||!appearanceDefaults.background) return bg;
+    const d=appearanceDefaults.background;
+    // A preset is addressed by slug, not by its CSS: that is what the swatch row is keyed on,
+    // so the background in force shows up as the selected one. BGS gains every admin gradient
+    // under the same slug in loadAppearance(), so bgCss() still resolves it either way.
+    return {type:d.kind==="image"?"image":"preset",
+            value:d.kind==="image"?d.value:(d.slug||d.value),
+            dim:appearanceDefaults.dim||0,blur:appearanceDefaults.blur||0};
+  }
+  // A preset is either a key into BGS or, for an admin background, the CSS value itself.
+  function bgCss(v){return BGS[v]||(/[(#]/.test(v||"")?v:BGS.warm);}
   function applyBg(){
-    const el=$("#bg");
-    if(bg.type==="image"){el.style.background="";el.style.backgroundImage="url("+bg.value+")";}
-    else{el.style.background=BGS[bg.value]||BGS.warm;}
+    const el=$("#bg"), e=effectiveBg();
+    if(e.type==="image"){el.style.background="";el.style.backgroundImage="url("+e.value+")";}
+    else{el.style.background=bgCss(e.value);}
     // the `background` shorthand above resets these, so they go back on every time
     el.style.backgroundSize="cover";el.style.backgroundPosition="center";el.style.backgroundRepeat="no-repeat";
-    const px=Math.max(0,Math.min(100,+bg.blur||0))/100*BLUR_MAX_PX;
+    const px=Math.max(0,Math.min(100,+e.blur||0))/100*BLUR_MAX_PX;
     el.style.filter=px?"blur("+px.toFixed(1)+"px)":"";
     el.style.transform=px?"scale(1.12)":"";
-    $("#scrim").style.opacity=(bg.dim/100).toString();
+    $("#scrim").style.opacity=((+e.dim||0)/100).toString();
+  }
+  /* The swatch row = the built-in gradients plus whatever the admin published for this
+     platform, so a background added in the panel is a real option here and not just a default
+     someone can't opt back into. */
+  function bgOptions(){
+    const seen={},out=[];
+    Object.keys(BGS).forEach(id=>{seen[id]=1;out.push({key:id,type:"preset",css:BGS[id],title:id});});
+    adminBgs.forEach(b=>{
+      const key=b.kind==="image"?b.value:b.slug;
+      if(seen[key])return; seen[key]=1;
+      out.push({key:key,type:b.kind==="image"?"image":"preset",
+                css:b.kind==="image"?null:b.value,img:b.kind==="image"?b.value:null,title:b.name});
+    });
+    return out;
   }
   function buildSwatches(){
     const w=$("#swatches"); w.innerHTML="";
-    Object.keys(BGS).forEach(id=>{
+    const eff=effectiveBg();
+    bgOptions().forEach(o=>{
       const b=document.createElement("button");
-      b.className="swatch"+(bg.type==="preset"&&bg.value===id?" active":"");
-      b.style.background=BGS[id]; b.title=id;
-      b.onclick=()=>{bg={type:"preset",value:id,dim:bg.dim,blur:bg.blur||0};store.set("ff_bg",bg);applyBg();buildSwatches();};
+      b.className="swatch"+(eff.type===o.type&&eff.value===o.key?" active":"");
+      if(o.type==="image"){b.style.backgroundImage="url("+o.img+")";b.style.backgroundSize="cover";b.style.backgroundPosition="center";}
+      else b.style.background=o.css;
+      b.title=o.title;
+      // Picking one is what makes it a personal preference: `chosen` is the flag that stops a
+      // later change to the global default from replacing it.
+      b.onclick=()=>{bg={type:o.type,value:o.key,dim:eff.dim||0,blur:eff.blur||0,chosen:true};
+        store.set("ff_bg",bg);applyBg();buildSwatches();syncBgSliders();};
       w.appendChild(b);
     });
+  }
+  function syncBgSliders(){
+    const e=effectiveBg();
+    $("#dim").value=e.dim||0;   $("#dimVal").textContent=L(e.dim||0)+"%";
+    $("#blur").value=e.blur||0; $("#blurVal").textContent=L(e.blur||0)+"%";
   }
   $("#bgUpload").addEventListener("change",e=>{
     const f=e.target.files[0]; if(!f) return;
@@ -874,7 +961,7 @@
         const cv=document.createElement("canvas");cv.width=cw;cv.height=ch;
         cv.getContext("2d").drawImage(img,0,0,cw,ch);
         let url;try{url=cv.toDataURL("image/jpeg",0.82);}catch(_){url=rd.result;}
-        const dim=bg.dim<25?40:bg.dim;bg={type:"image",value:url,dim,blur:bg.blur||0};
+        const dim=bg.dim<25?40:bg.dim;bg={type:"image",value:url,dim,blur:bg.blur||0,chosen:true};
         const saved=store.set("ff_bg",bg);   // saved to localStorage (guest) and pushed to the account (signed in)
         if(!saved && !Cloud.enabled) alert(T.img_big);
         $("#dim").value=dim;$("#dimVal").textContent=L(dim)+"%";applyBg();buildSwatches();
@@ -884,10 +971,27 @@
     };
     rd.readAsDataURL(f);
   });
-  $("#dim").addEventListener("input",e=>{bg.dim=+e.target.value;$("#dimVal").textContent=L(bg.dim)+"%";store.set("ff_bg",bg);applyBg();});
-  $("#blur").addEventListener("input",e=>{bg.blur=+e.target.value;$("#blurVal").textContent=L(bg.blur)+"%";store.set("ff_bg",bg);applyBg();});
+  /* Dragging dim or blur while still following the global default is itself a choice, so the
+     background currently on screen is adopted first -- otherwise the adjustment would have
+     nothing to attach to and would vanish on the next load. */
+  function adoptEffective(){
+    if(chosenBg(bg))return;
+    const e=effectiveBg();
+    bg={type:e.type,value:e.value,dim:e.dim||0,blur:e.blur||0,chosen:true};
+  }
+  $("#dim").addEventListener("input",e=>{adoptEffective();bg.dim=+e.target.value;$("#dimVal").textContent=L(bg.dim)+"%";store.set("ff_bg",bg);applyBg();});
+  $("#blur").addEventListener("input",e=>{adoptEffective();bg.blur=+e.target.value;$("#blurVal").textContent=L(bg.blur)+"%";store.set("ff_bg",bg);applyBg();});
 
-  function accent(){return ACCENTS[prefs.accent]||ACCENTS.amber;}
+  /* Accent follows the same order as the background: the user's pick, then the admin default
+     theme's tokens, then amber. A theme carries both tones, so breaks keep reading calmer than
+     focus time whichever theme is in force. */
+  function accent(){
+    if(!chosenTheme(prefs)&&appearanceDefaults&&appearanceDefaults.theme){
+      const t=appearanceDefaults.theme.tokens||{};
+      if(t.accent) return {focus:t.accent,brk:t.accentBreak||t.accent};
+    }
+    return ACCENTS[prefs.accent]||ACCENTS.amber;
+  }
   function applyAccent(){const a=accent();document.documentElement.style.setProperty("--accent",isFocus()?a.focus:a.brk);}
   function buildAccents(){
     const w=$("#accents"); if(!w) return; w.innerHTML="";
@@ -896,7 +1000,7 @@
       b.type="button"; b.title=id;
       b.className="accent-sw"+((prefs.accent||"amber")===id?" active":"");
       b.style.background=ACCENTS[id].focus;
-      b.onclick=()=>{prefs.accent=id;store.set("ff_prefs",prefs);applyAccent();buildAccents();};
+      b.onclick=()=>{prefs.accent=id;prefs.themeChosen=true;store.set("ff_prefs",prefs);applyAccent();buildAccents();applyThemeTokens();};
       w.appendChild(b);
     });
   }
@@ -933,6 +1037,7 @@
     const acct=$("#acct"); if(acct){acct.classList.toggle("locked",running);acct.title=running?T.locked_hint:"";}
     const rb=$("#roomsBtn"); if(rb){rb.classList.toggle("locked",running);rb.title=running?T.locked_hint:"";}
     const db=$("#dashBtn"); if(db){db.classList.toggle("locked",running);db.title=running?T.locked_hint:"";}
+    const lb=$("#libBtn"); if(lb){lb.classList.toggle("locked",running);lb.title=running?T.locked_hint:"";}
   }
   // A fresh run gets to earn its own session again.
   function newRun(){ swCounted=false; store.set("ff_swcounted",false); }
@@ -1225,26 +1330,121 @@
 
   /* ---- tasks ---- */
   function saveTasks(){store.set("ff_tasks",tasks);}
+
+  /* Minutes the way the rest of the app spells them — "1h 20m", and spelled out in Persian,
+     which has no accepted one-letter abbreviations. Mirrors durMins() in i18n.js. */
+  function fmtMins(m){
+    m=Math.max(0,Math.round(m||0));
+    const u=(n,k)=>L(n)+(lang==="fa"?" ":"")+T[k];
+    const h=Math.floor(m/60), r=m%60;
+    return (h&&r)?u(h,"u_h")+" "+u(r,"u_m"):(h?u(h,"u_h"):u(r,"u_m"));
+  }
+  function fmtDue(due){
+    const d=new Date(due.length>10?due:(due+"T00:00"));
+    if(isNaN(d.getTime())) return due;
+    return d.toLocaleString(lang==="fa"?"fa-IR":undefined, due.length>10
+      ? {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}
+      : {month:"short",day:"numeric"});
+  }
+  // a deadline with no time is only late once that whole day is over
+  function isLate(tk){
+    if(tk.done||!tk.due) return false;
+    const d=new Date(tk.due.length>10?tk.due:(tk.due+"T23:59"));
+    return !isNaN(d.getTime()) && d.getTime()<Date.now();
+  }
+  function groupHead(text,later){
+    const h=document.createElement("div"); h.className="tk-head"+(later?" later":"");
+    h.textContent=text; return h;
+  }
+  function tagEl(cls,text){
+    const s=document.createElement("span"); s.className=cls; s.textContent=text; return s;
+  }
+
+  function assignedRow(tk){
+    const row=document.createElement("div");
+    row.className="task asg"+(tk.done?" done":"")+(doingId===tk.id?" doing":"");
+    row.innerHTML='<button class="check">✓</button>'+
+      '<div class="body"><span class="txt"></span><div class="tmeta"></div></div>'+
+      '<button class="do"></button>';
+    row.querySelector(".txt").textContent=tk.text;
+    const meta=row.querySelector(".tmeta"), late=isLate(tk);
+    if(tk.due) meta.appendChild(tagEl("tg"+(late?" late":""),(late?"⚠ ":"📅 ")+fmtDue(tk.due)));
+    if(tk.suggestMin) meta.appendChild(tagEl("tg time","⏱ "+fmtMins(tk.suggestMin)));
+    if(!meta.children.length) meta.remove();
+    const go=row.querySelector(".do"); go.textContent=T.do_it;
+    go.onclick=()=>doTask(tk);
+    row.querySelector(".check").onclick=()=>toggleAssigned(tk);
+    return row;
+  }
+
+  /* Ticking an assigned task reports back to the room, so the owner sees the progress. The
+     row flips first and rolls back if the server refuses — a checkbox that lags feels broken. */
+  function toggleAssigned(tk){
+    if(!Cloud.enabled||!roomInfo) return;
+    const next=!tk.done;
+    tk.done=next; if(next&&doingId===tk.id) doingId=null;
+    renderTasks();
+    const undo=()=>{tk.done=!next;renderTasks();};
+    fetch("/api/rooms/"+roomInfo.id+"/tasks/"+tk.id,{method:"PATCH",credentials:"same-origin",
+      headers:{"Content-Type":"application/json"},body:JSON.stringify({done:next})})
+      .then(r=>{if(!r.ok)undo();}).catch(undo);
+  }
+
+  /* "Let's do it". A task that came with a suggested length sets the timer to it and waits,
+     so you can add time with the + stepper before starting. One with no suggestion has
+     nothing to set, so it just starts the timer. */
+  function doTask(tk){
+    if(running){ toast(T.pause_first); return; }
+    doingId=tk.id;
+    if(timerType!=="timer") setType("timer");
+    if(mode!=="focus") selectMode("focus");
+    if(tk.suggestMin>0){
+      // Written into the focus length itself, not a one-off value, so the + / − stepper and
+      // everything downstream of durFor() stay in step with what the face is showing.
+      const mn=BOUNDS.focusMin[0], mx=BOUNDS.focusMin[1];
+      const want=Math.min(mx,Math.max(mn,Math.round(tk.suggestMin)));
+      cfg.focusMin=want; store.set("ff_cfg",cfg); renderCfg();
+      secondsLeft=want*60; elapsedSec=0; newRun();
+      renderTimer(); Bar.push(); Bar.anchor();
+      toast(tk.suggestMin>mx ? T.cap_note : T.set_for.replace("%s",fmtMins(want)));
+      renderTasks();
+    }else{
+      toast(T.doing_now.replace("%s",tk.text));
+      renderTasks();
+      toggle();                       // nothing to set — start straight away
+    }
+  }
+
   function renderTasks(){
     const list=$("#taskList"); list.innerHTML="";
     // ticking a task takes it out of the list; the toggle below brings the done ones back
-    const doneCount=tasks.filter(t=>t.done).length;
+    const doneCount=tasks.filter(t=>t.done).length+roomTasks.filter(t=>t.done).length;
     const shown=showDone?tasks:tasks.filter(t=>!t.done);
-    if(!tasks.length){list.innerHTML='<div class="empty-tasks">'+T.empty+'</div>';}
-    else if(!shown.length){list.innerHTML='<div class="empty-tasks">'+T.all_done+'</div>';}
-    else shown.forEach(t=>{
-      const row=document.createElement("div"); row.className="task"+(t.done?" done":"");
-      row.innerHTML='<button class="check">✓</button><span class="txt"></span><button class="rm" title="Remove">×</button>';
-      row.querySelector(".txt").textContent=t.text;
-      row.querySelector(".check").onclick=()=>{t.done=!t.done;saveTasks();renderTasks();};
-      row.querySelector(".rm").onclick=()=>{tasks=tasks.filter(x=>x.id!==t.id);saveTasks();renderTasks();};
-      list.appendChild(row);
-    });
+    const asg=showDone?roomTasks:roomTasks.filter(t=>!t.done);
+    const total=tasks.length+roomTasks.length;
+    if(!total){list.innerHTML='<div class="empty-tasks">'+T.empty+'</div>';}
+    else if(!shown.length&&!asg.length){list.innerHTML='<div class="empty-tasks">'+T.all_done+'</div>';}
+    else{
+      // assigned work goes first — someone else is waiting on it
+      if(asg.length){
+        list.appendChild(groupHead(T.assigned,false));
+        asg.forEach(tk=>list.appendChild(assignedRow(tk)));
+        if(shown.length) list.appendChild(groupHead(T.own_tasks,true));
+      }
+      shown.forEach(t=>{
+        const row=document.createElement("div"); row.className="task"+(t.done?" done":"");
+        row.innerHTML='<button class="check">✓</button><span class="txt"></span><button class="rm" title="Remove">×</button>';
+        row.querySelector(".txt").textContent=t.text;
+        row.querySelector(".check").onclick=()=>{t.done=!t.done;saveTasks();renderTasks();};
+        row.querySelector(".rm").onclick=()=>{tasks=tasks.filter(x=>x.id!==t.id);saveTasks();renderTasks();};
+        list.appendChild(row);
+      });
+    }
     const tog=$("#toggleDone");
     tog.classList.toggle("hidden",doneCount===0);
     tog.textContent=(showDone?T.hide_done:T.show_done)+" ("+L(doneCount)+")";
-    const remaining=tasks.filter(t=>!t.done).length;
-    $("#taskMeta").textContent=tasks.length?L(remaining)+" "+T.left:"";
+    const remaining=tasks.filter(t=>!t.done).length+roomTasks.filter(t=>!t.done).length;
+    $("#taskMeta").textContent=total?L(remaining)+" "+T.left:"";
     const badge=$("#taskBadge");
     if(remaining>0){badge.textContent=L(remaining);badge.classList.remove("hidden");}else badge.classList.add("hidden");
   }
@@ -1533,7 +1733,9 @@
   function refreshRoom(){
     if(!Cloud.enabled) return;
     Cloud.currentRoom().then(j=>{
-      if(!j || !j.room){ roomInfo=null; if(openPanel==="room")openPanel=null; renderDock(); return; }
+      if(!j || !j.room){ roomInfo=null; roomTasks=[]; doingId=null;
+        if(openPanel==="room")openPanel=null; renderDock(); renderTasks(); return; }
+      roomTasks=j.tasks||[];
       const prev={}; if(roomInfo){roomInfo.members.forEach(m=>{prev[m.id]=m.sec;});}
       const myLive=(stats.secs||0)+pendingSec;                 // my true count incl. unflushed time
       roomInfo={id:j.room.id,name:j.room.name,members:(j.members||[]).map(m=>{
@@ -1542,7 +1744,7 @@
         else if(prev[m.id]!=null) sec=Math.max(sec,prev[m.id]); // never let a live time jump backward
         return {id:m.id,name:m.name,avatar:m.avatar,focusing:m.me?running:!!m.focusing,sec:sec,me:!!m.me};
       })};
-      renderDock(); renderRoom();   // the Room button lights up; the panel stays shut until you open it
+      renderDock(); renderRoom(); renderTasks();   // the Room button lights up; the panel stays shut until you open it
     });
   }
 
@@ -1573,12 +1775,18 @@
      <html>, and the CSS does the rest. Undefined means Classic, so an account saved before
      this existed keeps the look it had -- there is nothing to migrate. theme.js applies the
      same class on the dashboard, rooms and login pages. */
-  function applyGlass(){document.documentElement.classList.toggle("glass",!!prefs.glass);}
-  function renderGlass(){
-    $("#apSolid").classList.toggle("active",!prefs.glass);
-    $("#apGlass").classList.toggle("active",!!prefs.glass);
+  function themeAppearance(){
+    if(!chosenTheme(prefs)&&appearanceDefaults&&appearanceDefaults.theme)
+      return (appearanceDefaults.theme.tokens||{}).appearance==="glass";
+    return !!prefs.glass;
   }
-  const setGlass=v=>{prefs.glass=v;store.set("ff_prefs",prefs);renderGlass();applyGlass();};
+  function applyGlass(){document.documentElement.classList.toggle("glass",themeAppearance());}
+  function renderGlass(){
+    const g=themeAppearance();
+    $("#apSolid").classList.toggle("active",!g);
+    $("#apGlass").classList.toggle("active",g);
+  }
+  const setGlass=v=>{prefs.glass=v;prefs.themeChosen=true;store.set("ff_prefs",prefs);renderGlass();applyGlass();applyThemeTokens();};
   $("#apSolid").onclick=()=>setGlass(false);
   $("#apGlass").onclick=()=>setGlass(true);
 
@@ -1724,8 +1932,10 @@
 
   /* ---- account chip ---- */
   function initAccount(){
-    const a=$("#acct"), rb=$("#roomsBtn"), db=$("#dashBtn"), native=!!window.Capacitor;
+    const a=$("#acct"), rb=$("#roomsBtn"), db=$("#dashBtn"), lb=$("#libBtn"), native=!!window.Capacitor;
     if(rb)rb.classList.toggle("hidden",!Cloud.enabled);
+    // The shelf is per-account — signed out there is no grade to build one from.
+    if(lb)lb.classList.toggle("hidden",!Cloud.enabled);
     // App only, and only once there's an account to open a dashboard for. It wears the
     // account's own avatar rather than a generic icon, since it stands in for the chip.
     if(db){
@@ -1753,11 +1963,49 @@
     $("#uploadLabel").textContent=T.upload;
     $("#langLabel").textContent=T.lang_switch;
     renderClock();renderTimer();renderQuote();renderTasks();renderStats();renderCfg();renderMusicNow();
-    $("#dimVal").textContent=L(bg.dim)+"%";
-    $("#blurVal").textContent=L(bg.blur||0)+"%";
+    syncBgSliders();   // reads whatever is actually on screen, own pick or admin default
     initAccount();
   }
   $("#langBtn").onclick=()=>{lang=(lang==="en")?"fa":"en";prefs.lang=lang;store.set("ff_prefs",prefs);applyLang();};
+
+  /* ---- appearance defaults from the admin panel ----
+     The whole palette lives in CSS variables already, so honouring an admin theme is a matter
+     of writing that theme's tokens into them -- there is no second stylesheet and no rebuild.
+     A user who picked their own theme never reaches this: chosenTheme() short-circuits it. */
+  const TOKEN_VARS={accent:["--accent"],accentInk:["--accent-ink"],
+    surface:["--cream","--surface"],surface2:["--cream2","--surface-2"],
+    ink:["--ink"],muted:["--muted"],line:["--line"],hair:["--hair"],field:["--field"]};
+  function applyThemeTokens(){
+    const root=document.documentElement;
+    if(chosenTheme(prefs)||!appearanceDefaults||!appearanceDefaults.theme){
+      for(const k in TOKEN_VARS) TOKEN_VARS[k].forEach(v=>root.style.removeProperty(v));
+      applyAccent();   // --accent is the one variable the timer also drives per phase
+      return;
+    }
+    const t=appearanceDefaults.theme.tokens||{};
+    for(const k in TOKEN_VARS){
+      const val=t[k];
+      if(!val||/[;{}<>]/.test(val))continue;   // never let a stored value close the declaration
+      TOKEN_VARS[k].forEach(v=>root.style.setProperty(v,val));
+    }
+    applyAccent();
+  }
+  /* Platform detection reuses what the app already had: the Capacitor shell, and the 640px
+     breakpoint the page's own CSS switches on. No second definition of "mobile" to drift. */
+  const platform=()=>window.Capacitor?"mobile":((window.innerWidth||1024)<=640?"mobile":"web");
+  function loadAppearance(){
+    if(!Cloud.served) return;   // guest on file:// -- built-ins are all there is
+    fetch("/api/appearance?platform="+platform(),{credentials:"same-origin"})
+      .then(r=>r.ok?r.json():null)
+      .then(j=>{
+        if(!j)return;
+        appearanceDefaults=j;
+        adminBgs=j.backgrounds||[];
+        // Admin gradients join the built-in map so they behave exactly like the shipped ones.
+        adminBgs.forEach(b=>{if(b.kind==="preset"&&!BGS[b.slug])BGS[b.slug]=b.value;});
+        applyThemeTokens();applyBg();buildSwatches();syncBgSliders();renderGlass();applyGlass();
+      }).catch(()=>{});
+  }
 
   /* ---- init ---- */
   $("#chime").checked=prefs.chime;
@@ -1765,6 +2013,7 @@
   $("#blur").value=bg.blur||0;   // absent on backgrounds saved before the setting existed
   applyAccent();applyBg();buildSwatches();buildAccents();renderFmt();renderGlass();applyGlass();renderBarMode();applyBars();renderDock();
   applyLang();
+  loadAppearance();
   if(_cfgRepaired) store.set("ff_cfg",cfg);   // push the repaired durations back so the stored/cloud copy stops being broken
   // In the app, pick the session back up from the notification bar *before* deciding whether
   // there is leftover time to recover — adopting it is what tops `pendingSec` up.

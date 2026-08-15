@@ -88,6 +88,9 @@
   .ic.pub{background:linear-gradient(150deg,#63b3c6,#2f7f97);color:#062730}
   .roomcard .info{flex:1;min-width:0}
   .roomcard .nm{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
+  /* one line of the owner's description, so a room card says what it's for */
+  .roomcard .ds{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.4;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .roomcard .sub{display:flex;align-items:center;gap:7px;margin:5px 0 8px;flex-wrap:wrap}
   .badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px;border-radius:99px}
   .badge.pub{background:#d7ede2;color:#2e7d46}
@@ -151,6 +154,47 @@
   .owner-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .owner-row .btn.dng{margin-inline-start:auto}
 
+  /* ---------- room description ---------- */
+  .room-desc{font-size:13.5px;color:var(--muted);line-height:1.55;margin:12px 2px 0;white-space:pre-wrap;word-break:break-word}
+  .set-block{margin-top:16px;padding-top:15px;border-top:1px solid rgba(0,0,0,.07)}
+  .set-label{font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px}
+  .desc-field{width:100%;border:1px solid rgba(0,0,0,.12);background:#fff;border-radius:12px;padding:11px 13px;
+    font-size:14px;line-height:1.5;color:var(--ink);outline:none;font-family:inherit;resize:vertical;min-height:76px;transition:.15s}
+  .desc-field:focus{border-color:var(--accent);box-shadow:0 0 0 3px oklch(0.72 0.13 62 / .16)}
+  .desc-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:9px}
+  .counter{font-family:'DM Mono',monospace;font-size:11.5px;color:var(--muted)}
+
+  /* ---------- owner controls on a member row ---------- */
+  .member .macts{display:flex;gap:5px;flex:none}
+  .iconbtn{width:31px;height:31px;padding:0;flex:none;border-radius:9px;border:1px solid rgba(0,0,0,.1);
+    background:var(--cream);color:var(--muted);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s}
+  .iconbtn:hover{background:#fff;color:var(--ink);transform:translateY(-1px)}
+  .iconbtn.dng:hover{color:var(--danger);border-color:rgba(192,57,43,.38);background:rgba(192,57,43,.08)}
+
+  /* ---------- assigned work ---------- */
+  .assign{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+  .assign .full{grid-column:1/-1}
+  .flabel{display:block;font-size:11.5px;color:var(--muted);font-weight:600;margin:0 2px 5px}
+  .assign input,.assign select{width:100%;border:1px solid rgba(0,0,0,.12);background:#fff;border-radius:11px;
+    padding:11px 12px;font-size:13.5px;color:var(--ink);outline:none;font-family:inherit;transition:.15s}
+  .assign input:focus,.assign select:focus{border-color:var(--accent);box-shadow:0 0 0 3px oklch(0.72 0.13 62 / .16)}
+  .atask{display:flex;align-items:flex-start;gap:11px;padding:11px 12px;border-radius:13px;background:var(--cream2);
+    margin-bottom:8px;animation:rise .4s cubic-bezier(.2,.7,.2,1) both}
+  .atask .check{width:20px;height:20px;flex:none;margin-top:1px;padding:0;border-radius:6px;cursor:pointer;
+    font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;
+    background:var(--cream);border:1px solid rgba(0,0,0,.18);color:transparent}
+  .atask.done .check{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .atask .abody{flex:1;min-width:0}
+  .atask .atx{font-size:14px;color:var(--ink);line-height:1.4;word-break:break-word}
+  .atask.done .atx{color:var(--muted);text-decoration:line-through}
+  .atask .ameta{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+  .tag{font-size:10.5px;font-weight:700;letter-spacing:.03em;padding:3px 8px;border-radius:99px;
+    background:rgba(0,0,0,.055);color:var(--muted);display:inline-flex;align-items:center;gap:4px}
+  .tag.who{background:color-mix(in oklch,var(--accent) 20%,transparent);color:#8a5a1c}
+  .tag.due{background:#e2edf5;color:#2f6285}
+  .tag.late{background:#f6dcd4;color:var(--danger)}
+  .tag.time{background:#dff0e5;color:#2e7d46}
+
   /* ---------- loading ---------- */
   .loading{color:rgba(255,255,255,.85);text-align:center;padding:90px 0;font-size:14.5px}
   .spinner{width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.18);border-top-color:var(--accent);animation:spin .8s linear infinite;margin:0 auto 15px}
@@ -198,6 +242,21 @@
   html.glass .member.me{background:linear-gradient(90deg,color-mix(in oklch,var(--accent) 26%,transparent),rgba(255,255,255,.06))}
   html.glass .btn.dng{border-color:rgba(255,122,106,.4)}
   html.glass .btn.dng:hover{background:rgba(255,122,106,.12)}
+  html.glass .desc-field,
+  html.glass .assign input,
+  html.glass .assign select{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);color:var(--ink)}
+  html.glass .set-block{border-top-color:rgba(255,255,255,.12)}
+  html.glass .iconbtn{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.18)}
+  html.glass .iconbtn:hover{background:rgba(255,255,255,.2);color:var(--ink)}
+  html.glass .atask{background:rgba(255,255,255,.07)}
+  html.glass .atask .check{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.24)}
+  html.glass .tag{background:rgba(255,255,255,.1)}
+  html.glass .tag.who{background:color-mix(in oklch,var(--accent) 26%,transparent);color:#f0c48a}
+  html.glass .tag.due{background:rgba(99,179,198,.22);color:#9fd4e4}
+  html.glass .tag.late{background:rgba(255,122,106,.18);color:#ff9c8f}
+  html.glass .tag.time{background:rgba(94,196,136,.18);color:#8fe0ae}
+  /* the native date/number pickers render their glyphs dark on a dark field */
+  html.glass .assign input[type=datetime-local]::-webkit-calendar-picker-indicator{filter:invert(1) opacity(.7)}
 
   /* No blur available: lean on opacity so the text keeps its contrast. */
   @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
@@ -218,6 +277,7 @@
     .createbar input[type=text],.joinbar input{min-width:100%}
     .vis-seg{flex:1}.vis-seg button{flex:1}
     .createbar .btn.pri,.joinbar .btn.pri{flex:1}
+    .assign{grid-template-columns:1fr}
     .room-hero-ic{width:50px;height:50px;font-size:23px}
     .room-title{font-size:19px}
     .member .mins{font-size:17px}
@@ -241,6 +301,7 @@
     <div class="hbtns">
       <a class="hbtn" href="/">⏱ <span data-i18n="timer">Timer</span></a>
       <a class="hbtn" href="/dashboard">📊 <span data-i18n="dashboard">Dashboard</span></a>
+      <a class="hbtn" href="/library">📚 <span data-i18n="library">Library</span></a>
       <button class="hbtn" id="langBtn">🌐 <span id="langLabel">English</span></button>
     </div>
   </header>
@@ -288,19 +349,46 @@
           <div class="room-meta" id="dMeta"></div>
         </div>
       </div>
+      <p class="room-desc hidden" id="dDesc"></p>
       <div class="lead-head"><span class="lead-title" data-i18n="leaderboard">Today's leaderboard</span><span class="lead-sub" data-i18n="by_minutes">by focus minutes</span></div>
       <div id="members"></div>
     </section>
-    <section class="panel" id="inviteSec">
-      <div class="panel-head"><h2 data-i18n="invite">Invite</h2></div>
+
+    <section class="panel hidden" id="tasksSec">
+      <div class="panel-head"><h2 data-i18n="assigned_work">Assigned work</h2><span class="hint" id="tasksHint"></span></div>
+      <form class="assign hidden" id="assignForm">
+        <div class="full">
+          <label class="flabel" for="aText" data-i18n="task_label">Task</label>
+          <input type="text" id="aText" maxlength="200" autocomplete="off" data-i18n-ph="task_ph" placeholder="What should they work on?">
+        </div>
+        <div>
+          <label class="flabel" for="aWho" data-i18n="assign_to">Assign to</label>
+          <select id="aWho"></select>
+        </div>
+        <div>
+          <label class="flabel" for="aMin" data-i18n="suggested_time">Suggested time</label>
+          <input type="number" id="aMin" min="0" max="600" step="5" data-i18n-ph="minutes_ph" placeholder="minutes — optional">
+        </div>
+        <div class="full">
+          <label class="flabel" for="aDue" data-i18n="deadline_opt">Deadline — optional</label>
+          <input type="datetime-local" id="aDue">
+        </div>
+        <div class="full"><button class="btn pri wide" type="submit" data-i18n="assign_task">Assign task</button></div>
+      </form>
+      <div id="taskList"></div>
+      <div class="msg" id="taskMsg"></div>
+    </section>
+
+    <section class="panel hidden" id="inviteSec">
+      <div class="panel-head"><h2 data-i18n="invite">Invite</h2><span class="hint" data-i18n="owner_only">owner only</span></div>
       <div class="invite">
         <span class="invite-ic">🔗</span>
         <code id="inviteLink"></code>
         <button class="btn ghost" id="copyBtn" data-i18n="copy_link">Copy link</button>
       </div>
-      <div class="fine" data-i18n="invite_fine">Anyone with this link can join — even a private room.</div>
+      <div class="fine" data-i18n="invite_fine">Only you can see this link. Anyone you send it to can join — even a private room.</div>
     </section>
-    <section class="panel" id="ownerSec">
+    <section class="panel hidden" id="ownerSec">
       <div class="panel-head"><h2 data-i18n="room_settings">Room settings</h2><span class="hint" data-i18n="owner_only">owner only</span></div>
       <div class="owner-row">
         <div class="vis-seg" id="dVisSeg">
@@ -308,6 +396,14 @@
           <button data-vis="public">🌍 <span data-i18n="public">Public</span></button>
         </div>
         <button class="btn dng" id="deleteBtn" data-i18n="delete_room">Delete room</button>
+      </div>
+      <div class="set-block">
+        <div class="set-label" data-i18n="room_desc_label">Room description</div>
+        <textarea class="desc-field" id="dDescEdit" maxlength="400" data-i18n-ph="room_desc_ph" placeholder="What is this room for? Say what you're all working towards."></textarea>
+        <div class="desc-foot">
+          <span class="counter" id="descCount"></span>
+          <button class="btn ghost" id="saveDescBtn" type="button" data-i18n="save_desc">Save description</button>
+        </div>
       </div>
     </section>
     <section class="panel" id="memberSec">
@@ -331,12 +427,33 @@
 
   // gate on auth
   api('/api/me').then(function(res){
-    if(!res.j.user){ location.href='/login'; return; }
+    if(!res.j.user){
+      /* An invite link lands here signed-out. Carry it through the sign-in detour: without
+         `next` the code is dropped at this redirect and the link quietly does nothing, which
+         is exactly what "the invite doesn't work" looks like from the outside. */
+      location.replace('/login'+(location.search ? '?next='+encodeURIComponent('/rooms'+location.search) : ''));
+      return;
+    }
     var joinCode=qs.get('join');
-    if(joinCode){ post('/api/rooms/join',{code:joinCode}).then(function(r){ location.href = r.ok ? ('/rooms?room='+r.j.room_id) : '/rooms'; }); return; }
+    if(joinCode){ joinByCode(joinCode); return; }
     var rid=qs.get('room');
     if(rid){ showDetail(rid); } else { showList(); }
   });
+
+  /* Redeem an invite. `replace`, not `href`, so Back doesn't run the join a second time. */
+  function joinByCode(code){
+    var lbl=$('#loading').querySelector('span'); if(lbl) lbl.textContent=t('joining');
+    post('/api/rooms/join',{code:code}).then(function(r){
+      if(r.ok){ location.replace('/rooms?room='+r.j.room_id); return; }
+      /* Say why it failed instead of dumping them on the room list with no explanation —
+         "the room is full" and "you're already in a room" both used to look like nothing
+         happening at all. The code stays in the box so they can retry it. */
+      showList();
+      $('#joinCode').value=code;
+      msg('#joinMsg', r.j.error?I.serverError(r.j.error):t('could_not_join'),'err');
+      $('#joinCode').scrollIntoView({block:'center'});
+    }).catch(function(){ showList(); msg('#joinMsg',t('could_not_join'),'err'); });
+  }
 
   /* ---------- LIST ---------- */
   function showList(){
@@ -367,12 +484,13 @@
         var a=document.createElement('a'); a.className='roomcard'; a.href='/rooms?room='+rm.id; a.style.animationDelay=(i*45)+'ms';
         a.innerHTML=
           '<div class="ic '+(pub?'pub':'prv')+'">'+(pub?'🌍':'🔒')+'</div>'+
-          '<div class="info"><div class="nm"></div>'+
+          '<div class="info"><div class="nm"></div>'+(rm.description?'<div class="ds"></div>':'')+
             '<div class="sub"><span class="badge '+(pub?'pub':'prv')+'">'+t(pub?'public':'private')+'</span>'+
               (rm.isOwner?'<span class="chip owner">'+t('owner_chip')+'</span>':'')+'</div>'+
             meter(rm.members)+'</div>'+
           '<div class="side"><div class="count"><b>'+N(rm.members)+'</b>/'+N(CAP)+'</div><div class="go">'+t('open_arrow')+'</div></div>';
         a.querySelector('.nm').textContent=rm.name;
+        if(rm.description) a.querySelector('.ds').textContent=rm.description;
         box.appendChild(a);
       });
     });
@@ -388,11 +506,12 @@
         var row=document.createElement('div'); row.className='roomcard'; row.style.animationDelay=(i*45)+'ms';
         row.innerHTML=
           '<div class="ic pub">🌍</div>'+
-          '<div class="info"><div class="nm"></div>'+
+          '<div class="info"><div class="nm"></div>'+(rm.description?'<div class="ds"></div>':'')+
             '<div class="sub"><span class="badge pub">'+t('public')+'</span>'+(full?'<span class="chip full">'+t('full')+'</span>':(rm.joined?'<span class="chip">'+t('joined')+'</span>':''))+'</div>'+
             meter(rm.members)+'</div>'+
           '<div class="side"><div class="count"><b>'+N(rm.members)+'</b>/'+N(CAP)+'</div></div>';
         row.querySelector('.nm').textContent=rm.name;
+        if(rm.description) row.querySelector('.ds').textContent=rm.description;
         var btn=document.createElement('button'); btn.className='btn '+(rm.joined?'ghost':'pri'); btn.textContent=t(rm.joined?'open':(full?'full':'join')); btn.disabled=full;
         btn.onclick=function(){ if(rm.joined){ location.href='/rooms?room='+rm.id; } else { post('/api/rooms/join',{room_id:rm.id}).then(function(x){ if(x.ok) location.href='/rooms?room='+rm.id; else msg('#joinMsg',x.j.error?I.serverError(x.j.error):t('could_not_join'),'err'); }); } };
         row.querySelector('.side').appendChild(btn);
@@ -403,8 +522,27 @@
 
   /* ---------- DETAIL ---------- */
   var curRoom=null, poll=null;
+
+  /* A deadline is either a date or a date and a time; show whichever was given, in the
+     reader's own locale rather than the ISO string the field produced. */
+  function fmtDue(due){
+    var d=new Date(due.length>10?due:(due+'T00:00'));
+    if(isNaN(d.getTime())) return due;
+    return d.toLocaleString(I.locale(), due.length>10
+      ? {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}
+      : {month:'short',day:'numeric'});
+  }
+  function isLate(tk){
+    if(tk.done||!tk.due) return false;
+    // a date with no time is only late once that whole day is over
+    var d=new Date(tk.due.length>10?tk.due:(tk.due+'T23:59'));
+    return !isNaN(d.getTime()) && d.getTime()<Date.now();
+  }
+  function tag(cls,text){ var s=document.createElement('span'); s.className='tag '+cls; s.textContent=text; return s; }
+
   function showDetail(rid){
     $('#loading').classList.add('hidden'); $('#detailView').classList.remove('hidden');
+    var descDirty=false;   // never overwrite what the owner is typing with a poll refresh
     load(); if(poll)clearInterval(poll); poll=setInterval(load,15000);
     function load(){
       api('/api/rooms/'+rid).then(function(r){
@@ -413,6 +551,9 @@
         $('#dName').textContent=curRoom.name;
         var b=$('#dBadge'); b.textContent=t(pub?'public':'private'); b.className='badge '+(pub?'pub':'prv');
         var ic=$('#dIcon'); ic.textContent=pub?'🌍':'🔒'; ic.className='room-hero-ic'+(pub?' pub':'');
+        // description: written by the owner, read by everyone in the room
+        var dd=$('#dDesc'); dd.textContent=curRoom.description||'';
+        dd.classList.toggle('hidden',!curRoom.description);
         // meta line: capacity + live focus count
         var mem=r.j.members||[]; var focusing=mem.filter(function(m){return m.focusing;}).length;
         $('#dMeta').innerHTML='<span>👥 '+N(mem.length)+' / '+N(CAP)+' '+t('here')+'</span>'+
@@ -433,22 +574,148 @@
             '<div class="mins">'+N(m.todayMinutes)+'<small>'+I.unitLabel('u_m')+'</small></div>';
           el.querySelector('.ava-e').textContent=m.avatar;
           el.querySelector('b').textContent=m.name;
+          // the owner's controls over everyone but themselves
+          if(curRoom.isOwner && !m.me){
+            var acts=document.createElement('div'); acts.className='macts';
+            var give=document.createElement('button');
+            give.type='button'; give.className='iconbtn'; give.textContent='✎';
+            give.title=I.tf('assign_to_name',m.name);
+            give.onclick=function(){ pickAssignee(m.id); };
+            var out=document.createElement('button');
+            out.type='button'; out.className='iconbtn dng'; out.textContent='✕';
+            out.title=I.tf('remove_name',m.name);
+            out.onclick=function(){ kick(m); };
+            acts.appendChild(give); acts.appendChild(out);
+            el.appendChild(acts);
+          }
           mbox.appendChild(el);
           var fill=el.querySelector('.trackfill');
           fill.getBoundingClientRect();  // paint at width:0 first, then transition to target
           fill.style.width=(m.todayMinutes/maxMin*100)+'%';
         });
-        // invite
-        $('#inviteLink').textContent=location.origin+'/rooms?join='+curRoom.code;
+        /* Invite: the server sends `code` to the owner and to nobody else, so this panel
+           just follows what arrived — it isn't the frontend deciding who may see it. */
+        $('#inviteSec').classList.toggle('hidden',!curRoom.code);
+        if(curRoom.code) $('#inviteLink').textContent=location.origin+'/rooms?join='+curRoom.code;
         // owner vs member controls
         $('#ownerSec').classList.toggle('hidden',!curRoom.isOwner);
         $('#memberSec').classList.toggle('hidden',curRoom.isOwner||!curRoom.isMember);
+        $('#tasksSec').classList.toggle('hidden',!curRoom.isMember);
+        $('#assignForm').classList.toggle('hidden',!curRoom.isOwner);
         if(curRoom.isOwner){
           $('#dVisSeg').querySelectorAll('button').forEach(function(x){ x.classList.toggle('on',x.dataset.vis===curRoom.visibility);
             x.onclick=function(){ post('/api/rooms/'+rid+'/visibility',{visibility:x.dataset.vis}).then(load); }; });
+          syncAssignees(mem);
+          if(!descDirty){ $('#dDescEdit').value=curRoom.description||''; countDesc(); }
         }
+        if(curRoom.isMember) loadTasks(curRoom.isOwner);
+      // a dropped connection between polls shouldn't spray the console — the next tick retries
+      }).catch(function(){});
+    }
+
+    /* ---- owner: remove a member ---- */
+    function kick(m){
+      if(!confirm(I.tf('confirm_remove',m.name))) return;
+      post('/api/rooms/'+rid+'/kick',{user_id:m.id}).then(function(r){
+        if(!r.ok){ msg('#detailMsg',r.j.error?I.serverError(r.j.error):t('failed'),'err'); return; }
+        msg('#detailMsg',I.tf('removed_ok',m.name),'ok');
+        load();
       });
     }
+
+    /* ---- owner: who a task goes to ----
+       Rebuilt only when the membership actually changes, so a 15-second refresh can't
+       reset the dropdown while the owner is filling the form in. */
+    function syncAssignees(mem){
+      var sel=$('#aWho'), keep=sel.value, sig=mem.map(function(m){return m.id;}).join(',');
+      if(sel.dataset.sig===sig) return;
+      sel.dataset.sig=sig; sel.innerHTML='';
+      mem.forEach(function(m){
+        var o=document.createElement('option'); o.value=m.id;
+        o.textContent=m.name+(m.me?' ('+t('you')+')':'');
+        sel.appendChild(o);
+      });
+      if(keep && mem.some(function(m){return String(m.id)===keep;})) sel.value=keep;
+    }
+    function pickAssignee(id){
+      var sel=$('#aWho'); sel.value=String(id);
+      $('#assignForm').scrollIntoView({block:'center'});
+      $('#aText').focus();
+    }
+
+    /* ---- assigned work ---- */
+    function loadTasks(isOwner){
+      api('/api/rooms/'+rid+'/tasks').then(function(r){
+        if(!r.ok) return;
+        var box=$('#taskList'), list=r.j.tasks||[], open=0;
+        list.forEach(function(x){ if(!x.done) open++; });
+        $('#tasksHint').textContent=list.length?I.tf('n_open',N(open)):'';
+        box.innerHTML='';
+        if(!list.length){
+          box.innerHTML='<div class="empty"><span class="big">📋</span><span class="etx"></span></div>';
+          box.querySelector('.etx').textContent=t(isOwner?'no_tasks_owner':'no_tasks_you');
+          return;
+        }
+        list.forEach(function(tk,i){
+          var late=isLate(tk);
+          var row=document.createElement('div'); row.className='atask'+(tk.done?' done':'');
+          row.style.animationDelay=(i*40)+'ms';
+          row.innerHTML='<button class="check" type="button">✓</button>'+
+            '<div class="abody"><div class="atx"></div><div class="ameta"></div></div>';
+          row.querySelector('.atx').textContent=tk.text;
+          var meta=row.querySelector('.ameta');
+          if(isOwner) meta.appendChild(tag('who','👤 '+tk.assignee));
+          if(tk.due) meta.appendChild(tag('due'+(late?' late':''),(late?'⚠ ':'📅 ')+fmtDue(tk.due)));
+          if(tk.suggestMin) meta.appendChild(tag('time','⏱ '+I.durMins(tk.suggestMin)));
+          row.querySelector('.check').setAttribute('aria-pressed',tk.done?'true':'false');
+          row.querySelector('.check').onclick=function(){
+            api('/api/rooms/'+rid+'/tasks/'+tk.id,{method:'PATCH',headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({done:!tk.done})}).then(function(x){
+                if(x.ok) loadTasks(isOwner);
+                else msg('#taskMsg',x.j.error?I.serverError(x.j.error):t('failed'),'err');
+              });
+          };
+          if(isOwner){
+            var del=document.createElement('button');
+            del.type='button'; del.className='iconbtn dng'; del.textContent='✕'; del.title=t('remove_task');
+            del.onclick=function(){
+              api('/api/rooms/'+rid+'/tasks/'+tk.id,{method:'DELETE'}).then(function(x){
+                if(x.ok) loadTasks(isOwner);
+                else msg('#taskMsg',x.j.error?I.serverError(x.j.error):t('failed'),'err');
+              });
+            };
+            row.appendChild(del);
+          }
+          box.appendChild(row);
+        });
+      }).catch(function(){});
+    }
+
+    $('#assignForm').addEventListener('submit',function(e){
+      e.preventDefault();
+      var text=$('#aText').value.trim();
+      if(!text){ msg('#taskMsg',t('write_task'),'err'); $('#aText').focus(); return; }
+      var who=parseInt($('#aWho').value,10)||0;
+      if(!who){ msg('#taskMsg',t('pick_person'),'err'); return; }
+      var mins=parseInt($('#aMin').value,10); if(isNaN(mins)||mins<0) mins=0;
+      post('/api/rooms/'+rid+'/tasks',{user_id:who,text:text,due:$('#aDue').value||'',suggestMin:mins})
+        .then(function(r){
+          if(!r.ok){ msg('#taskMsg',r.j.error?I.serverError(r.j.error):t('failed'),'err'); return; }
+          $('#aText').value=''; $('#aDue').value=''; $('#aMin').value='';
+          msg('#taskMsg',t('task_assigned'),'ok');
+          loadTasks(true);
+        });
+    });
+
+    /* ---- owner: room description ---- */
+    function countDesc(){ $('#descCount').textContent=N($('#dDescEdit').value.length)+' / '+N(400); }
+    $('#dDescEdit').addEventListener('input',function(){ descDirty=true; countDesc(); });
+    $('#saveDescBtn').onclick=function(){
+      post('/api/rooms/'+rid+'/description',{description:$('#dDescEdit').value}).then(function(r){
+        if(!r.ok){ msg('#detailMsg',r.j.error?I.serverError(r.j.error):t('failed'),'err'); return; }
+        descDirty=false; msg('#detailMsg',t('desc_saved'),'ok'); load();
+      });
+    };
     $('#copyBtn').onclick=function(){ var link=$('#inviteLink').textContent; if(navigator.clipboard) navigator.clipboard.writeText(link); var b=$('#copyBtn'); b.textContent=t('copied'); b.classList.add('ok'); msg('#detailMsg',t('copied_msg'),'ok'); setTimeout(function(){ b.textContent=t('copy_link'); b.classList.remove('ok'); },1600); };
     $('#deleteBtn').onclick=function(){ if(confirm(t('confirm_del_room'))) api('/api/rooms/'+rid,{method:'DELETE'}).then(function(){ location.href='/rooms'; }); };
     $('#leaveBtn').onclick=function(){ post('/api/rooms/'+rid+'/leave').then(function(r){ if(r.ok) location.href='/rooms'; else msg('#detailMsg',r.j.error?I.serverError(r.j.error):t('failed'),'err'); }); };

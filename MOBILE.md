@@ -129,6 +129,36 @@ npm install @capacitor/status-bar @capacitor/splash-screen
 Style them to the app's dark theme (`#16303a`) — configure in `capacitor.config.json` /
 Android Studio, or call the plugins on startup.
 
+### Library downloads (`MainActivity`)
+
+A WebView has **no download of its own**. When the page navigates to something that comes
+back as an attachment — or to any type the WebView can't render, a PDF included — Android
+offers it to the WebView's `DownloadListener`, and if none is set the navigation is dropped
+without a word. That is exactly what a missing listener looked like: the library's
+**Download** button worked in a browser and did nothing at all in the app.
+
+`MainActivity.wireDownloads()` sets one, and hands the URL to Android's `DownloadManager`,
+which brings the progress notification, the retry and the tap-to-open a browser download
+has. Two details matter:
+
+- **The cookie is carried over by hand.** `DownloadManager` makes its own request outside
+  the WebView, so without `addRequestHeader("Cookie", …)` from `CookieManager` every
+  download would save the "Not signed in." JSON instead of the file.
+- **The filename comes from `filename*=UTF-8''`.** `URLUtil.guessFileName` reads the plain
+  `filename=` beside it, which the server has had to strip to ASCII — so a Persian name
+  would arrive as underscores.
+
+Below Android 10 the file goes to the app's own external folder rather than the public
+Downloads directory, which keeps a storage-permission prompt out of the middle of a tap.
+
+There is a matching web-side rule in `library.html`: inside the shell there is one WebView
+and no tabs, and Capacitor hands a `target="_blank"` URL to the **system browser**, which
+carries none of the session's cookies. So the app shows a single **Download** action while
+the web keeps both Open and Download.
+
+> This is native code — a page refresh won't pick it up. Rebuild and reinstall the app from
+> Android Studio after pulling this change.
+
 ### App icon & splash image
 Use Capacitor's asset generator (put a 1024×1024 `icon.png` and `splash.png` in
 `mobile/assets/`):
@@ -153,7 +183,9 @@ The app's accounts/rooms/sync need `server.py` reachable over **HTTPS**:
 - [ ] Bump `versionCode` / `versionName` in `mobile/android/app/build.gradle`
 - [ ] Target a recent Android API level (Play requirement)
 - [ ] Build a signed **AAB** (Build → Generate Signed Bundle) and enable **Play App Signing**
-- [ ] Create the app in Play Console → **Data safety** form, content rating, **privacy policy URL** (you collect email + usage)
+- [ ] Create the app in Play Console → **Data safety** form, content rating, **privacy policy URL**
+      (you collect a **phone number** — declare it under *Personal info → Phone number*, used for
+      account creation and sign-in — plus usage data, and an **optional** email address)
 - [ ] Upload to the **internal testing** track first, then promote to production
 
 > Android-only for now. iOS later needs a Mac + Xcode + Apple Developer Program ($99/yr)

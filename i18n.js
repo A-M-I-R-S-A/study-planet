@@ -28,6 +28,79 @@
       signing_in: "Success — taking you in…",
       no_server: "Couldn't reach the server.",
 
+      /* -- signing in with a texted code --
+         The number is the account: one field, one code, and the server decides on the way
+         back whether that was a sign-in or the start of a new account. */
+      phone: "Mobile number",
+      phone_why: "We'll text you a 5-digit code. That's all you need to sign in.",
+      send_code: "Send code",
+      code: "Verification code",
+      verify: "Verify",
+      change_number: "Change number",
+      resend: "Send a new code",
+      resend_in: "You can ask for another in %ss",
+      code_sent: "We texted a 5-digit code to %s",
+      code_resent: "A new code is on its way.",
+      registering_for: "Creating your account for %s",
+      use_password: "Sign in with a password instead",
+      use_code: "Sign in with a texted code instead",
+      email_or_phone: "Email or mobile number",
+      optional_suffix: "— optional",
+      pw_why: "Only if you'd also like to sign in with a password. A texted code always works.",
+      sending: "Sending the code…",
+      sending_again: "Sending a new code…",
+      checking: "Checking…",
+      creating: "Creating your account…",
+      bad_phone: "Enter your mobile number, e.g. 09121234567.",
+      bad_code: "Type the 5-digit code from the text.",
+      bad_email: "That email doesn't look right — or leave it empty.",
+      short_pw: "A password needs at least 6 characters — or leave it empty.",
+      need_name: "What should we call you?",
+      need_both: "Fill in both boxes.",
+
+      /* -- what you study --
+         The keys (school/uni, elementary/7…12, biology/math/fanni) are what the server
+         stores and what library targeting matches on; only the labels below change with
+         the language, so a translation can never orphan someone's grade. */
+      edu_q: "What are you studying?",
+      edu_school: "School",
+      edu_uni: "University",
+      edu_school_sub: "Grades 1–12",
+      edu_uni_sub: "Any field",
+      edu_grade: "Grade",
+      edu_major: "Major",
+      edu_pick: "Choose…",
+      edu_uni_major: "Your field of study",
+      edu_uni_major_ph: "e.g. Computer Engineering",
+      edu_no_major: "Majors start at 10th grade — nothing to pick yet.",
+      edu_why: "This is how we know which study material to put on your shelf.",
+      edu_need_stage: "Pick school or university.",
+      edu_need_grade: "Pick your grade.",
+      edu_need_major: "Pick your major.",
+      edu_need_uni_major: "Type what you study.",
+      g_elementary: "Elementary",
+      g_7: "7th grade", g_8: "8th grade", g_9: "9th grade",
+      g_10: "10th grade", g_11: "11th grade", g_12: "12th grade",
+      m_biology: "Biology", m_math: "Math", m_fanni: "Technical",
+      m_none: "No major yet",
+
+      /* -- library -- */
+      library: "Library",
+      library_sub: "Study material chosen for you",
+      lib_loading: "Opening your library…",
+      lib_empty: "Nothing here yet — material for your grade will appear as it's added.",
+      lib_empty_edu: "Tell us what you study and your material will show up here.",
+      lib_set_edu: "Set what you study",
+      lib_off: "The library is closed right now.",
+      lib_other: "Other material",
+      lib_open: "Open",
+      lib_download: "Download",
+      lib_files_one: "%s file",
+      lib_files_many: "%s files",
+      lib_shelf_for: "Your shelf · %s",
+      lib_everyone: "For everyone",
+      edu_saved: "Saved ✓",
+
       /* -- shared nav -- */
       timer: "Timer",
       rooms: "Rooms",
@@ -118,9 +191,14 @@
       copy_link: "Copy link",
       copied: "Copied ✓",
       copied_msg: "Invite link copied!",
-      invite_fine: "Anyone with this link can join — even a private room.",
+      invite_fine: "Only you can see this link. Anyone you send it to can join — even a private room.",
+      joining: "Redeeming your invite…",
       room_settings: "Room settings",
       owner_only: "owner only",
+      room_desc_label: "Room description",
+      room_desc_ph: "What is this room for? Say what you're all working towards.",
+      save_desc: "Save description",
+      desc_saved: "Description saved.",
       delete_room: "Delete room",
       leave_room: "Leave room",
       confirm_del_room: "Delete this room for everyone?",
@@ -142,7 +220,28 @@
       nobody_focusing: "· nobody focusing yet",
       idle: "idle",
       owner: "owner",
-      you: "you"
+      you: "you",
+
+      /* -- room owner: members & assigned work -- */
+      confirm_remove: "Remove %s from the room?",
+      removed_ok: "%s was removed.",
+      remove_name: "Remove %s",
+      assign_to_name: "Assign a task to %s",
+      assigned_work: "Assigned work",
+      task_label: "Task",
+      task_ph: "What should they work on?",
+      assign_to: "Assign to",
+      suggested_time: "Suggested time",
+      minutes_ph: "minutes — optional",
+      deadline_opt: "Deadline — optional",
+      assign_task: "Assign task",
+      task_assigned: "Task assigned ✓",
+      write_task: "Write what the task is.",
+      pick_person: "Pick who it's for.",
+      remove_task: "Delete this task",
+      n_open: "%s still open",
+      no_tasks_owner: "Nothing assigned yet — give someone their first task above.",
+      no_tasks_you: "Nothing assigned to you yet."
     },
 
     fa: {
@@ -159,6 +258,74 @@
       generic_error: "مشکلی پیش آمد.",
       signing_in: "انجام شد — در حال ورود…",
       no_server: "ارتباط با سرور برقرار نشد.",
+
+      /* -- ورود با کد پیامکی -- */
+      phone: "شمارهٔ موبایل",
+      phone_why: "یک کد ۵ رقمی برایت پیامک می‌کنیم. برای ورود همین کافی است.",
+      send_code: "ارسال کد",
+      code: "کد تأیید",
+      verify: "تأیید",
+      change_number: "تغییر شماره",
+      resend: "ارسال کد جدید",
+      resend_in: "%s ثانیه تا درخواست کد بعدی",
+      code_sent: "کد ۵ رقمی به %s پیامک شد",
+      code_resent: "کد جدید ارسال شد.",
+      registering_for: "ساخت حساب برای %s",
+      use_password: "ورود با رمز عبور",
+      use_code: "ورود با کد پیامکی",
+      email_or_phone: "ایمیل یا شمارهٔ موبایل",
+      optional_suffix: "— اختیاری",
+      pw_why: "فقط اگر می‌خواهی با رمز عبور هم وارد شوی. کد پیامکی همیشه کار می‌کند.",
+      sending: "در حال ارسال کد…",
+      sending_again: "در حال ارسال کد جدید…",
+      checking: "در حال بررسی…",
+      creating: "در حال ساخت حساب…",
+      bad_phone: "شمارهٔ موبایلت را وارد کن، مثلاً ۰۹۱۲۱۲۳۴۵۶۷.",
+      bad_code: "کد ۵ رقمی داخل پیامک را وارد کن.",
+      bad_email: "ایمیل درست به‌نظر نمی‌رسد — یا خالی بگذارش.",
+      short_pw: "رمز عبور باید حداقل ۶ کاراکتر باشد — یا خالی بگذارش.",
+      need_name: "شما را چه صدا کنیم؟",
+      need_both: "هر دو کادر را پر کن.",
+
+      /* -- رشته و پایه -- */
+      edu_q: "چه چیزی می‌خوانی؟",
+      edu_school: "مدرسه",
+      edu_uni: "دانشگاه",
+      edu_school_sub: "دبستان تا دوازدهم",
+      edu_uni_sub: "هر رشته‌ای",
+      edu_grade: "پایه",
+      edu_major: "رشته",
+      edu_pick: "انتخاب کن…",
+      edu_uni_major: "رشتهٔ تحصیلی",
+      edu_uni_major_ph: "مثلاً مهندسی کامپیوتر",
+      edu_no_major: "انتخاب رشته از پایهٔ دهم شروع می‌شود.",
+      edu_why: "از روی همین می‌فهمیم چه جزوه‌هایی را در کتابخانه‌ات بگذاریم.",
+      edu_need_stage: "مدرسه یا دانشگاه را انتخاب کن.",
+      edu_need_grade: "پایه‌ات را انتخاب کن.",
+      edu_need_major: "رشته‌ات را انتخاب کن.",
+      edu_need_uni_major: "رشته‌ات را بنویس.",
+      g_elementary: "دبستان",
+      g_7: "هفتم", g_8: "هشتم", g_9: "نهم",
+      g_10: "دهم", g_11: "یازدهم", g_12: "دوازدهم",
+      m_biology: "تجربی", m_math: "ریاضی", m_fanni: "فنی",
+      m_none: "بدون رشته",
+
+      /* -- کتابخانه -- */
+      library: "کتابخانه",
+      library_sub: "جزوه‌ها و منابعی که برای تو انتخاب شده",
+      lib_loading: "در حال باز کردن کتابخانه…",
+      lib_empty: "فعلاً چیزی اینجا نیست — هر جزوه‌ای که برای پایه‌ات اضافه شود همین‌جا می‌آید.",
+      lib_empty_edu: "بگو چه می‌خوانی تا منابعت اینجا بیاید.",
+      lib_set_edu: "رشته و پایه‌ات را مشخص کن",
+      lib_off: "کتابخانه فعلاً بسته است.",
+      lib_other: "منابع دیگر",
+      lib_open: "باز کردن",
+      lib_download: "دانلود",
+      lib_files_one: "%s فایل",
+      lib_files_many: "%s فایل",
+      lib_shelf_for: "قفسهٔ تو · %s",
+      lib_everyone: "برای همه",
+      edu_saved: "ذخیره شد ✓",
 
       /* -- shared nav -- */
       timer: "تایمر",
@@ -250,9 +417,14 @@
       copy_link: "کپی لینک",
       copied: "کپی شد ✓",
       copied_msg: "لینک دعوت کپی شد!",
-      invite_fine: "هر کسی این لینک را داشته باشد می‌تواند بپیوندد — حتی به روم خصوصی.",
+      invite_fine: "فقط شما این لینک را می‌بینید. هر کسی که برایش بفرستی می‌تواند بپیوندد — حتی به روم خصوصی.",
+      joining: "در حال پیوستن با لینک دعوت…",
       room_settings: "تنظیمات روم",
       owner_only: "فقط سازنده",
+      room_desc_label: "توضیح روم",
+      room_desc_ph: "این روم برای چیست؟ بنویس روی چه چیزی کار می‌کنید.",
+      save_desc: "ذخیرهٔ توضیح",
+      desc_saved: "توضیح ذخیره شد.",
       delete_room: "حذف روم",
       leave_room: "خروج از روم",
       confirm_del_room: "این روم برای همه حذف شود؟",
@@ -274,7 +446,28 @@
       nobody_focusing: "· هنوز کسی در حال تمرکز نیست",
       idle: "آرام",
       owner: "سازنده",
-      you: "شما"
+      you: "شما",
+
+      /* -- room owner: members & assigned work -- */
+      confirm_remove: "%s از روم حذف شود؟",
+      removed_ok: "%s حذف شد.",
+      remove_name: "حذف %s",
+      assign_to_name: "واگذاری کار به %s",
+      assigned_work: "کارهای واگذارشده",
+      task_label: "کار",
+      task_ph: "چه کاری انجام دهد؟",
+      assign_to: "واگذاری به",
+      suggested_time: "زمان پیشنهادی",
+      minutes_ph: "دقیقه — اختیاری",
+      deadline_opt: "مهلت — اختیاری",
+      assign_task: "واگذاری کار",
+      task_assigned: "کار واگذار شد ✓",
+      write_task: "بنویس کار چیست.",
+      pick_person: "انتخاب کن برای چه کسی است.",
+      remove_task: "حذف این کار",
+      n_open: "%s کار باز",
+      no_tasks_owner: "هنوز کاری واگذار نشده — از بالا اولین کار را بده.",
+      no_tasks_you: "هنوز کاری به شما واگذار نشده."
     }
   };
 
@@ -285,6 +478,28 @@
     "Password must be at least 6 characters.": "رمز عبور باید حداقل ۶ کاراکتر باشد.",
     "That email is already registered.": "این ایمیل قبلاً ثبت شده است.",
     "Wrong email or password.": "ایمیل یا رمز عبور اشتباه است.",
+    /* -- ورود با کد پیامکی -- */
+    "Enter a valid mobile number.": "یک شمارهٔ موبایل معتبر وارد کن.",
+    "Too many code requests from this network — try again later.":
+      "درخواست کد از این شبکه زیاد بوده — بعداً دوباره امتحان کن.",
+    "A code was just sent — wait a moment before asking for another.":
+      "همین حالا یک کد فرستاده شد — کمی صبر کن و بعد کد تازه بخواه.",
+    "Too many codes requested for this number — try again in an hour.":
+      "برای این شماره کد زیادی درخواست شده — یک ساعت دیگر امتحان کن.",
+    "Couldn't send the code — check the number and try again.":
+      "کد ارسال نشد — شماره را بررسی کن و دوباره تلاش کن.",
+    "SMS is not configured on the server.": "سرویس پیامک روی سرور تنظیم نشده است.",
+    "Ask for a code first.": "اول درخواست کد بده.",
+    "That code was already used — ask for a new one.": "این کد قبلاً استفاده شده — کد تازه بخواه.",
+    "That code has expired — ask for a new one.": "این کد منقضی شده — کد تازه بخواه.",
+    "Too many wrong codes — ask for a new one.": "کد اشتباه زیاد وارد شد — کد تازه بخواه.",
+    "That code isn't right.": "این کد درست نیست.",
+    "Verify your phone number again — that step expired.":
+      "شماره‌ات را دوباره تأیید کن — این مرحله منقضی شد.",
+    "That number already has an account — sign in instead.":
+      "این شماره قبلاً حساب دارد — به‌جای ثبت‌نام وارد شو.",
+    "This account signs in with a code — ask for one instead.":
+      "این حساب با کد پیامکی وارد می‌شود — درخواست کد بده.",
     "Not signed in.": "وارد نشده‌اید.",
     "Something went wrong.": "مشکلی پیش آمد.",
     "Too many attempts — wait a few minutes and try again.": "تلاش‌های زیاد — چند دقیقه صبر کن و دوباره امتحان کن.",
@@ -297,8 +512,19 @@
     "Owners can't leave — delete the room instead.": "سازنده نمی‌تواند خارج شود — به‌جای آن روم را حذف کن.",
     "Only the owner can delete this room.": "فقط سازنده می‌تواند این روم را حذف کند.",
     "Only the owner can change this.": "فقط سازنده می‌تواند این را تغییر دهد.",
+    "Only the owner can remove people.": "فقط سازنده می‌تواند کسی را حذف کند.",
+    "You can't remove yourself — delete the room instead.": "نمی‌توانی خودت را حذف کنی — به‌جای آن روم را حذف کن.",
+    "That person isn't in this room.": "این شخص در این روم نیست.",
+    "Only the owner can assign tasks.": "فقط سازنده می‌تواند کار واگذار کند.",
+    "Only the owner can remove assigned tasks.": "فقط سازنده می‌تواند کارهای واگذارشده را حذف کند.",
+    "Write what the task is.": "بنویس کار چیست.",
+    "That isn't your task.": "این کار شما نیست.",
+    "Task not found.": "کار پیدا نشد.",
+    "This room has too many assigned tasks — clear some first.": "کارهای واگذارشدهٔ این روم زیاد است — اول چند تا را پاک کن.",
+    "This room is full — it already has 10 people.": "این روم پُر است — همین حالا ۱۰ نفر در آن هستند.",
     "Give the subject a name.": "برای درس یک نام بنویس.",
-    "Request too large.": "حجم درخواست زیاد است."
+    "Request too large.": "حجم درخواست زیاد است.",
+    "not found": "پیدا نشد."
   };
 
   var FA_DIG = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
@@ -343,6 +569,28 @@
   }
   function serverError(text) { return (lang === "fa" && SERVER_ERRORS[text]) || text; }
 
+  /* ---- education labels ----
+     One place turns the stored keys into words, so the login form, the dashboard card,
+     the library header and the admin panel can never disagree about what "fanni" or
+     "elementary" is called. An unknown key comes back as itself rather than blank —
+     a value the server grew and this file hasn't caught up with should still be legible. */
+  var GRADES = ["elementary", "7", "8", "9", "10", "11", "12"];
+  var MAJORS = ["biology", "math", "fanni"];
+  var MAJOR_GRADES = ["10", "11", "12"];
+  function eduGrade(g) { return g ? t("g_" + g) : ""; }
+  function eduMajor(m) { return m ? t("m_" + m) : ""; }
+  /* The one-line description of a student: "11th grade · Math", "University · Physics". */
+  function eduLabel(edu) {
+    edu = edu || {};
+    if (edu.stage === "uni") return edu.major ? t("edu_uni") + " · " + edu.major : t("edu_uni");
+    if (edu.stage !== "school") return "";
+    var parts = [];
+    if (edu.grade) parts.push(eduGrade(edu.grade));
+    if (edu.major) parts.push(eduMajor(edu.major));
+    return parts.join(" · ") || t("edu_school");
+  }
+  function hasMajor(grade) { return MAJOR_GRADES.indexOf(String(grade)) >= 0; }
+
   function apply(root) {
     root = root || document;
     root.querySelectorAll("[data-i18n]").forEach(function (el) { el.textContent = t(el.dataset.i18n); });
@@ -383,6 +631,8 @@
   window.FocusI18n = {
     t: t, tf: tf, num: num, apply: apply, setLang: setLang, toggle: toggle,
     locale: locale, serverError: serverError,
+    eduGrade: eduGrade, eduMajor: eduMajor, eduLabel: eduLabel, hasMajor: hasMajor,
+    GRADES: GRADES, MAJORS: MAJORS,
     durSecs: durSecs, durMins: durMins, durCompact: durCompact, unitLabel: unitLabel,
     get lang() { return lang; }
   };

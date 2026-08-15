@@ -41,6 +41,21 @@
   input{width:100%;border:1px solid rgba(0,0,0,.14);background:#fff;border-radius:12px;padding:13px 14px;font-size:15px;color:var(--ink);outline:none;transition:.15s}
   input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in oklch,var(--accent) 22%,transparent)}
   .row-hidden{display:none}
+  select{width:100%;border:1px solid rgba(0,0,0,.14);background:#fff;border-radius:12px;padding:12px 14px;
+    font-size:15px;color:var(--ink);outline:none;font-family:inherit;transition:.15s}
+  select:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in oklch,var(--accent) 22%,transparent)}
+  /* Two big targets instead of a dropdown: this is the first question a new student is asked,
+     and school-vs-university is the branch everything after it depends on. */
+  .stage{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+  .stage-card{border:1px solid rgba(0,0,0,.14);background:#fff;border-radius:14px;padding:12px 8px;
+    cursor:pointer;font-family:inherit;color:var(--ink);display:grid;gap:2px;justify-items:center;transition:.15s}
+  .stage-card .ic{font-size:20px;line-height:1.1}
+  .stage-card b{font-size:13.5px;font-weight:600}
+  .stage-card i{font-style:normal;font-size:11px;color:var(--muted)}
+  .stage-card[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in oklch,var(--accent) 12%,#fff);
+    box-shadow:0 0 0 3px color-mix(in oklch,var(--accent) 20%,transparent)}
+  .sub-field{margin-top:12px}
+  .hint{font-size:11.5px;color:var(--muted);line-height:1.55;margin:8px 2px 0}
   .submit{width:100%;height:50px;border:none;border-radius:14px;background:var(--accent);color:var(--accent-ink);font-size:15px;font-weight:700;cursor:pointer;margin-top:6px;transition:.15s}
   .submit:hover{filter:brightness(1.06)}
   .submit:disabled{opacity:.6;cursor:default}
@@ -50,6 +65,30 @@
   .foot{text-align:center;margin-top:18px}
   .foot a{color:var(--muted);font-size:12.5px;text-decoration:none}
   .foot a:hover{color:var(--ink)}
+
+  /* ---- phone verification ----
+     The code box is the one input on this page people read back off a text message while
+     typing, so it gets the monospace face, real letter spacing and a size that survives
+     being looked at on a phone in one hand. Always LTR: a number is a number in both
+     languages, and letting it flip in Persian puts the digits in the wrong order. */
+  .code{font-family:'DM Mono',ui-monospace,monospace;font-size:26px;text-align:center;direction:ltr;
+    letter-spacing:.42em;text-indent:.42em;padding:14px 10px}
+  input[type="tel"],#ident{direction:ltr;text-align:left}
+  html[lang="fa"] input[type="tel"],html[lang="fa"] #ident{text-align:right}
+  .sent{text-align:center;font-size:13px;color:var(--muted);line-height:1.6;margin:-6px 0 18px}
+  .sent b{color:var(--ink);font-family:'DM Mono',ui-monospace,monospace;direction:ltr;display:inline-block}
+  /* A button that has to read as a link: the alternative routes out of a step (resend, change
+     number, use a password) are choices, not the thing the page wants you to do. */
+  .linkbtn{border:none;background:transparent;color:var(--muted);font-family:inherit;font-size:12.5px;
+    cursor:pointer;padding:4px 6px;border-radius:8px;text-decoration:underline;text-underline-offset:3px}
+  .linkbtn:hover:not(:disabled){color:var(--ink)}
+  .linkbtn:disabled{cursor:default;opacity:.75;text-decoration:none}
+  .sep{color:var(--muted);font-size:12px;opacity:.5}
+  /* "optional" is said in the label itself rather than left to the absence of a required
+     mark — an empty box that people can't tell is safe to skip gets filled in anyway. */
+  label .opt{font-weight:400;opacity:.75}
+  .back{display:block;margin:14px auto 0}
+  html.glass .linkbtn:hover:not(:disabled){background:rgba(255,255,255,.08)}
 
   /* ---- appearance: Glass ----
      Same contract as the rest of the app: theme.js puts .glass on <html> from prefs.glass, and
@@ -73,7 +112,11 @@
   }
   html.glass .card ::placeholder{color:rgba(233,240,246,.4)}
   html.glass .seg button.active{background:rgba(255,255,255,.18);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22)}
-  html.glass input{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);color:var(--ink)}
+  html.glass input,html.glass select{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);color:var(--ink)}
+  html.glass select option{background:#182028;color:#f1f5f8}
+  html.glass .stage-card{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);color:var(--ink)}
+  html.glass .stage-card[aria-pressed="true"]{background:color-mix(in oklch,var(--accent) 26%,rgba(255,255,255,.08));
+    border-color:var(--accent)}
   html.glass .langsw:hover{background:rgba(255,255,255,.1)}
   html.glass .msg.ok{color:#7fd8a2}
 
@@ -86,29 +129,123 @@
 <body>
   <script src="/theme.js"></script>
   <script src="/i18n.js"></script>
-  <form class="card" id="form" autocomplete="on">
+  <!-- novalidate: the four steps live in one form, so a `required` box belonging to a step
+       that isn't on screen would block the submit of the step that is — and the browser
+       can't focus a hidden field to explain why. Every field is checked in JS instead,
+       which is also the only way the message comes out in the page's language. -->
+  <form class="card" id="form" autocomplete="on" novalidate>
     <div class="brand"><span class="dot"></span><b>Focus</b></div>
     <div class="tag" data-i18n="login_tag">Your sessions, streaks &amp; settings — saved to your account.</div>
 
-    <div class="seg">
-      <button type="button" id="tabLogin" class="active" data-i18n="sign_in">Sign in</button>
-      <button type="button" id="tabSignup" data-i18n="create_account">Create account</button>
+    <!-- ---- step 1: the number ----
+         There is no sign-in/create-account choice to make any more. Both start with the same
+         question, and which one this turns out to be is decided by the server once the code
+         is verified — asking someone up front whether they already have an account is a
+         question they shouldn't have to answer, and one that leaks who is registered. -->
+    <div id="stepPhone">
+      <div class="field">
+        <label for="phone" data-i18n="phone">Mobile number</label>
+        <input id="phone" name="phone" type="tel" inputmode="numeric" placeholder="09xx xxx xxxx"
+               autocomplete="tel" maxlength="20">
+      </div>
+      <div class="hint" data-i18n="phone_why">We'll text you a 5-digit code. That's all you need to sign in.</div>
+      <button class="submit" id="btnSend" type="submit" data-i18n="send_code">Send code</button>
+      <div class="foot">
+        <button type="button" class="linkbtn" id="toPassword" data-i18n="use_password">Sign in with a password instead</button>
+      </div>
     </div>
 
-    <div class="field row-hidden" id="nameField">
-      <label for="name" data-i18n="name">Name</label>
-      <input id="name" name="name" type="text" data-i18n-ph="name_ph" placeholder="What should we call you?" maxlength="60">
-    </div>
-    <div class="field">
-      <label for="email" data-i18n="email">Email</label>
-      <input id="email" name="email" type="email" placeholder="you@example.com" required autocomplete="username">
-    </div>
-    <div class="field">
-      <label for="password" data-i18n="password">Password</label>
-      <input id="password" name="password" type="password" placeholder="••••••••" required autocomplete="current-password" minlength="6">
+    <!-- ---- step 2: the code ---- -->
+    <div id="stepCode" class="row-hidden">
+      <div class="sent" id="sentTo"></div>
+      <div class="field">
+        <label for="code" data-i18n="code">Verification code</label>
+        <input id="code" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5"
+               class="code" autocomplete="one-time-code" placeholder="·····">
+      </div>
+      <button class="submit" id="btnVerify" type="submit" data-i18n="verify">Verify</button>
+      <div class="foot">
+        <button type="button" class="linkbtn" id="btnResend" disabled></button>
+        <span class="sep">·</span>
+        <button type="button" class="linkbtn" id="btnChange" data-i18n="change_number">Change number</button>
+      </div>
     </div>
 
-    <button class="submit" id="submit" type="submit" data-i18n="sign_in">Sign in</button>
+    <!-- ---- step 3: finish registering ----
+         Only ever shown for a number with no account yet, and only after its code checked
+         out. Name and what you study are what the app needs; email and password are not,
+         and both say so. -->
+    <div id="stepRegister" class="row-hidden">
+      <div class="sent" id="regFor"></div>
+      <div class="field">
+        <label for="name" data-i18n="name">Name</label>
+        <input id="name" name="name" type="text" data-i18n-ph="name_ph" placeholder="What should we call you?" maxlength="60">
+      </div>
+      <!-- Asked at sign-up because it is what decides which shelf of the library this
+           account gets. The keys sent to the server are the fixed ones (school/uni,
+           elementary…12, biology/math/fanni); only the labels here are translated. -->
+      <div class="field" id="eduField">
+        <label data-i18n="edu_q">What are you studying?</label>
+        <div class="stage" id="stage">
+          <button type="button" class="stage-card" data-stage="school" aria-pressed="false">
+            <span class="ic">🎒</span><b data-i18n="edu_school">School</b>
+            <i data-i18n="edu_school_sub">Grades 1–12</i>
+          </button>
+          <button type="button" class="stage-card" data-stage="uni" aria-pressed="false">
+            <span class="ic">🎓</span><b data-i18n="edu_uni">University</b>
+            <i data-i18n="edu_uni_sub">Any field</i>
+          </button>
+        </div>
+        <div class="row-hidden" id="schoolBox">
+          <label for="grade" data-i18n="edu_grade">Grade</label>
+          <select id="grade"></select>
+          <div class="sub-field row-hidden" id="majorBox">
+            <label for="major" data-i18n="edu_major">Major</label>
+            <select id="major"></select>
+          </div>
+          <div class="hint row-hidden" id="majorHint" data-i18n="edu_no_major">Majors start at 10th grade.</div>
+        </div>
+        <div class="row-hidden" id="uniBox">
+          <label for="uniMajor" data-i18n="edu_uni_major">Your field of study</label>
+          <input id="uniMajor" type="text" maxlength="60" data-i18n-ph="edu_uni_major_ph"
+                 placeholder="e.g. Computer Engineering" autocomplete="off">
+        </div>
+        <div class="hint" data-i18n="edu_why">This is how we know which study material to put on your shelf.</div>
+      </div>
+      <div class="field">
+        <label for="email"><span data-i18n="email">Email</span> <span class="opt" data-i18n="optional_suffix">— optional</span></label>
+        <input id="email" name="email" type="email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="password"><span data-i18n="password">Password</span> <span class="opt" data-i18n="optional_suffix">— optional</span></label>
+        <input id="password" name="password" type="password" placeholder="••••••••" autocomplete="new-password">
+        <div class="hint" data-i18n="pw_why">Only if you'd also like to sign in with a password. A texted code always works.</div>
+      </div>
+      <button class="submit" id="btnCreate" type="submit" data-i18n="create_account">Create account</button>
+      <div class="foot">
+        <button type="button" class="linkbtn" id="regChange" data-i18n="change_number">Change number</button>
+      </div>
+    </div>
+
+    <!-- ---- password sign-in ----
+         Every account made before phone verification has an email and a password and no
+         number on it yet, so the door they already know stays open. Either identifier works
+         in the one box. -->
+    <div id="stepPassword" class="row-hidden">
+      <div class="field">
+        <label for="ident" data-i18n="email_or_phone">Email or mobile number</label>
+        <input id="ident" name="username" type="text" placeholder="you@example.com" autocomplete="username">
+      </div>
+      <div class="field">
+        <label for="pwOld" data-i18n="password">Password</label>
+        <input id="pwOld" type="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="submit" id="btnPwLogin" type="submit" data-i18n="sign_in">Sign in</button>
+      <div class="foot">
+        <button type="button" class="linkbtn" id="toCode" data-i18n="use_code">Sign in with a texted code instead</button>
+      </div>
+    </div>
+
     <div class="msg" id="msg"></div>
     <div class="foot">
       <a href="/" data-i18n="back_timer">← Back to the timer</a>
@@ -120,27 +257,142 @@
 (function(){
   const $=s=>document.querySelector(s);
   const I=window.FocusI18n;
-  let mode="login";
   const msg=$("#msg");
+  /* Which of the four panes is on screen: phone -> code -> (register | done), with
+     password as the side door off the first one. `flow` carries what the steps hand each
+     other — the number being verified, and the ticket the server gives back for a number
+     that has no account yet. */
+  let step="phone";
+  const flow={phone:"",ticket:""};
+  let resendTimer=null;
 
   document.title=I.t("login_title");
   $("#langBtn").textContent="🌐 "+I.t("lang_switch");
   $("#langBtn").onclick=()=>I.toggle();
 
-  function setMode(m){
-    mode=m;
-    $("#tabLogin").classList.toggle("active",m==="login");
-    $("#tabSignup").classList.toggle("active",m==="signup");
-    $("#nameField").classList.toggle("row-hidden",m!=="signup");
-    $("#submit").textContent = I.t(m==="login" ? "sign_in" : "create_account");
-    $("#password").setAttribute("autocomplete", m==="login" ? "current-password" : "new-password");
-    msg.textContent=""; msg.className="msg";
+  /* ---- what you study ----
+     Only ever asked while registering. The grade and major lists are built from the key
+     lists i18n.js shares, so the options here are exactly the values the server accepts. */
+  var edu={stage:"",grade:"",major:""};
+  function fill(sel,keys,label){
+    sel.innerHTML='<option value="">'+I.t("edu_pick")+"</option>"+
+      keys.map(function(k){return '<option value="'+k+'">'+label(k)+"</option>";}).join("");
   }
-  $("#tabLogin").onclick=()=>setMode("login");
-  $("#tabSignup").onclick=()=>setMode("signup");
+  fill($("#grade"),I.GRADES,I.eduGrade);
+  fill($("#major"),I.MAJORS,I.eduMajor);
 
-  // Already signed in? go to dashboard.
-  fetch("/api/me",{credentials:"same-origin"}).then(r=>r.json()).then(j=>{if(j&&j.user)location.href="/dashboard";}).catch(()=>{});
+  function drawEdu(){
+    Array.prototype.forEach.call($("#stage").children,function(b){
+      b.setAttribute("aria-pressed",String(b.getAttribute("data-stage")===edu.stage));
+    });
+    $("#schoolBox").classList.toggle("row-hidden",edu.stage!=="school");
+    $("#uniBox").classList.toggle("row-hidden",edu.stage!=="uni");
+    // A ninth-grader has no رشته to pick — the field isn't disabled, it isn't there,
+    // and a line says why so the gap doesn't read as something missing.
+    var wants=edu.stage==="school"&&edu.grade&&I.hasMajor(edu.grade);
+    var early=edu.stage==="school"&&edu.grade&&!I.hasMajor(edu.grade);
+    $("#majorBox").classList.toggle("row-hidden",!wants);
+    $("#majorHint").classList.toggle("row-hidden",!early);
+  }
+  Array.prototype.forEach.call($("#stage").children,function(b){
+    b.onclick=function(){ edu.stage=b.getAttribute("data-stage"); drawEdu(); };
+  });
+  $("#grade").onchange=function(){
+    edu.grade=this.value;
+    if(!I.hasMajor(edu.grade)){ edu.major=""; $("#major").value=""; }
+    drawEdu();
+  };
+  $("#major").onchange=function(){ edu.major=this.value; };
+
+  /* Returns the education to send, or null after showing what's still missing. */
+  function eduPayload(){
+    var fail=function(key,el){ msg.textContent=I.t(key); msg.className="msg err"; if(el)el.focus(); return null; };
+    if(!edu.stage) return fail("edu_need_stage");
+    if(edu.stage==="uni"){
+      var m=$("#uniMajor").value.trim();
+      if(!m) return fail("edu_need_uni_major",$("#uniMajor"));
+      return {stage:"uni",major:m};
+    }
+    if(!edu.grade) return fail("edu_need_grade",$("#grade"));
+    if(I.hasMajor(edu.grade)&&!edu.major) return fail("edu_need_major",$("#major"));
+    return {stage:"school",grade:edu.grade,major:I.hasMajor(edu.grade)?edu.major:""};
+  }
+
+  /* ---- steps ---- */
+  const PANES={phone:"#stepPhone",code:"#stepCode",register:"#stepRegister",password:"#stepPassword"};
+  const FOCUS={phone:"#phone",code:"#code",register:"#name",password:"#ident"};
+  function setStep(s){
+    step=s;
+    Object.keys(PANES).forEach(function(k){
+      $(PANES[k]).classList.toggle("row-hidden",k!==s);
+    });
+    say("");
+    var el=$(FOCUS[s]);
+    // Don't pull the keyboard up on a phone the moment the page loads; every later step is
+    // one the person just asked for, so focusing there is what they expect.
+    if(el&&s!=="phone") setTimeout(function(){el.focus();},60);
+  }
+  function say(text,kind){
+    msg.textContent=text||"";
+    msg.className="msg"+(text?(" "+(kind||"err")):"");
+  }
+  function busy(on){
+    ["#btnSend","#btnVerify","#btnCreate","#btnPwLogin"].forEach(function(sel){$(sel).disabled=!!on;});
+  }
+  /* Digits only, and Persian digits folded to ASCII — the server normalises the same way,
+     so what gets typed on a Persian keyboard is the same number it stores. */
+  const FA_DIGITS={"۰":"0","۱":"1","۲":"2","۳":"3","۴":"4","۵":"5","۶":"6","۷":"7","۸":"8","۹":"9",
+                   "٠":"0","١":"1","٢":"2","٣":"3","٤":"4","٥":"5","٦":"6","٧":"7","٨":"8","٩":"9"};
+  function ascii(s){ return String(s||"").replace(/[۰-۹٠-٩]/g,function(d){return FA_DIGITS[d];}); }
+  $("#code").addEventListener("input",function(){
+    this.value=ascii(this.value).replace(/\D/g,"").slice(0,5);
+    // Five digits in means there is nothing left to type — submit rather than making them
+    // reach for a button they can already see is the only thing left to press.
+    if(this.value.length===5) $("#form").requestSubmit();
+  });
+  $("#phone").addEventListener("input",function(){
+    this.value=ascii(this.value).replace(/[^\d+\s\-()]/g,"");
+  });
+
+  /* The resend link doubles as the countdown: one control that is either "wait 45s" or
+     "send a new code", so there is never a dead button next to a live timer. */
+  function startResend(seconds){
+    clearInterval(resendTimer);
+    var left=Math.max(0,seconds|0);
+    var btn=$("#btnResend");
+    function tick(){
+      if(left<=0){
+        btn.disabled=false; btn.textContent=I.t("resend");
+        clearInterval(resendTimer); resendTimer=null; return;
+      }
+      btn.disabled=true; btn.textContent=I.tf("resend_in",I.num(left));
+      left--;
+    }
+    tick();
+    resendTimer=setInterval(tick,1000);
+  }
+
+  $("#toPassword").onclick=function(){ setStep("password"); };
+  $("#toCode").onclick=function(){ setStep("phone"); };
+  $("#btnChange").onclick=$("#regChange").onclick=function(){
+    clearInterval(resendTimer);
+    flow.ticket=""; $("#code").value="";
+    setStep("phone"); $("#phone").focus();
+  };
+  $("#btnResend").onclick=function(){ if(!this.disabled) requestCode(flow.phone,true); };
+
+  /* Where to land after signing in. An invite link sends people here with
+     ?next=/rooms?join=CODE so the invite survives the detour through this page.
+     Only same-site paths are honoured — it must start with a single "/", which rules
+     out "//evil.com" and any absolute URL, so this can't be turned into an open
+     redirect by handing someone a doctored link. */
+  const nextUrl=(()=>{
+    const n=new URLSearchParams(location.search).get("next")||"";
+    return (n.charAt(0)==="/" && n.charAt(1)!=="/") ? n : "/dashboard";
+  })();
+
+  // Already signed in? straight on to wherever you were headed.
+  fetch("/api/me",{credentials:"same-origin"}).then(r=>r.json()).then(j=>{if(j&&j.user)location.href=nextUrl;}).catch(()=>{});
 
   // On signup, carry any guest data (same-origin localStorage) into the new account.
   function guestData(){
@@ -151,32 +403,114 @@
     };
   }
 
-  $("#form").addEventListener("submit",async e=>{
-    e.preventDefault();
-    const email=$("#email").value.trim();
-    const password=$("#password").value;
-    const name=$("#name").value.trim();
-    msg.textContent=""; msg.className="msg";
-    $("#submit").disabled=true;
+  /* One place to talk to the API, so every step reports a dead server, a rate limit and a
+     validation error the same way. Returns null once it has already shown the message. */
+  async function post(url,body){
     try{
-      const url = mode==="login" ? "/api/login" : "/api/signup";
-      const r = await fetch(url,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({email,password,name})});
-      const j = await r.json();
-      if(!r.ok){ msg.textContent=j.error?I.serverError(j.error):I.t("generic_error"); msg.className="msg err"; $("#submit").disabled=false; return; }
-      if(mode==="signup"){
-        // seed the fresh account with whatever the guest had locally
-        const g=guestData();
-        try{
-          if(g.settings.cfg||g.settings.prefs||g.settings.bg) await fetch("/api/settings",{method:"PUT",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({settings:g.settings})});
-          if(g.tasks&&g.tasks.length) await fetch("/api/tasks",{method:"PUT",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({tasks:g.tasks})});
-        }catch(_){}
-      }
-      msg.textContent=I.t("signing_in"); msg.className="msg ok";
-      location.href="/dashboard";
+      const r=await fetch(url,{method:"POST",credentials:"same-origin",
+        headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok){ say(j.error?I.serverError(j.error):I.t("generic_error")); return null; }
+      return j;
     }catch(err){
-      msg.textContent=I.t("no_server"); msg.className="msg err"; $("#submit").disabled=false;
+      say(I.t("no_server"));
+      return null;
     }
+  }
+
+  /* Carry whatever a guest built up locally into the account they just made. Best effort:
+     a failed sync must never leave someone staring at a signup form they already completed. */
+  async function seedFromGuest(){
+    const g=guestData();
+    try{
+      if(g.settings.cfg||g.settings.prefs||g.settings.bg)
+        await fetch("/api/settings",{method:"PUT",credentials:"same-origin",
+          headers:{"Content-Type":"application/json"},body:JSON.stringify({settings:g.settings})});
+      if(g.tasks&&g.tasks.length)
+        await fetch("/api/tasks",{method:"PUT",credentials:"same-origin",
+          headers:{"Content-Type":"application/json"},body:JSON.stringify({tasks:g.tasks})});
+    }catch(_){}
+  }
+
+  function done(){
+    say(I.t("signing_in"),"ok");
+    location.href=nextUrl;
+  }
+
+  /* ---- step 1 -> 2: ask for a code ---- */
+  async function requestCode(raw,isResend){
+    const phone=ascii(raw).replace(/[^\d+]/g,"");
+    if(phone.length<10){ say(I.t("bad_phone")); $("#phone").focus(); return; }
+    busy(true); say(isResend?I.t("sending_again"):I.t("sending"),"ok");
+    const j=await post("/api/auth/otp/request",{phone:phone});
+    busy(false);
+    if(!j) return;
+    flow.phone=phone;
+    $("#sentTo").innerHTML=I.tf("code_sent","<b>"+esc(j.phone||phone)+"</b>");
+    if(step!=="code") setStep("code");
+    else say(I.t("code_resent"),"ok");
+    startResend(j.resendIn||90);
+  }
+
+  /* ---- step 2 -> in, or on to 3: check the code ---- */
+  async function verifyCode(){
+    const code=$("#code").value.replace(/\D/g,"");
+    if(code.length!==5){ say(I.t("bad_code")); return; }
+    busy(true); say(I.t("checking"),"ok");
+    const j=await post("/api/auth/otp/verify",{phone:flow.phone,code:code});
+    busy(false);
+    if(!j) return;
+    if(j.registered){ done(); return; }           // known number: the cookie is already set
+    // New number: the ticket is the proof of this check that signup will be asked for.
+    flow.ticket=j.ticket||"";
+    flow.phone=j.phone||flow.phone;
+    clearInterval(resendTimer);
+    $("#regFor").innerHTML=I.tf("registering_for","<b>"+esc(flow.phone)+"</b>");
+    setStep("register");
+  }
+
+  /* ---- step 3: make the account ---- */
+  async function register(){
+    const education=eduPayload();
+    if(!education) return;                        // eduPayload already said what's missing
+    const name=$("#name").value.trim();
+    if(!name){ say(I.t("need_name")); $("#name").focus(); return; }
+    // Email is optional: an empty box is sent as "" and stored as nothing. Only a filled-in
+    // one is checked at all, and the server checks it again anyway.
+    const email=$("#email").value.trim();
+    if(email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ say(I.t("bad_email")); $("#email").focus(); return; }
+    const password=$("#password").value;
+    if(password&&password.length<6){ say(I.t("short_pw")); $("#password").focus(); return; }
+    busy(true); say(I.t("creating"),"ok");
+    const j=await post("/api/signup",{phone:flow.phone,ticket:flow.ticket,name:name,
+                                      education:education,email:email,password:password});
+    busy(false);
+    if(!j) return;
+    await seedFromGuest();
+    done();
+  }
+
+  /* ---- the side door: password sign-in ---- */
+  async function passwordLogin(){
+    const identifier=$("#ident").value.trim();
+    const password=$("#pwOld").value;
+    if(!identifier||!password){ say(I.t("need_both")); return; }
+    busy(true); say(I.t("checking"),"ok");
+    const j=await post("/api/login",{identifier:identifier,password:password});
+    busy(false);
+    if(!j) return;
+    done();
+  }
+
+  function esc(s){ return String(s).replace(/[&<>"']/g,function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+
+  $("#form").addEventListener("submit",function(e){
+    e.preventDefault();
+    if(step==="phone")         requestCode($("#phone").value,false);
+    else if(step==="code")     verifyCode();
+    else if(step==="register") register();
+    else if(step==="password") passwordLogin();
   });
 })();
 </script>

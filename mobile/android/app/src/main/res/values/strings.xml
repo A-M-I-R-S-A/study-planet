@@ -29,6 +29,10 @@
     <string name="music_paused">Paused</string>
     <string name="act_stop">Stop</string>
 
+    <!-- Library downloads -->
+    <string name="dl_started">Downloading %1$s…</string>
+    <string name="dl_failed">Couldn\'t start that download.</string>
+
     <!-- App lock overlay -->
     <string name="block_title">Stay focused</string>
     <string name="block_msg">%1$s is blocked until your session ends.</string>

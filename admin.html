@@ -1,0 +1,1860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16303a">
+<meta name="robots" content="noindex, nofollow">
+<title>Focus — Admin panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* The app's own tokens, so the panel reads as the same product: cream surfaces, the amber
+     accent, DM Mono for numbers, and the 22px corner radius used everywhere else. The shell
+     around them is dark, which is what separates "administering the app" from "using it". */
+  :root{
+    --accent:oklch(0.7 0.12 62);--accent-ink:#16303a;
+    --surface:#faf6ee;--surface-2:#efe9de;--field:#fff;
+    --ink:#2b2824;--muted:#8a8175;--white:#fbfdfd;
+    --line:rgba(0,0,0,.07);--hair:rgba(0,0,0,.14);
+    --danger:#c0392b;--ok:#2e7d46;
+    --shell:#131a24;--shell-2:#1b232f;--shell-ink:#e8eef4;--shell-muted:rgba(232,238,244,.55);
+    --radius:22px;--sidebar:252px;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-tap-highlight-color:transparent}
+  :focus:not(:focus-visible){outline:none}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  html,body{height:100%}
+  body{margin:0;font-family:'Instrument Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    color:var(--ink);background:#0d1420;-webkit-font-smoothing:antialiased;overflow-x:clip}
+  .mono{font-family:'DM Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+  button,input,select,textarea{font-family:inherit}
+  a{color:inherit}
+
+  /* ---------- shell ---------- */
+  .shell{display:flex;min-height:100vh}
+  aside{width:var(--sidebar);flex:none;background:var(--shell);color:var(--shell-ink);
+    display:flex;flex-direction:column;position:fixed;inset:0 auto 0 0;z-index:40;
+    border-right:1px solid rgba(255,255,255,.07);transition:transform .22s ease}
+  .side-head{padding:24px 22px 18px;display:flex;align-items:center;gap:10px}
+  .side-head .dot{width:11px;height:11px;border-radius:50%;background:var(--accent);flex:none}
+  .side-head b{font-size:17px;letter-spacing:-.01em}
+  .side-head .badge{font-size:9.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+    background:rgba(255,255,255,.12);padding:3px 7px;border-radius:6px;color:var(--shell-muted)}
+  nav.side{padding:6px 12px;display:flex;flex-direction:column;gap:2px;flex:1;overflow-y:auto}
+  nav.side a{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:12px;
+    text-decoration:none;color:var(--shell-muted);font-size:14.5px;font-weight:500;transition:.14s}
+  nav.side a:hover{background:rgba(255,255,255,.06);color:var(--shell-ink)}
+  nav.side a.active{background:var(--accent);color:var(--accent-ink);font-weight:600}
+  nav.side a .ic{width:18px;text-align:center;font-size:15px;flex:none}
+  nav.side .sep{height:1px;background:rgba(255,255,255,.08);margin:10px 12px}
+  .side-foot{padding:14px 16px 18px;border-top:1px solid rgba(255,255,255,.07)}
+  .whoami{display:flex;align-items:center;gap:10px;margin-bottom:10px;min-width:0}
+  .whoami .av{width:34px;height:34px;border-radius:11px;background:var(--accent);color:var(--accent-ink);
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex:none}
+  .whoami .nm{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .whoami .rl{font-size:11px;color:var(--shell-muted)}
+  .logout{width:100%;border:1px solid rgba(255,255,255,.16);background:transparent;color:var(--shell-ink);
+    border-radius:11px;padding:9px 0;font-size:13.5px;font-weight:600;cursor:pointer;transition:.15s}
+  .logout:hover{background:var(--danger);border-color:var(--danger);color:#fff}
+
+  main{flex:1;min-width:0;margin-left:var(--sidebar);padding:0 0 60px}
+  .topbar{position:sticky;top:0;z-index:20;background:rgba(13,20,32,.86);backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,255,255,.07);
+    padding:18px clamp(18px,3.4vw,36px);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .topbar h1{margin:0;font-size:21px;font-weight:600;letter-spacing:-.015em;color:var(--white)}
+  .topbar .sub{font-size:12.5px;color:rgba(255,255,255,.5);margin-top:2px}
+  .topbar .grow{flex:1}
+  .burger{display:none;border:1px solid rgba(255,255,255,.18);background:transparent;color:var(--white);
+    width:40px;height:40px;border-radius:12px;font-size:17px;cursor:pointer;flex:none}
+  .content{padding:clamp(20px,3.4vw,34px) clamp(18px,3.4vw,36px) 0;max-width:1360px}
+
+  /* ---------- primitives ---------- */
+  .card{background:var(--surface);border-radius:var(--radius);padding:22px;box-shadow:0 14px 40px rgba(0,0,0,.28)}
+  .card h2{margin:0 0 4px;font-size:16px;font-weight:600;letter-spacing:-.01em}
+  .card .hint{font-size:12.5px;color:var(--muted);margin:0 0 16px;line-height:1.55}
+  .grid{display:grid;gap:16px}
+  .btn{border:none;border-radius:12px;padding:10px 16px;font-size:13.5px;font-weight:600;cursor:pointer;
+    transition:.15s;background:var(--surface-2);color:var(--ink)}
+  .btn:hover{filter:brightness(.97)}
+  .btn.primary{background:var(--accent);color:var(--accent-ink)}
+  .btn.primary:hover{filter:brightness(1.06)}
+  .btn.ghost{background:transparent;border:1px solid var(--hair);color:var(--ink)}
+  .btn.ghost:hover{background:var(--surface-2)}
+  .btn.danger{background:transparent;border:1px solid color-mix(in srgb,var(--danger) 40%,transparent);color:var(--danger)}
+  .btn.danger:hover{background:var(--danger);color:#fff;border-color:var(--danger)}
+  .btn.sm{padding:7px 12px;font-size:12.5px;border-radius:10px}
+  .btn:disabled{opacity:.5;cursor:default;filter:none}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  label.lbl{display:block;font-size:12px;color:var(--muted);margin:0 2px 6px;font-weight:500}
+  input[type=text],input[type=password],input[type=search],input[type=number],select,textarea{
+    width:100%;border:1px solid var(--hair);background:var(--field);border-radius:12px;padding:11px 13px;
+    font-size:14px;color:var(--ink);outline:none;transition:.15s}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent);
+    box-shadow:0 0 0 3px color-mix(in oklch,var(--accent) 20%,transparent)}
+  input[type=range]{width:100%;accent-color:var(--accent)}
+  input[type=color]{width:46px;height:38px;padding:2px;border:1px solid var(--hair);border-radius:10px;
+    background:var(--field);cursor:pointer;flex:none}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 9px;
+    border-radius:999px;background:var(--surface-2);color:var(--muted);letter-spacing:.02em}
+  .pill.on{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
+  .pill.off{background:rgba(0,0,0,.06);color:var(--muted)}
+  .pill.accent{background:color-mix(in oklch,var(--accent) 22%,transparent);color:#7a5a12}
+  .pill.web{background:color-mix(in srgb,#2f6fd0 16%,transparent);color:#2f6fd0}
+  .pill.mobile{background:color-mix(in srgb,#8a4fd0 16%,transparent);color:#8a4fd0}
+  .pill.danger{background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger)}
+  .dotlive{width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none;
+    box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 22%,transparent)}
+  .switch{position:relative;display:inline-block;width:42px;height:24px;flex:none}
+  .switch input{opacity:0;width:0;height:0;position:absolute}
+  .switch .tr{position:absolute;inset:0;background:rgba(0,0,0,.18);border-radius:999px;transition:.18s;cursor:pointer}
+  .switch .tr:before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;
+    border-radius:50%;transition:.18s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  .switch input:checked + .tr{background:var(--accent)}
+  .switch input:checked + .tr:before{transform:translateX(18px)}
+
+  /* ---------- dashboard ---------- */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:14px;margin-bottom:18px}
+  .stat{background:var(--surface);border-radius:18px;padding:18px 18px 16px;box-shadow:0 12px 34px rgba(0,0,0,.24)}
+  .stat .k{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+  .stat .v{font-size:31px;font-weight:600;letter-spacing:-.02em;margin-top:7px;line-height:1}
+  .stat .m{font-size:12px;color:var(--muted);margin-top:6px}
+  .cols{display:grid;grid-template-columns:1.35fr 1fr;gap:16px;align-items:start}
+  .chart{display:flex;align-items:flex-end;gap:5px;height:150px;margin-top:6px}
+  .chart .bar{flex:1;background:var(--surface-2);border-radius:6px 6px 3px 3px;position:relative;
+    min-height:4px;transition:.2s}
+  .chart .bar.has{background:var(--accent)}
+  .chart .bar:hover{filter:brightness(.92)}
+  .chart-x{display:flex;gap:5px;margin-top:8px}
+  .chart-x span{flex:1;text-align:center;font-size:9.5px;color:var(--muted)}
+  .ulist{display:flex;flex-direction:column}
+  .ulist .u{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .ulist .u:last-child{border-bottom:none}
+  .ulist .av{width:36px;height:36px;border-radius:12px;background:var(--surface-2);display:flex;
+    align-items:center;justify-content:center;font-size:18px;flex:none}
+  .ulist .nm{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ulist .em{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ulist .when{font-size:11.5px;color:var(--muted);margin-left:auto;flex:none;text-align:right}
+
+  /* ---------- table ---------- */
+  .tools{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+  .tools .search{flex:1;min-width:210px;position:relative}
+  .tools select{width:auto;min-width:132px}
+  .tbl-wrap{overflow-x:auto;border-radius:14px;border:1px solid var(--line)}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:820px}
+  thead th{text-align:left;padding:11px 14px;font-size:10.5px;font-weight:700;letter-spacing:.07em;
+    text-transform:uppercase;color:var(--muted);background:var(--surface-2);white-space:nowrap;
+    cursor:pointer;user-select:none}
+  thead th.plain{cursor:default}
+  thead th .ar{opacity:.45;font-size:9px;margin-left:3px}
+  tbody td{padding:12px 14px;border-top:1px solid var(--line);vertical-align:middle}
+  tbody tr{cursor:pointer;transition:.12s}
+  tbody tr:hover{background:var(--surface-2)}
+  .cell-u{display:flex;align-items:center;gap:10px;min-width:0}
+  .cell-u .av{width:34px;height:34px;border-radius:11px;background:var(--surface-2);display:flex;
+    align-items:center;justify-content:center;font-size:17px;flex:none}
+  .cell-u .nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cell-u .em{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sw{width:26px;height:26px;border-radius:8px;border:1px solid var(--hair);flex:none;
+    background-size:cover;background-position:center;display:inline-block;vertical-align:middle}
+  .pager{display:flex;align-items:center;gap:12px;margin-top:14px;font-size:12.5px;color:var(--muted)}
+
+  /* ---------- cards grid (themes / backgrounds) ---------- */
+  .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:16px}
+  .tile{background:var(--surface);border-radius:18px;overflow:hidden;box-shadow:0 12px 34px rgba(0,0,0,.24);
+    display:flex;flex-direction:column;border:2px solid transparent;transition:.15s}
+  .tile.is-default{border-color:var(--accent)}
+  .tile .prev{height:118px;background-size:cover;background-position:center;position:relative}
+  .tile .prev .tags{position:absolute;top:9px;right:9px;display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+  .tile .prev .tags .pill{background:rgba(0,0,0,.55);color:#fff;backdrop-filter:blur(6px)}
+  .tile .body{padding:14px 15px 15px;display:flex;flex-direction:column;gap:9px;flex:1}
+  .tile .body .nm{font-size:14.5px;font-weight:600;letter-spacing:-.01em}
+  .tile .body .ds{font-size:12px;color:var(--muted);line-height:1.5;flex:1}
+  .tile .acts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .chips{display:flex;gap:5px;flex-wrap:wrap}
+
+  /* ---------- library ---------- */
+  .lrow{display:flex;align-items:center;gap:13px;padding:13px 0;border-top:1px solid var(--line)}
+  .lrow:first-child{border-top:none}
+  .lrow .ic{width:42px;height:42px;border-radius:13px;background:var(--surface-2);display:flex;
+    align-items:center;justify-content:center;font-size:20px;flex:none}
+  .lrow .info{flex:1;min-width:0}
+  .lrow .nm{font-size:14px;font-weight:600;letter-spacing:-.01em;overflow-wrap:anywhere}
+  .lrow .ds{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5;overflow-wrap:anywhere}
+  .lrow .meta{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;align-items:center}
+  .lrow .acts{display:flex;gap:6px;align-items:center;flex:none;flex-wrap:wrap;justify-content:flex-end}
+  /* The one number that answers "did I aim this right" — shown live in the editor as the
+     targeting dropdowns change, so a mistargeted upload is visible before it is saved. */
+  .reach{background:var(--surface-2);border-radius:12px;padding:11px 13px;font-size:12.5px;
+    color:var(--muted);line-height:1.5}
+  .reach b{color:var(--ink);font-size:15px}
+  .f3{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+  .filedrop{border:1px dashed var(--hair);border-radius:14px;padding:14px;background:var(--surface-2)}
+  @media (max-width:760px){
+    .f3{grid-template-columns:1fr}
+    .lrow{flex-wrap:wrap}
+    .lrow .acts{width:100%;justify-content:flex-start}
+  }
+  .tchip{width:19px;height:19px;border-radius:6px;border:1px solid var(--hair);flex:none}
+  /* Theme preview: a miniature of a real app card, painted with that theme's own tokens —
+     it shows what the tokens do rather than only what colours they are. */
+  .tprev{height:118px;padding:13px;display:flex;flex-direction:column;justify-content:center;gap:7px}
+  .tprev .mini{border-radius:11px;padding:10px 11px}
+  .tprev .mini .t{font-size:11.5px;font-weight:600}
+  .tprev .mini .s{font-size:9.5px;margin-top:2px}
+  .tprev .mini .b{display:inline-block;margin-top:7px;font-size:9.5px;font-weight:700;
+    padding:4px 9px;border-radius:7px}
+
+  /* ---------- states ---------- */
+  .empty,.errbox,.loading{text-align:center;padding:48px 20px;color:var(--muted)}
+  .empty .ic,.errbox .ic{font-size:34px;margin-bottom:10px;opacity:.55}
+  .empty b,.errbox b{display:block;color:var(--ink);font-size:15px;margin-bottom:5px;font-weight:600}
+  .empty p,.errbox p{margin:0 auto;font-size:13px;max-width:340px;line-height:1.55}
+  .errbox b{color:var(--danger)}
+  .skel{background:linear-gradient(90deg,var(--surface-2) 25%,rgba(0,0,0,.04) 37%,var(--surface-2) 63%);
+    background-size:400% 100%;animation:sk 1.3s ease infinite;border-radius:9px;height:14px}
+  @keyframes sk{0%{background-position:100% 50%}100%{background-position:0 50%}}
+  .spin{width:17px;height:17px;border:2px solid rgba(0,0,0,.14);border-top-color:var(--accent);
+    border-radius:50%;animation:sp .7s linear infinite;display:inline-block;vertical-align:-3px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  /* ---------- modal + toast ---------- */
+  .ov{position:fixed;inset:0;z-index:60;background:rgba(8,12,18,.62);backdrop-filter:blur(4px);
+    display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;
+    transition:opacity .17s}
+  .ov.show{opacity:1;pointer-events:auto}
+  .modal{background:var(--surface);border-radius:var(--radius);width:100%;max-width:620px;
+    max-height:min(88vh,860px);overflow:auto;box-shadow:0 30px 90px rgba(0,0,0,.5);
+    transform:translateY(10px);transition:transform .17s}
+  .ov.show .modal{transform:none}
+  .modal.wide{max-width:800px}
+  .modal.narrow{max-width:430px}
+  .mhead{position:sticky;top:0;background:var(--surface);padding:20px 22px 14px;display:flex;
+    align-items:flex-start;gap:12px;border-bottom:1px solid var(--line);z-index:2}
+  .mhead b{font-size:16.5px;font-weight:600;letter-spacing:-.01em;flex:1}
+  .mhead .x{border:none;background:var(--surface-2);width:30px;height:30px;border-radius:10px;
+    font-size:17px;cursor:pointer;color:var(--muted);line-height:1;flex:none}
+  .mhead .x:hover{background:var(--hair);color:var(--ink)}
+  .mbody{padding:20px 22px}
+  .mfoot{position:sticky;bottom:0;background:var(--surface);padding:14px 22px 18px;display:flex;
+    gap:9px;justify-content:flex-end;border-top:1px solid var(--line)}
+  .f2{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+  .fld{margin-bottom:13px}
+  .colorrow{display:flex;gap:8px;align-items:center}
+  .colorrow input[type=text]{flex:1}
+
+  #toasts{position:fixed;right:18px;bottom:18px;z-index:80;display:flex;flex-direction:column;gap:9px;
+    align-items:flex-end;pointer-events:none}
+  .toast{background:var(--surface);border-radius:13px;padding:12px 15px;font-size:13.5px;font-weight:500;
+    box-shadow:0 14px 40px rgba(0,0,0,.4);display:flex;align-items:center;gap:9px;max-width:340px;
+    border-left:4px solid var(--ok);animation:tin .22s ease}
+  .toast.err{border-left-color:var(--danger)}
+  .toast.info{border-left-color:var(--accent)}
+  @keyframes tin{from{opacity:0;transform:translateX(18px)}}
+
+  /* detail modal bits */
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:9px 16px;font-size:13.5px;align-items:baseline}
+  .kv dt{color:var(--muted);font-size:12px;white-space:nowrap}
+  .kv dd{margin:0;font-weight:500;word-break:break-word}
+  .sect{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+  .sect h3{margin:0 0 11px;font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--muted)}
+  .prefbox{display:flex;gap:12px;align-items:center;background:var(--surface-2);border-radius:14px;padding:12px}
+  .prefbox .sw{width:52px;height:52px;border-radius:12px}
+  .prefbox .t{font-size:13px;font-weight:600}
+  .prefbox .s{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .bars{display:flex;gap:3px;align-items:flex-end;height:44px;margin-top:4px}
+  .bars i{flex:1;background:var(--accent);border-radius:3px 3px 1px 1px;min-height:2px;opacity:.85}
+  .note{background:var(--surface-2);border-radius:14px;padding:13px 15px;font-size:12.5px;
+    color:var(--muted);line-height:1.6}
+  .note b{color:var(--ink)}
+  .flow{font-size:12.5px;line-height:1.9;color:var(--muted)}
+  .flow b{color:var(--ink)}
+
+  /* ---------- responsive ---------- */
+  .scrim{position:fixed;inset:0;background:rgba(8,12,18,.55);z-index:35;opacity:0;pointer-events:none;
+    transition:opacity .2s}
+  .scrim.show{opacity:1;pointer-events:auto}
+  @media (max-width:1040px){ .cols{grid-template-columns:1fr} }
+  @media (max-width:860px){
+    aside{transform:translateX(-100%);box-shadow:0 0 60px rgba(0,0,0,.5)}
+    aside.open{transform:none}
+    main{margin-left:0}
+    .burger{display:block}
+    .f2{grid-template-columns:1fr}
+    #toasts{left:14px;right:14px;align-items:stretch}
+    .toast{max-width:none}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside id="side">
+    <div class="side-head">
+      <span class="dot"></span><b>Focus</b><span class="badge">Admin</span>
+    </div>
+    <nav class="side" id="nav">
+      <a href="#/dashboard"   data-v="dashboard"><span class="ic">▤</span>Dashboard</a>
+      <a href="#/users"       data-v="users"><span class="ic">◍</span>Users</a>
+      <a href="#/themes"      data-v="themes"><span class="ic">◑</span>Themes</a>
+      <a href="#/backgrounds" data-v="backgrounds"><span class="ic">▩</span>Backgrounds</a>
+      <a href="#/library"     data-v="library"><span class="ic">▤</span>Library</a>
+      <a href="#/settings"    data-v="settings"><span class="ic">⚙</span>App Settings</a>
+      <div class="sep"></div>
+      <a href="#/account"     data-v="account"><span class="ic">◎</span>Admin Account</a>
+    </nav>
+    <div class="side-foot">
+      <div class="whoami">
+        <div class="av" id="adminAv">A</div>
+        <div style="min-width:0">
+          <div class="nm" id="adminName">—</div>
+          <div class="rl">Administrator</div>
+        </div>
+      </div>
+      <button class="logout" id="logout">Log out</button>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <main>
+    <div class="topbar">
+      <button class="burger" id="burger" aria-label="Menu">☰</button>
+      <div>
+        <h1 id="ttl">Dashboard</h1>
+        <div class="sub" id="sub">Overview of your Focus app</div>
+      </div>
+      <div class="grow"></div>
+      <button class="btn ghost sm" id="refresh" style="background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.16);color:#fff">↻ Refresh</button>
+    </div>
+    <div class="content" id="view"></div>
+  </main>
+</div>
+
+<div class="ov" id="ov"><div class="modal" id="modal"></div></div>
+<div id="toasts"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================ helpers ============================ */
+var $=function(s,r){return (r||document).querySelector(s);};
+var view=$("#view"), CSRF=null, ADMIN=null;
+
+/* The line under a name in every list. Email is optional now, so the account's own number
+   is what identifies it; an account can legitimately have one, the other, or both. */
+function contact(u){
+  var bits=[];
+  if(u&&u.phone) bits.push(u.phone);
+  if(u&&u.email) bits.push(u.email);
+  return bits.length?esc(bits.join(" · ")):"<span style=\"opacity:.5\">no contact details</span>";
+}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+/* Values that land in a style attribute get a stricter filter than HTML escaping: anything
+   that could close the declaration and start another one is dropped entirely. */
+function safeCss(v){v=String(v==null?"":v);return /[;{}<>\\"']/.test(v)?"":v;}
+function toast(msg,kind){
+  var t=document.createElement("div");
+  t.className="toast"+(kind?" "+kind:"");
+  t.textContent=msg;
+  $("#toasts").appendChild(t);
+  setTimeout(function(){t.style.transition="opacity .3s,transform .3s";t.style.opacity="0";
+    t.style.transform="translateX(18px)";setTimeout(function(){t.remove();},320);},kind==="err"?4600:2900);
+}
+function fmtDate(iso){
+  if(!iso) return "—";
+  var d=new Date(iso); if(isNaN(d)) return "—";
+  return d.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"});
+}
+function fmtAgo(ts){
+  if(!ts) return "never";
+  var s=Math.floor(Date.now()/1000-ts);
+  if(s<60) return "just now";
+  if(s<3600) return Math.floor(s/60)+"m ago";
+  if(s<86400) return Math.floor(s/3600)+"h ago";
+  if(s<2592000) return Math.floor(s/86400)+"d ago";
+  return new Date(ts*1000).toLocaleDateString();
+}
+function fmtDur(mins){
+  mins=Math.max(0,mins|0);
+  var h=Math.floor(mins/60), m=mins%60;
+  return h? (h+"h "+(m?m+"m":"")).trim() : m+"m";
+}
+
+/* API. The CSRF token lives only in this closure — never localStorage, never a cookie the
+   page can read. A dead session comes back as 404 (the same answer any stranger gets), so
+   that is the signal to bounce back to the sign-in form. */
+function api(path,opts){
+  opts=opts||{};
+  var h={"Accept":"application/json"};
+  if(opts.body){h["Content-Type"]="application/json";}
+  if(opts.method&&opts.method!=="GET"&&CSRF){h["X-Admin-CSRF"]=CSRF;}
+  return fetch("/api/admin"+path,{
+    method:opts.method||"GET",credentials:"same-origin",headers:h,
+    body:opts.body?JSON.stringify(opts.body):undefined
+  }).then(function(r){
+    return r.json().catch(function(){return {};}).then(function(j){
+      if(r.status===404&&!j.error){ expired(); throw new Error("session"); }
+      if(r.status===403&&/token/i.test(j.error||"")){ expired(); throw new Error("csrf"); }
+      if(!r.ok) throw new Error(j.error||("Request failed ("+r.status+")"));
+      return j;
+    });
+  });
+}
+var bounced=false;
+function expired(){
+  if(bounced) return; bounced=true;
+  toast("Your admin session expired — signing you out.","err");
+  setTimeout(function(){location.href="/admin";},1200);
+}
+
+function skeleton(rows){
+  var h='<div class="card">';
+  for(var i=0;i<(rows||4);i++)
+    h+='<div class="skel" style="margin-bottom:12px;width:'+(60+Math.random()*40)+'%"></div>';
+  return h+'</div>';
+}
+function errState(msg,retry){
+  return '<div class="card"><div class="errbox"><div class="ic">⚠</div><b>Something went wrong</b>'+
+    '<p>'+esc(msg)+'</p>'+(retry!==false?'<button class="btn ghost sm" style="margin-top:14px" '+
+    'onclick="location.reload()">Try again</button>':'')+'</div></div>';
+}
+function emptyState(icon,title,body){
+  return '<div class="empty"><div class="ic">'+icon+'</div><b>'+esc(title)+'</b><p>'+esc(body)+'</p></div>';
+}
+
+/* ---- modal ---- */
+var ov=$("#ov"), modalEl=$("#modal"), onClose=null;
+function modal(html,cls){
+  modalEl.className="modal"+(cls?" "+cls:"");
+  modalEl.innerHTML=html;
+  ov.classList.add("show");
+  var x=$(".x",modalEl); if(x) x.onclick=closeModal;
+  return modalEl;
+}
+function closeModal(){ov.classList.remove("show");if(onClose){var f=onClose;onClose=null;f();}}
+ov.addEventListener("click",function(e){if(e.target===ov)closeModal();});
+document.addEventListener("keydown",function(e){if(e.key==="Escape"&&ov.classList.contains("show"))closeModal();});
+
+/* Destructive actions always route through here — nothing deletes on a single click. */
+function confirmDialog(title,body,confirmLabel,fn){
+  modal('<div class="mhead"><b>'+esc(title)+'</b><button class="x">×</button></div>'+
+    '<div class="mbody"><p style="margin:0;font-size:13.5px;line-height:1.6;color:var(--muted)">'+
+    esc(body)+'</p></div>'+
+    '<div class="mfoot"><button class="btn ghost" id="cCancel">Cancel</button>'+
+    '<button class="btn danger" id="cOk">'+esc(confirmLabel)+'</button></div>',"narrow");
+  $("#cCancel").onclick=closeModal;
+  $("#cOk").onclick=function(){
+    var b=this; b.disabled=true; b.innerHTML='<span class="spin"></span>';
+    Promise.resolve(fn()).then(closeModal).catch(function(e){
+      b.disabled=false; b.textContent=confirmLabel;
+      if(e&&e.message!=="session") toast(e.message||"That didn't work.","err");
+    });
+  };
+}
+
+/* ============================ background preview ============================ */
+/* One place decides how a background is painted, so a tile, a table swatch and the settings
+   preview can never disagree about what a user or platform would actually see. */
+function bgStyle(kind,value){
+  var v=safeCss(value);
+  if(!v) return "background:var(--surface-2)";
+  return kind==="image"
+    ? "background-image:url('"+v.replace(/'/g,"%27")+"');background-size:cover;background-position:center"
+    : "background:"+v;
+}
+
+/* ============================ views ============================ */
+var VIEWS={};
+var TITLES={
+  dashboard:["Dashboard","Overview of your Focus app"],
+  users:["Users","Everyone registered on this server"],
+  themes:["Themes","Colour tokens the app renders from"],
+  backgrounds:["Backgrounds","Images and gradients available to the app"],
+  library:["Library","Study material, and who each piece is for"],
+  settings:["App Settings","Global defaults for new and unconfigured users"],
+  account:["Admin Account","Your credentials and session"]
+};
+
+/* ---------------- dashboard ---------------- */
+VIEWS.dashboard=function(){
+  view.innerHTML=skeleton(3);
+  api("/overview").then(function(d){
+    var u=d.users, f=d.focus, c=d.counts;
+    var max=Math.max.apply(null,d.signups.map(function(s){return s.count;}).concat([1]));
+    var bars=d.signups.map(function(s){
+      var pct=Math.round(s.count/max*100);
+      return '<div class="bar'+(s.count?' has':'')+'" style="height:'+Math.max(4,pct)+'%" '+
+             'title="'+esc(s.day)+': '+s.count+' sign-up'+(s.count===1?'':'s')+'"></div>';
+    }).join("");
+    var xlabels=d.signups.map(function(s,i){
+      return '<span>'+(i%3===0?esc(s.day.slice(5).replace("-","/")):"")+'</span>';
+    }).join("");
+
+    var recent=d.recent.length? d.recent.map(function(r){
+      return '<div class="u"><div class="av">'+esc(r.avatar)+'</div>'+
+        '<div style="min-width:0"><div class="nm">'+esc(r.name)+'</div>'+
+        '<div class="em">'+contact(r)+'</div></div>'+
+        '<div class="when">'+esc(fmtDate(r.created_at))+'<br>'+
+        '<span style="opacity:.7">'+esc(fmtAgo(r.last_seen))+'</span></div></div>';
+    }).join("") : emptyState("◍","No users yet","Registrations will appear here as people sign up.");
+
+    view.innerHTML=
+      '<div class="stats">'+
+        stat("Total users",u.total,"registered accounts")+
+        stat("Online now",u.online,'<span class="dotlive" style="display:inline-block;margin-right:5px"></span>active in the last 5 min')+
+        stat("Focusing now",u.focusing,"in a live session")+
+        stat("Active today",u.activeToday,"logged focus time today")+
+        stat("Active this week",u.activeWeek,"logged time in 7 days")+
+        stat("New this week",u.newWeek,"signed up in 7 days")+
+      '</div>'+
+      '<div class="cols">'+
+        '<div class="card"><h2>Sign-ups</h2><p class="hint">New accounts per day over the last 14 days.</p>'+
+          '<div class="chart">'+bars+'</div><div class="chart-x">'+xlabels+'</div></div>'+
+        '<div class="card"><h2>Recently registered</h2>'+
+          '<p class="hint">The eight newest accounts, with when they were last seen.</p>'+
+          '<div class="ulist">'+recent+'</div>'+
+          '<button class="btn ghost sm" style="margin-top:14px" onclick="location.hash=\'#/users\'">View all users →</button>'+
+        '</div>'+
+      '</div>'+
+      '<div class="cols" style="margin-top:16px">'+
+        '<div class="card"><h2>Focus recorded</h2><p class="hint">Across every account on this server.</p>'+
+          '<div class="row" style="gap:34px;margin-top:4px">'+
+            '<div><div class="stat-k" style="font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600">Total time</div>'+
+            '<div class="mono" style="font-size:29px;margin-top:6px">'+esc(fmtDur(f.totalMinutes))+'</div></div>'+
+            '<div><div style="font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600">Sessions</div>'+
+            '<div class="mono" style="font-size:29px;margin-top:6px">'+f.totalSessions+'</div></div>'+
+          '</div></div>'+
+        '<div class="card"><h2>Configured content</h2><p class="hint">What the app currently has to draw from.</p>'+
+          '<div class="row" style="gap:12px">'+
+            '<button class="btn" onclick="location.hash=\'#/themes\'">'+c.themes+' themes</button>'+
+            '<button class="btn" onclick="location.hash=\'#/backgrounds\'">'+c.backgrounds+' backgrounds</button>'+
+            '<button class="btn" onclick="location.hash=\'#/library\'">'+c.library+' library item'+
+              (c.library===1?"":"s")+'</button>'+
+            '<span class="pill">'+c.rooms+' study rooms</span>'+
+          '</div>'+
+          // Accounts with no grade on file only ever see untargeted material, so this is the
+          // number that explains "why doesn't anyone have my PDF".
+          (u.noEducation?'<div class="note" style="margin-top:13px"><b>'+u.noEducation+' account'+
+            (u.noEducation===1?" has":"s have")+' no grade set.</b> They only see material '+
+            'published to everyone. Find them under Users → <i>No grade set</i>.'+
+            '</div>':'')+
+        '</div>'+
+      '</div>';
+  }).catch(function(e){ if(e.message!=="session") view.innerHTML=errState(e.message); });
+
+  function stat(k,v,m){
+    return '<div class="stat"><div class="k">'+esc(k)+'</div><div class="v mono">'+v+
+           '</div><div class="m">'+m+'</div></div>';
+  }
+};
+
+/* ---------------- users ---------------- */
+var uState={q:"",filter:"all",grade:"",sort:"created",dir:"desc",offset:0,limit:25};
+/* One line saying what someone studies, for the table. The bilingual labels are for the
+   editors where the choice is being made; a table column only has room for one. */
+function eduText(e){
+  if(!e||!e.stage) return '<span style="color:var(--muted)">—</span>';
+  if(e.stage==="uni") return "University"+(e.major?" · "+esc(e.major):"");
+  var parts=[];
+  if(e.grade) parts.push((GRADE_LABEL[e.grade]||e.grade).split(" — ")[0]);
+  if(e.major) parts.push((MAJOR_LABEL[e.major]||e.major).split(" — ")[0]);
+  return parts.length?esc(parts.join(" · ")):"School";
+}
+VIEWS.users=function(){
+  view.innerHTML=
+    '<div class="card">'+
+      '<div class="tools">'+
+        '<div class="search"><input type="search" id="uq" placeholder="Search name, phone or email…" value="'+esc(uState.q)+'"></div>'+
+        '<select id="ufilter">'+
+          opt("all","Everyone",uState.filter)+opt("online","Online now",uState.filter)+
+          opt("focusing","Focusing now",uState.filter)+opt("new","New this week",uState.filter)+
+          opt("inactive","Inactive 7d+",uState.filter)+opt("noedu","No grade set",uState.filter)+
+        '</select>'+
+        '<select id="ugrade">'+
+          opt("","All grades",uState.grade)+opt("uni","University",uState.grade)+
+          GRADES.map(function(g){return opt(g,GRADE_LABEL[g],uState.grade);}).join("")+
+        '</select>'+
+        '<select id="usort">'+
+          opt("created","Sort: registered",uState.sort)+opt("seen","Sort: last active",uState.sort)+
+          opt("name","Sort: name",uState.sort)+opt("phone","Sort: phone",uState.sort)+
+          opt("email","Sort: email",uState.sort)+
+          opt("minutes","Sort: focus time",uState.sort)+opt("id","Sort: user ID",uState.sort)+
+        '</select>'+
+        '<button class="btn ghost sm" id="udir">'+(uState.dir==="desc"?"↓ Desc":"↑ Asc")+'</button>'+
+      '</div>'+
+      '<div id="utable">'+skeleton(5)+'</div>'+
+    '</div>';
+
+  var t=null;
+  $("#uq").addEventListener("input",function(e){
+    clearTimeout(t); var v=e.target.value;
+    t=setTimeout(function(){uState.q=v;uState.offset=0;loadUsers();},260);
+  });
+  $("#ufilter").onchange=function(e){uState.filter=e.target.value;uState.offset=0;loadUsers();};
+  $("#ugrade").onchange=function(e){uState.grade=e.target.value;uState.offset=0;loadUsers();};
+  $("#usort").onchange=function(e){uState.sort=e.target.value;uState.offset=0;loadUsers();};
+  $("#udir").onclick=function(){
+    uState.dir=uState.dir==="desc"?"asc":"desc";
+    this.textContent=uState.dir==="desc"?"↓ Desc":"↑ Asc";
+    uState.offset=0;loadUsers();
+  };
+  loadUsers();
+
+  function opt(v,label,cur){
+    return '<option value="'+v+'"'+(cur===v?" selected":"")+'>'+esc(label)+'</option>';
+  }
+};
+
+function loadUsers(){
+  var box=$("#utable"); if(!box) return;
+  box.innerHTML=skeleton(5);
+  var qs="?q="+encodeURIComponent(uState.q)+"&filter="+uState.filter+"&sort="+uState.sort+
+         "&dir="+uState.dir+"&limit="+uState.limit+"&offset="+uState.offset+
+         // "uni" is a stage, every other value is a school grade — one dropdown, because to
+         // an admin they are the same question.
+         (uState.grade==="uni"?"&stage=uni":(uState.grade?"&stage=school&grade="+uState.grade:""));
+  api("/users"+qs).then(function(d){
+    if(!d.users.length){
+      box.innerHTML=(uState.q||uState.filter!=="all"||uState.grade)
+        ? emptyState("⌕","No matches","No user fits that search or filter. Try widening it.")
+        : emptyState("◍","No users yet","Once people sign up for Focus they'll be listed here.");
+      return;
+    }
+    var rows=d.users.map(function(u){
+      var p=u.prefs;
+      var bgLabel=p.background.custom?"Own image":(p.background.value||"—");
+      var bgSw=p.background.custom
+        ? '<span class="sw" style="background:linear-gradient(135deg,#888,#333)" title="Uploaded image"></span>'
+        : '<span class="sw" style="'+bgStyle("preset",bgPresetCss(p.background.value))+'"></span>';
+      return '<tr data-id="'+u.id+'">'+
+        '<td><div class="cell-u"><div class="av">'+esc(u.avatar)+'</div>'+
+          '<div style="min-width:0"><div class="nm">'+esc(u.name)+'</div>'+
+          '<div class="em">'+contact(u)+'</div></div></div></td>'+
+        '<td class="mono" style="color:var(--muted)">#'+u.id+'</td>'+
+        '<td>'+esc(fmtDate(u.created_at))+'</td>'+
+        '<td>'+(u.focusing?'<span class="pill on"><span class="dotlive"></span>focusing</span>'
+                          :esc(fmtAgo(u.last_seen)))+'</td>'+
+        '<td style="font-size:12.5px">'+eduText(u.education)+'</td>'+
+        '<td><span class="pill accent">'+esc(p.theme.accent)+'</span> '+
+            '<span class="pill">'+esc(p.theme.appearance)+'</span></td>'+
+        '<td>'+bgSw+' <span style="vertical-align:middle;font-size:12.5px">'+esc(bgLabel)+'</span></td>'+
+        '<td class="mono">'+esc(fmtDur(u.totalMinutes))+'</td>'+
+      '</tr>';
+    }).join("");
+
+    var from=d.offset+1, to=Math.min(d.offset+d.limit,d.total);
+    box.innerHTML=
+      '<div class="tbl-wrap"><table><thead><tr>'+
+        th("name","User")+th("id","ID")+th("created","Registered")+th("seen","Last active")+
+        '<th class="plain">Studying</th>'+
+        '<th class="plain">Theme</th><th class="plain">Background</th>'+th("minutes","Focus time")+
+      '</tr></thead><tbody>'+rows+'</tbody></table></div>'+
+      '<div class="pager">'+
+        '<button class="btn ghost sm" id="uprev"'+(d.offset<=0?" disabled":"")+'>← Previous</button>'+
+        '<button class="btn ghost sm" id="unext"'+(to>=d.total?" disabled":"")+'>Next →</button>'+
+        '<span>Showing '+from+'–'+to+' of '+d.total+'</span>'+
+      '</div>';
+
+    Array.prototype.forEach.call(box.querySelectorAll("tbody tr"),function(tr){
+      tr.onclick=function(){openUser(tr.getAttribute("data-id"));};
+    });
+    Array.prototype.forEach.call(box.querySelectorAll("thead th[data-sort]"),function(h){
+      h.onclick=function(){
+        var s=h.getAttribute("data-sort");
+        if(uState.sort===s) uState.dir=uState.dir==="desc"?"asc":"desc";
+        else {uState.sort=s;uState.dir="desc";}
+        uState.offset=0;
+        var sel=$("#usort"); if(sel) sel.value=uState.sort;
+        var db=$("#udir"); if(db) db.textContent=uState.dir==="desc"?"↓ Desc":"↑ Asc";
+        loadUsers();
+      };
+    });
+    var pv=$("#uprev"), nx=$("#unext");
+    if(pv) pv.onclick=function(){uState.offset=Math.max(0,uState.offset-uState.limit);loadUsers();};
+    if(nx) nx.onclick=function(){uState.offset+=uState.limit;loadUsers();};
+  }).catch(function(e){ if(e.message!=="session") box.innerHTML=errState(e.message); });
+
+  function th(key,label){
+    var on=uState.sort===key;
+    return '<th data-sort="'+key+'">'+esc(label)+
+      (on?'<span class="ar">'+(uState.dir==="desc"?"▼":"▲")+'</span>':'')+'</th>';
+  }
+}
+
+/* Preset gradients are looked up from the backgrounds the server already sent, so the swatch
+   beside a user shows the real gradient rather than a guess. */
+var PRESETS={};
+function bgPresetCss(slug){ return PRESETS[slug]||"var(--surface-2)"; }
+
+function openUser(id){
+  modal('<div class="mhead"><b>User details</b><button class="x">×</button></div>'+
+        '<div class="mbody">'+skeleton(4)+'</div>',"wide");
+  api("/users/"+id).then(function(d){
+    var u=d.user, p=u.prefs;
+    var maxm=Math.max.apply(null,u.stats.history.map(function(h){return h.minutes;}).concat([1]));
+    var bars=u.stats.history.map(function(h){
+      return '<i style="height:'+Math.max(2,Math.round(h.minutes/maxm*100))+'%" title="'+
+             esc(h.day)+': '+h.minutes+'m"></i>';
+    }).join("");
+    var bgPrev=p.background.preview
+      ? bgStyle("image",p.background.preview)
+      : bgStyle("preset",bgPresetCss(p.background.value));
+
+    modal('<div class="mhead">'+
+        '<div class="av" style="width:44px;height:44px;border-radius:14px;background:var(--surface-2);'+
+        'display:flex;align-items:center;justify-content:center;font-size:22px;flex:none">'+esc(u.avatar)+'</div>'+
+        '<div style="flex:1;min-width:0"><b style="display:block">'+esc(u.name||u.displayName||"")+'</b>'+
+        '<span style="font-size:12.5px;color:var(--muted)">'+contact(u)+'</span></div>'+
+        '<button class="x">×</button></div>'+
+      '<div class="mbody">'+
+        '<dl class="kv">'+
+          kv("User ID",'<span class="mono">#'+u.id+'</span>')+
+          kv("Phone",u.phone
+              ? '<span class="mono">'+esc(u.phone)+'</span>'+(u.phoneVerified?' <span class="pill on">verified</span>':"")
+              : '<span style="opacity:.5">—</span>')+
+          kv("Email",u.email?esc(u.email):'<span style="opacity:.5">not given (optional)</span>')+
+          kv("Sign-in",u.hasPassword?"Texted code or password":"Texted code")+
+          kv("Registered",esc(fmtDate(u.created_at)))+
+          kv("Last active",u.focusing?'<span class="pill on"><span class="dotlive"></span>focusing now</span>'
+                                     :esc(fmtAgo(u.last_seen)))+
+          kv("Total focus",'<span class="mono">'+esc(fmtDur(u.totalMinutes))+'</span> across '+
+             u.totalSessions+' session'+(u.totalSessions===1?'':'s'))+
+          kv("Current streak",'<span class="mono">'+u.stats.streak+'</span> day'+(u.stats.streak===1?'':'s'))+
+          kv("Tasks",u.tasks.done+" done of "+u.tasks.total)+
+          kv("Studying",eduText(u.education))+
+          // The fastest check that a targeting rule does what it was meant to: ask what this
+          // student's shelf actually holds right now.
+          kv("Library",u.libraryItems+" item"+(u.libraryItems===1?"":"s")+" on their shelf")+
+          kv("Language",esc(p.language==="fa"?"Farsi":"English")+" · "+esc(p.clock)+" clock")+
+        '</dl>'+
+
+        '<div class="sect"><h3>Appearance preferences</h3>'+
+          '<div class="f2">'+
+            '<div class="prefbox"><span class="sw" style="'+bgPrev+'"></span>'+
+              '<div><div class="t">'+esc(p.background.custom?"Own uploaded image"
+                    :(p.background.value||"Default"))+'</div>'+
+              '<div class="s">Background · dim '+p.background.dim+'% · blur '+p.background.blur+'%<br>'+
+              (p.background.chosen?"Chosen by this user":"Following the app default")+'</div></div></div>'+
+            '<div class="prefbox">'+
+              '<span class="sw" style="background:'+safeCss(accentCss(p.theme.accent))+'"></span>'+
+              '<div><div class="t">'+esc(p.theme.accent)+' · '+esc(p.theme.appearance)+'</div>'+
+              '<div class="s">Theme<br>'+(p.theme.chosen?"Chosen by this user"
+                    :"Following the app default")+'</div></div></div>'+
+          '</div>'+
+          '<div class="note" style="margin-top:12px">'+
+            (p.background.chosen||p.theme.chosen
+              ? '<b>Personal preference set.</b> Changing a global default will not affect '+
+                'what this user sees for the parts they picked themselves.'
+              : '<b>No personal preference.</b> This user follows whatever you set as the '+
+                'global default for their platform.')+
+          '</div>'+
+        '</div>'+
+
+        (u.subjects.length?'<div class="sect"><h3>Subjects</h3><div class="chips">'+
+          u.subjects.map(function(s){
+            return '<span class="pill" style="background:'+safeCss(s.color)+'22;color:var(--ink)">'+
+                   '<span class="tchip" style="width:11px;height:11px;background:'+safeCss(s.color)+'"></span>'+
+                   esc(s.name)+'</span>';
+          }).join("")+'</div></div>':'')+
+
+        (u.rooms.length?'<div class="sect"><h3>Study rooms</h3><div class="chips">'+
+          u.rooms.map(function(r){
+            return '<span class="pill">'+esc(r.name)+' · '+esc(r.role)+'</span>';
+          }).join("")+'</div></div>':'')+
+
+        '<div class="sect"><h3>Last 14 days</h3><div class="bars">'+bars+'</div></div>'+
+
+        '<div class="note" style="margin-top:18px">'+
+          'Passwords and session tokens are never loaded into this panel — the API that '+
+          'serves this view does not select them.'+
+        '</div>'+
+      '</div>'+
+      '<div class="mfoot"><button class="btn ghost" onclick="void 0" id="uClose">Close</button></div>',"wide");
+    $("#uClose").onclick=closeModal;
+  }).catch(function(e){
+    if(e.message==="session") return;
+    modal('<div class="mhead"><b>User details</b><button class="x">×</button></div>'+
+          '<div class="mbody">'+errState(e.message,false)+'</div>',"wide");
+  });
+
+  function kv(k,v){return '<dt>'+esc(k)+'</dt><dd>'+v+'</dd>';}
+}
+var ACCENT_CSS={amber:"oklch(0.7 0.12 62)",coral:"oklch(0.71 0.14 40)",rose:"oklch(0.68 0.15 15)",
+  violet:"oklch(0.66 0.16 300)",sky:"oklch(0.7 0.13 235)",green:"oklch(0.7 0.14 150)"};
+function accentCss(k){return ACCENT_CSS[k]||ACCENT_CSS.amber;}
+
+/* ---------------- themes ---------------- */
+var TOKEN_FIELDS=[
+  ["accent","Primary / accent","The colour of every button and highlight."],
+  ["accentBreak","Secondary (break tone)","Used while a break is running."],
+  ["accentInk","Text on accent","Label colour inside accent-filled buttons."],
+  ["surface","Card / surface","The main panel colour."],
+  ["surface2","Surface (raised)","Secondary panels, inputs, chips."],
+  ["ink","Text","Primary text colour."],
+  ["muted","Muted text","Labels, hints, secondary copy."],
+  ["line","Border (hairline)","Dividers between rows."],
+  ["hair","Border (strong)","Input outlines."],
+  ["field","Input background","Text field fill."]
+];
+VIEWS.themes=function(){
+  view.innerHTML=skeleton(3);
+  api("/themes").then(function(d){
+    var def=d.default_theme;
+    var tiles=d.themes.map(function(t){return themeTile(t,def);}).join("");
+    view.innerHTML=
+      '<div class="card" style="margin-bottom:16px">'+
+        '<div class="row" style="justify-content:space-between">'+
+          '<div><h2>Themes</h2><p class="hint" style="margin-bottom:0">'+
+            'Each theme is a set of design tokens the pages read from CSS variables — nothing here is '+
+            'hardcoded into the app. The default applies to users who have not picked their own.</p></div>'+
+          '<button class="btn primary" id="newTheme">＋ New theme</button>'+
+        '</div>'+
+      '</div>'+
+      (d.themes.length?'<div class="tiles">'+tiles+'</div>'
+        :'<div class="card">'+emptyState("◑","No themes","Create one to give the app a palette.")+'</div>');
+    $("#newTheme").onclick=function(){themeEditor(null);};
+    wireThemeTiles(d.themes,def);
+  }).catch(function(e){ if(e.message!=="session") view.innerHTML=errState(e.message); });
+};
+function themeTile(t,def){
+  var k=t.tokens||{}, isDef=String(t.id)===String(def);
+  return '<div class="tile'+(isDef?' is-default':'')+'" data-id="'+t.id+'">'+
+    '<div class="tprev" style="background:'+safeCss(k.appearance==="glass"?"linear-gradient(180deg,#1f2838,#0d1420)":"#e7ded0")+'">'+
+      '<div class="mini" style="background:'+safeCss(k.surface)+';color:'+safeCss(k.ink)+'">'+
+        '<div class="t">Focus session</div>'+
+        '<div class="s" style="color:'+safeCss(k.muted)+'">25 minutes left</div>'+
+        '<span class="b" style="background:'+safeCss(k.accent)+';color:'+safeCss(k.accentInk)+'">Start</span>'+
+      '</div>'+
+    '</div>'+
+    '<div class="body">'+
+      '<div class="row" style="justify-content:space-between;gap:8px">'+
+        '<span class="nm">'+esc(t.name)+'</span>'+
+        (isDef?'<span class="pill accent">Default</span>':'')+
+      '</div>'+
+      '<div class="chips">'+
+        chip(k.accent)+chip(k.accentBreak)+chip(k.surface)+chip(k.ink)+chip(k.muted)+
+        '<span class="pill">'+esc(k.appearance||"classic")+'</span>'+
+        (t.is_system?'<span class="pill">system</span>':'')+
+        (t.enabled?'':'<span class="pill off">disabled</span>')+
+      '</div>'+
+      '<div class="acts">'+
+        '<button class="btn sm" data-act="preview">Preview</button>'+
+        '<button class="btn sm" data-act="edit">Edit</button>'+
+        (isDef?'':'<button class="btn sm" data-act="default">Set default</button>')+
+        (t.is_system?'':'<button class="btn sm danger" data-act="delete">Delete</button>')+
+      '</div>'+
+    '</div></div>';
+  function chip(c){return c?'<span class="tchip" style="background:'+safeCss(c)+'" title="'+esc(c)+'"></span>':"";}
+}
+function wireThemeTiles(themes,def){
+  Array.prototype.forEach.call(view.querySelectorAll(".tile[data-id]"),function(el){
+    var id=el.getAttribute("data-id");
+    var t=themes.filter(function(x){return String(x.id)===String(id);})[0];
+    Array.prototype.forEach.call(el.querySelectorAll("[data-act]"),function(b){
+      b.onclick=function(){
+        var a=b.getAttribute("data-act");
+        if(a==="edit") themeEditor(t);
+        else if(a==="preview") themePreview(t);
+        else if(a==="default") setDefaultTheme(t);
+        else if(a==="delete") confirmDialog("Delete this theme?",
+          '"'+t.name+'" will be removed permanently. Users currently on it fall back to the app default.',
+          "Delete theme",function(){
+            return api("/themes/"+t.id,{method:"DELETE"}).then(function(){
+              toast("Theme deleted."); VIEWS.themes();
+            });
+          });
+      };
+    });
+  });
+}
+function setDefaultTheme(t){
+  api("/settings",{method:"PUT",body:{settings:{default_theme:String(t.id)}}}).then(function(){
+    toast('"'+t.name+'" is now the default theme.'); VIEWS.themes();
+  }).catch(function(e){if(e.message!=="session")toast(e.message,"err");});
+}
+function themePreview(t){
+  var k=t.tokens||{};
+  modal('<div class="mhead"><b>Preview — '+esc(t.name)+'</b><button class="x">×</button></div>'+
+    '<div class="mbody" style="padding:0">'+
+      '<div style="padding:26px;background:'+safeCss(k.appearance==="glass"
+        ?"linear-gradient(180deg,#1f2838,#0d1420)":"linear-gradient(180deg,#887326EB,#382C1F,#1F2838)")+'">'+
+        '<div style="background:'+safeCss(k.surface)+';color:'+safeCss(k.ink)+';border-radius:'+
+          safeCss(k.radius||"22px")+';padding:22px;max-width:400px;margin:0 auto;'+
+          'box-shadow:0 20px 60px rgba(0,0,0,.4)">'+
+          '<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:'+
+            safeCss(k.muted)+';font-weight:600">Focus session</div>'+
+          '<div class="mono" style="font-size:46px;margin:10px 0 4px;letter-spacing:-.02em">24:59</div>'+
+          '<div style="font-size:13px;color:'+safeCss(k.muted)+'">Mathematics · 3 of 4</div>'+
+          '<div style="height:1px;background:'+safeCss(k.line)+';margin:18px 0"></div>'+
+          '<div style="display:flex;gap:9px;flex-wrap:wrap">'+
+            '<span style="background:'+safeCss(k.accent)+';color:'+safeCss(k.accentInk)+
+              ';padding:10px 20px;border-radius:12px;font-weight:700;font-size:13.5px">Pause</span>'+
+            '<span style="background:'+safeCss(k.surface2)+';color:'+safeCss(k.ink)+
+              ';padding:10px 20px;border-radius:12px;font-weight:600;font-size:13.5px">Reset</span>'+
+            '<span style="background:'+safeCss(k.accentBreak)+';color:'+safeCss(k.accentInk)+
+              ';padding:10px 20px;border-radius:12px;font-weight:600;font-size:13.5px">Break</span>'+
+          '</div>'+
+          '<div style="margin-top:16px;border:1px solid '+safeCss(k.hair)+';background:'+
+            safeCss(k.field)+';border-radius:12px;padding:11px 13px;font-size:13px;color:'+
+            safeCss(k.muted)+'">Add a task…</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="mfoot"><button class="btn ghost" id="pvClose">Close</button>'+
+      '<button class="btn primary" id="pvDefault">Set as default theme</button></div>',"wide");
+  $("#pvClose").onclick=closeModal;
+  $("#pvDefault").onclick=function(){closeModal();setDefaultTheme(t);};
+}
+function themeEditor(t){
+  var k=(t&&t.tokens)||{};
+  var isNew=!t;
+  var base={accent:"oklch(0.7 0.12 62)",accentBreak:"oklch(0.72 0.09 175)",accentInk:"#16303a",
+    surface:"#faf6ee",surface2:"#efe9de",ink:"#2b2824",muted:"#8a8175",
+    line:"rgba(0,0,0,.06)",hair:"rgba(0,0,0,.14)",field:"#ffffff"};
+  var fields=TOKEN_FIELDS.map(function(f){
+    var val=k[f[0]]||base[f[0]]||"";
+    // A colour well only understands #rrggbb; the app's palette also uses oklch() and rgba(),
+    // so the text input is the source of truth and the well is an optional shortcut beside it.
+    var hex=/^#[0-9a-f]{6}$/i.test(val)?val:"";
+    return '<div class="fld"><label class="lbl">'+esc(f[1])+'</label>'+
+      '<div class="colorrow">'+
+        (hex?'<input type="color" value="'+esc(hex)+'" data-well="'+f[0]+'">':'')+
+        '<input type="text" id="tk_'+f[0]+'" value="'+esc(val)+'" placeholder="'+esc(base[f[0]]||"")+'">'+
+      '</div>'+
+      '<div style="font-size:11px;color:var(--muted);margin:5px 2px 0">'+esc(f[2])+'</div></div>';
+  }).join("");
+
+  modal('<div class="mhead"><b>'+(isNew?"New theme":"Edit theme")+'</b><button class="x">×</button></div>'+
+    '<div class="mbody">'+
+      '<div class="f2">'+
+        '<div class="fld"><label class="lbl">Theme name</label>'+
+          '<input type="text" id="tName" value="'+esc(t?t.name:"")+'" placeholder="e.g. Deep Ocean"></div>'+
+        '<div class="fld"><label class="lbl">Appearance</label>'+
+          '<select id="tAppearance">'+
+            '<option value="classic"'+((k.appearance||"classic")==="classic"?" selected":"")+'>Classic (opaque cards)</option>'+
+            '<option value="glass"'+(k.appearance==="glass"?" selected":"")+'>Glass (translucent cards)</option>'+
+          '</select></div>'+
+      '</div>'+
+      '<div class="row" style="margin-bottom:16px;justify-content:space-between;background:var(--surface-2);'+
+        'border-radius:13px;padding:11px 14px">'+
+        '<span style="font-size:13px;font-weight:500">Available to the app</span>'+
+        '<label class="switch"><input type="checkbox" id="tEnabled"'+
+          ((!t||t.enabled)?" checked":"")+'><span class="tr"></span></label></div>'+
+      '<div class="f2">'+fields+'</div>'+
+      '<div id="tLive" style="margin-top:6px"></div>'+
+    '</div>'+
+    '<div class="mfoot"><button class="btn ghost" id="tCancel">Cancel</button>'+
+      '<button class="btn primary" id="tSave">'+(isNew?"Create theme":"Save changes")+'</button></div>',"wide");
+
+  Array.prototype.forEach.call(modalEl.querySelectorAll("[data-well]"),function(w){
+    w.oninput=function(){ $("#tk_"+w.getAttribute("data-well")).value=w.value; live(); };
+  });
+  Array.prototype.forEach.call(modalEl.querySelectorAll(".mbody input,.mbody select"),function(i){
+    i.addEventListener("input",live);
+  });
+  live();
+  $("#tCancel").onclick=closeModal;
+  $("#tSave").onclick=function(){
+    var name=$("#tName").value.trim();
+    if(!name){toast("Give the theme a name.","err");$("#tName").focus();return;}
+    var tokens={appearance:$("#tAppearance").value};
+    TOKEN_FIELDS.forEach(function(f){
+      var v=$("#tk_"+f[0]).value.trim();
+      if(v) tokens[f[0]]=v;
+    });
+    if(!tokens.accent){toast("A theme needs an accent colour.","err");return;}
+    var btn=this; btn.disabled=true; btn.innerHTML='<span class="spin"></span> Saving';
+    var body={name:name,tokens:tokens,enabled:$("#tEnabled").checked};
+    api(isNew?"/themes":"/themes/"+t.id,{method:isNew?"POST":"PUT",body:body})
+      .then(function(){ closeModal(); toast(isNew?"Theme created.":"Theme saved."); VIEWS.themes(); })
+      .catch(function(e){
+        btn.disabled=false; btn.textContent=isNew?"Create theme":"Save changes";
+        if(e.message!=="session") toast(e.message,"err");
+      });
+  };
+  function live(){
+    var g={};
+    TOKEN_FIELDS.forEach(function(f){g[f[0]]=$("#tk_"+f[0]).value.trim()||base[f[0]];});
+    g.appearance=$("#tAppearance").value;
+    $("#tLive").innerHTML='<label class="lbl">Live preview</label>'+
+      '<div style="border-radius:16px;padding:20px;background:'+safeCss(g.appearance==="glass"
+        ?"linear-gradient(180deg,#1f2838,#0d1420)":"linear-gradient(180deg,#887326EB,#382C1F,#1F2838)")+'">'+
+        '<div style="background:'+safeCss(g.surface)+';color:'+safeCss(g.ink)+
+          ';border-radius:14px;padding:16px">'+
+          '<div style="font-size:12px;color:'+safeCss(g.muted)+'">Focus session</div>'+
+          '<div class="mono" style="font-size:28px;margin:5px 0 10px">24:59</div>'+
+          '<span style="background:'+safeCss(g.accent)+';color:'+safeCss(g.accentInk)+
+            ';padding:8px 15px;border-radius:10px;font-size:12.5px;font-weight:700">Start</span> '+
+          '<span style="background:'+safeCss(g.surface2)+';color:'+safeCss(g.ink)+
+            ';padding:8px 15px;border-radius:10px;font-size:12.5px;font-weight:600">Reset</span>'+
+        '</div></div>';
+  }
+}
+
+/* ---------------- backgrounds ---------------- */
+VIEWS.backgrounds=function(){
+  view.innerHTML=skeleton(3);
+  api("/backgrounds").then(function(d){
+    d.backgrounds.forEach(function(b){ if(b.kind==="preset") PRESETS[b.slug]=b.value; });
+    var tiles=d.backgrounds.map(function(b){return bgTile(b,d);}).join("");
+    view.innerHTML=
+      '<div class="card" style="margin-bottom:16px">'+
+        '<div class="row" style="justify-content:space-between">'+
+          '<div><h2>Backgrounds</h2><p class="hint" style="margin-bottom:0">'+
+          'Gradients and uploaded images. <b>Target platform</b> decides where a background can be '+
+          'used — web, mobile, or both — and the two platform defaults are set independently.</p></div>'+
+          '<div class="row">'+
+            '<button class="btn" id="newGradient">＋ Gradient</button>'+
+            '<button class="btn primary" id="newUpload">↑ Upload image</button>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+      (d.backgrounds.length?'<div class="tiles">'+tiles+'</div>'
+        :'<div class="card">'+emptyState("▩","No backgrounds","Add a gradient or upload an image to begin.")+'</div>');
+    $("#newGradient").onclick=function(){bgEditor(null,false);};
+    $("#newUpload").onclick=function(){bgEditor(null,true);};
+    wireBgTiles(d);
+  }).catch(function(e){ if(e.message!=="session") view.innerHTML=errState(e.message); });
+};
+function bgTile(b,d){
+  var isWeb=String(b.id)===String(d.web_default_background);
+  var isMob=String(b.id)===String(d.mobile_default_background);
+  return '<div class="tile'+(isWeb||isMob?' is-default':'')+'" data-id="'+b.id+'">'+
+    '<div class="prev" style="'+bgStyle(b.kind,b.value)+'"><div class="tags">'+
+      (isWeb?'<span class="pill">web default</span>':'')+
+      (isMob?'<span class="pill">mobile default</span>':'')+
+    '</div></div>'+
+    '<div class="body">'+
+      '<div class="row" style="justify-content:space-between;gap:8px">'+
+        '<span class="nm">'+esc(b.name)+'</span>'+
+        '<label class="switch" title="Enabled"><input type="checkbox" data-act="toggle"'+
+          (b.enabled?" checked":"")+'><span class="tr"></span></label>'+
+      '</div>'+
+      '<div class="chips">'+
+        '<span class="pill '+(b.platform==="web"?"web":b.platform==="mobile"?"mobile":"")+'">'+
+          esc(b.platform==="both"?"web + mobile":b.platform)+'</span>'+
+        '<span class="pill">'+esc(b.kind)+'</span>'+
+        (b.is_system?'<span class="pill">built-in</span>':'')+
+        (b.enabled?'':'<span class="pill off">disabled</span>')+
+      '</div>'+
+      (b.description?'<div class="ds">'+esc(b.description)+'</div>':'<div class="ds"></div>')+
+      '<div style="font-size:10.5px;color:var(--muted)">Updated '+esc(fmtDate(b.updated_at))+'</div>'+
+      '<div class="acts">'+
+        '<button class="btn sm" data-act="edit">Edit</button>'+
+        (isWeb?'':'<button class="btn sm" data-act="web"'+
+          (b.platform==="mobile"||!b.enabled?" disabled":"")+'>Web default</button>')+
+        (isMob?'':'<button class="btn sm" data-act="mobile"'+
+          (b.platform==="web"||!b.enabled?" disabled":"")+'>Mobile default</button>')+
+        (b.is_system?'':'<button class="btn sm danger" data-act="delete">Delete</button>')+
+      '</div>'+
+    '</div></div>';
+}
+function wireBgTiles(d){
+  Array.prototype.forEach.call(view.querySelectorAll(".tile[data-id]"),function(el){
+    var id=el.getAttribute("data-id");
+    var b=d.backgrounds.filter(function(x){return String(x.id)===String(id);})[0];
+    Array.prototype.forEach.call(el.querySelectorAll("[data-act]"),function(btn){
+      var act=btn.getAttribute("data-act");
+      if(act==="toggle"){
+        btn.onchange=function(){
+          var on=btn.checked;
+          save(b,{enabled:on}).then(function(){
+            toast(b.name+(on?" enabled.":" disabled."));VIEWS.backgrounds();
+          }).catch(function(e){btn.checked=!on;if(e.message!=="session")toast(e.message,"err");});
+        };
+        return;
+      }
+      btn.onclick=function(){
+        if(act==="edit") bgEditor(b,false);
+        else if(act==="web"||act==="mobile"){
+          var key=act==="web"?"web_default_background":"mobile_default_background";
+          var body={}; body[key]=String(b.id);
+          api("/settings",{method:"PUT",body:{settings:body}}).then(function(){
+            toast('"'+b.name+'" is now the '+act+' default.'); VIEWS.backgrounds();
+          }).catch(function(e){if(e.message!=="session")toast(e.message,"err");});
+        }
+        else if(act==="delete") confirmDialog("Delete this background?",
+          '"'+b.name+'" will be removed permanently, along with its uploaded image file.',
+          "Delete background",function(){
+            return api("/backgrounds/"+b.id,{method:"DELETE"}).then(function(){
+              toast("Background deleted."); VIEWS.backgrounds();
+            });
+          });
+      };
+    });
+  });
+  function save(b,patch){
+    var body={name:b.name,kind:b.kind,value:b.value,platform:b.platform,
+              description:b.description,enabled:b.enabled};
+    for(var k in patch) body[k]=patch[k];
+    return api("/backgrounds/"+b.id,{method:"PUT",body:body});
+  }
+}
+function bgEditor(b,wantUpload){
+  var isNew=!b;
+  var uploaded=null;   // set once an image has been sent to the server
+  var kind=b?b.kind:(wantUpload?"image":"preset");
+  modal('<div class="mhead"><b>'+(isNew?(wantUpload?"Upload a background":"New gradient"):"Edit background")+
+      '</b><button class="x">×</button></div>'+
+    '<div class="mbody">'+
+      '<div class="fld"><label class="lbl">Name</label>'+
+        '<input type="text" id="bName" value="'+esc(b?b.name:"")+'" placeholder="e.g. Night Library"></div>'+
+      (kind==="image"
+        ? '<div class="fld"><label class="lbl">Image</label>'+
+          (b&&b.value?'<div class="prev" style="height:150px;border-radius:14px;margin-bottom:10px;'+
+            bgStyle("image",b.value)+'"></div>':'<div id="bPrev"></div>')+
+          (b&&b.is_system?'':'<input type="file" id="bFile" accept="image/png,image/jpeg,image/webp,image/gif" '+
+            'style="font-size:13px">')+
+          '<div style="font-size:11px;color:var(--muted);margin-top:6px">'+
+            'JPEG, PNG, WebP or GIF, up to 6 MB. Stored as a file on the server — only its path '+
+            'goes in the database.</div></div>'
+        : '<div class="fld"><label class="lbl">CSS background value</label>'+
+          '<input type="text" id="bValue" value="'+esc(b?b.value:"linear-gradient(180deg,#1f2838,#0d1420)")+
+          '"'+(b&&b.is_system?" disabled":"")+'>'+
+          '<div style="font-size:11px;color:var(--muted);margin-top:6px">'+
+          (b&&b.is_system?"This is a built-in gradient — the app falls back to it offline, so its value is fixed."
+            :"Any CSS background, e.g. linear-gradient(180deg,#1f2838,#0d1420)")+'</div>'+
+          '<div class="prev" id="gPrev" style="height:110px;border-radius:14px;margin-top:11px;'+
+            bgStyle("preset",b?b.value:"linear-gradient(180deg,#1f2838,#0d1420)")+'"></div></div>')+
+      '<div class="f2">'+
+        '<div class="fld"><label class="lbl">Target platform</label>'+
+          '<select id="bPlatform">'+
+            '<option value="both"'+(!b||b.platform==="both"?" selected":"")+'>Web + mobile</option>'+
+            '<option value="web"'+(b&&b.platform==="web"?" selected":"")+'>Web only</option>'+
+            '<option value="mobile"'+(b&&b.platform==="mobile"?" selected":"")+'>Mobile only</option>'+
+          '</select></div>'+
+        '<div class="fld"><label class="lbl">Status</label>'+
+          '<div class="row" style="height:42px;background:var(--surface-2);border-radius:12px;padding:0 13px;'+
+            'justify-content:space-between">'+
+            '<span style="font-size:13px">Available to the app</span>'+
+            '<label class="switch"><input type="checkbox" id="bEnabled"'+
+              ((!b||b.enabled)?" checked":"")+'><span class="tr"></span></label>'+
+          '</div></div>'+
+      '</div>'+
+      '<div class="fld"><label class="lbl">Description <span style="opacity:.6">(optional)</span></label>'+
+        '<input type="text" id="bDesc" value="'+esc(b?b.description:"")+'" placeholder="A note for yourself"></div>'+
+    '</div>'+
+    '<div class="mfoot"><button class="btn ghost" id="bCancel">Cancel</button>'+
+      '<button class="btn primary" id="bSave">'+(isNew?"Add background":"Save changes")+'</button></div>');
+
+  var gv=$("#bValue");
+  if(gv) gv.addEventListener("input",function(){
+    $("#gPrev").setAttribute("style","height:110px;border-radius:14px;margin-top:11px;"+
+      bgStyle("preset",gv.value));
+  });
+
+  var file=$("#bFile");
+  if(file) file.addEventListener("change",function(e){
+    var f=e.target.files[0]; if(!f) return;
+    if(f.size>6*1024*1024){toast("That image is larger than 6 MB.","err");file.value="";return;}
+    var rd=new FileReader();
+    rd.onload=function(){
+      $("#bPrev").innerHTML='<div class="prev" style="height:150px;border-radius:14px;margin-bottom:10px;'+
+        bgStyle("image",rd.result)+'"></div><div style="font-size:12px;color:var(--muted)">'+
+        '<span class="spin"></span> Uploading…</div>';
+      api("/backgrounds/upload",{method:"POST",body:{data:rd.result}}).then(function(r){
+        uploaded=r.path;
+        $("#bPrev").innerHTML='<div class="prev" style="height:150px;border-radius:14px;margin-bottom:10px;'+
+          bgStyle("image",r.path)+'"></div><div style="font-size:12px;color:var(--ok)">'+
+          'Uploaded · '+Math.round(r.bytes/1024)+' KB</div>';
+      }).catch(function(err){
+        $("#bPrev").innerHTML='<div style="font-size:12.5px;color:var(--danger)">'+esc(err.message)+'</div>';
+        if(err.message!=="session") toast(err.message,"err");
+      });
+    };
+    rd.readAsDataURL(f);
+  });
+
+  $("#bCancel").onclick=closeModal;
+  $("#bSave").onclick=function(){
+    var name=$("#bName").value.trim();
+    if(!name){toast("Give the background a name.","err");$("#bName").focus();return;}
+    var value=uploaded||(gv?gv.value.trim():(b?b.value:""));
+    if(!value){toast(kind==="image"?"Choose an image to upload.":"Enter a CSS background value.","err");return;}
+    var body={name:name,kind:kind,value:value,platform:$("#bPlatform").value,
+              enabled:$("#bEnabled").checked,description:$("#bDesc").value.trim()};
+    var btn=this; btn.disabled=true; btn.innerHTML='<span class="spin"></span> Saving';
+    api(isNew?"/backgrounds":"/backgrounds/"+b.id,{method:isNew?"POST":"PUT",body:body})
+      .then(function(){ closeModal(); toast(isNew?"Background added.":"Background saved."); VIEWS.backgrounds(); })
+      .catch(function(e){
+        btn.disabled=false; btn.textContent=isNew?"Add background":"Save changes";
+        if(e.message!=="session") toast(e.message,"err");
+      });
+  };
+}
+
+/* ============================ library ============================ */
+/* The keys here are the server's — school/uni, elementary…12, biology/math/fanni. Both
+   names are shown because the app is used in Persian and administered in English, and a
+   grade that reads "11th" to one and "یازدهم" to the other is easier to get wrong than
+   one that says both. */
+var GRADES=["elementary","7","8","9","10","11","12"];
+var MAJORS=["biology","math","fanni"];
+var MAJOR_GRADES=["10","11","12"];   // رشته only exists from دهم up
+var GRADE_LABEL={elementary:"Elementary — دبستان","7":"7th — هفتم","8":"8th — هشتم","9":"9th — نهم",
+                 "10":"10th — دهم","11":"11th — یازدهم","12":"12th — دوازدهم"};
+var MAJOR_LABEL={biology:"Biology — تجربی",math:"Math — ریاضی",fanni:"Technical — فنی"};
+var FILE_ICON={pdf:"📕",doc:"📄",docx:"📄",txt:"📃",md:"📃",csv:"📊",xlsx:"📊",pptx:"🖥",
+               epub:"📗",zip:"🗜",jpg:"🖼",png:"🖼",gif:"🖼",webp:"🖼"};
+var AUDIENCE=[];   // grouped student counts, refreshed with every library load
+
+function fileIcon(e){return FILE_ICON[e]||"📁";}
+function fmtBytes(b){
+  b=Math.max(0,b||0);
+  if(b<1024) return b+" B";
+  if(b<1048576) return Math.round(b/1024)+" KB";
+  return (b/1048576).toFixed(1)+" MB";
+}
+/* Reads exactly like the server's WHERE clause: '' in a targeting column means "anyone",
+   and stage 'all' spans both. If these two ever disagree the panel is lying about reach,
+   so they are written to mirror each other line for line. */
+function reach(t){
+  var major=String(t.major||"").toLowerCase();
+  var n=0;
+  AUDIENCE.forEach(function(a){
+    if(!(t.stage==="all"||a.stage===t.stage)) return;
+    if(t.grade&&a.grade!==t.grade) return;
+    if(major&&a.major!==major) return;
+    n+=a.count;
+  });
+  return n;
+}
+function targetPills(t){
+  var out=[];
+  if(t.stage==="all") out.push('<span class="pill accent">everyone</span>');
+  else if(t.stage==="uni") out.push('<span class="pill mobile">university</span>');
+  else out.push('<span class="pill web">school</span>');
+  if(t.grade) out.push('<span class="pill">'+esc(GRADE_LABEL[t.grade]||t.grade)+'</span>');
+  else if(t.stage==="school") out.push('<span class="pill">any grade</span>');
+  if(t.major) out.push('<span class="pill">'+esc(MAJOR_LABEL[t.major]||t.major)+'</span>');
+  else if(t.stage==="school") out.push('<span class="pill">any major</span>');
+  return out.join("");
+}
+
+/* ---- the targeting widget, shared by the item and category editors ---- */
+function targetFields(t,idp){
+  var opt=function(v,label,cur){
+    return '<option value="'+esc(v)+'"'+(String(cur)===String(v)?" selected":"")+'>'+esc(label)+'</option>';
+  };
+  return '<div class="f3">'+
+    '<div class="fld"><label class="lbl">Who is it for</label><select id="'+idp+'Stage">'+
+      opt("school","School students",t.stage)+opt("uni","University students",t.stage)+
+      opt("all","Everyone",t.stage)+
+    '</select></div>'+
+    '<div class="fld" id="'+idp+'GradeF"><label class="lbl">Grade</label><select id="'+idp+'Grade">'+
+      opt("","Any grade",t.grade)+GRADES.map(function(g){
+        return opt(g,GRADE_LABEL[g],t.grade);}).join("")+
+    '</select></div>'+
+    '<div class="fld" id="'+idp+'MajorF"><label class="lbl">Major</label><select id="'+idp+'Major">'+
+      opt("","Any major",t.major)+MAJORS.map(function(m){
+        return opt(m,MAJOR_LABEL[m],t.major);}).join("")+
+    '</select></div>'+
+    '<div class="fld" id="'+idp+'UniF"><label class="lbl">Field of study</label>'+
+      '<input type="text" id="'+idp+'Uni" maxlength="60" value="'+esc(t.stage==="uni"?(t.major||""):"")+
+      '" placeholder="Leave empty for every university student">'+
+      '<div style="font-size:11px;color:var(--muted);margin-top:6px">Matched against what the '+
+      'student typed, ignoring case and extra spaces.</div></div>'+
+  '</div>'+
+  '<div class="reach" id="'+idp+'Reach"></div>';
+}
+/* Wires that widget up and keeps the reach line honest. Returns a read() for the caller. */
+function wireTarget(idp){
+  var stage=$("#"+idp+"Stage"), grade=$("#"+idp+"Grade"), major=$("#"+idp+"Major"), uni=$("#"+idp+"Uni");
+  function read(){
+    var s=stage.value;
+    if(s==="uni") return {stage:"uni",grade:"",major:uni.value.trim()};
+    if(s==="all") return {stage:"all",grade:"",major:""};
+    return {stage:"school",grade:grade.value,major:MAJOR_GRADES.indexOf(grade.value)>=0||!grade.value
+      ? major.value : ""};
+  }
+  function draw(){
+    var s=stage.value, school=s==="school";
+    $("#"+idp+"GradeF").style.display=school?"":"none";
+    // A major picker under نهم would promise a filter the students can't be on: below tenth
+    // grade nobody has a رشته, so an item aimed at one would reach no one.
+    var canMajor=school&&(!grade.value||MAJOR_GRADES.indexOf(grade.value)>=0);
+    $("#"+idp+"MajorF").style.display=canMajor?"":"none";
+    $("#"+idp+"UniF").style.display=s==="uni"?"":"none";
+    var t=read(), n=reach(t);
+    $("#"+idp+"Reach").innerHTML='Reaches <b>'+n+'</b> student'+(n===1?"":"s")+' right now'+
+      (n?"":' — nobody matches this yet, which is fine if you are publishing ahead of time.');
+  }
+  [stage,grade,major].forEach(function(el){el.onchange=draw;});
+  uni.oninput=draw;
+  draw();
+  return read;
+}
+
+VIEWS.library=function(){
+  view.innerHTML=skeleton(4);
+  api("/library").then(function(d){
+    AUDIENCE=d.audience||[];
+    var cats=d.categories, items=d.items;
+    var byCat={};
+    items.forEach(function(i){
+      var k=i.categoryId==null?"_":String(i.categoryId);
+      (byCat[k]=byCat[k]||[]).push(i);
+    });
+
+    var head=
+      '<div class="card" style="margin-bottom:16px">'+
+        '<div class="row" style="justify-content:space-between;align-items:flex-start">'+
+          '<div style="flex:1;min-width:240px"><h2>Library</h2>'+
+          '<p class="hint" style="margin-bottom:0">Upload study material and choose exactly who '+
+          'sees it — a stage, a grade, a major, or everyone. Nothing is visible to students until '+
+          'you switch it on, and hiding a category hides everything filed under it.</p></div>'+
+          '<div class="row">'+
+            '<button class="btn" id="newCat">＋ Category</button>'+
+            '<button class="btn primary" id="newItem">↑ Upload material</button>'+
+          '</div>'+
+        '</div>'+
+        '<div class="row" style="margin-top:16px;justify-content:space-between;background:var(--surface-2);'+
+          'border-radius:14px;padding:12px 14px">'+
+          '<div><b style="font-size:13.5px">Library open to students</b>'+
+            '<div style="font-size:12px;color:var(--muted);margin-top:3px">Off closes the whole shelf '+
+            'at once, without changing a single item\'s own setting.</div></div>'+
+          '<label class="switch"><input type="checkbox" id="libOn"'+(d.enabled?" checked":"")+
+            '><span class="tr"></span></label>'+
+        '</div>'+
+      '</div>';
+
+    var catCard=
+      '<div class="card" style="margin-bottom:16px">'+
+        '<h2>Categories</h2>'+
+        '<p class="hint">Shelves you arrange the material on. A category can carry its own '+
+        'audience as a note to yourself; what a student actually sees is decided by each '+
+        'item\'s own targeting.</p>'+
+        (cats.length? cats.map(function(c){
+          var n=(byCat[String(c.id)]||[]).length;
+          return '<div class="lrow" data-cat="'+c.id+'">'+
+            '<div class="ic">🗂</div>'+
+            '<div class="info"><div class="nm">'+esc(c.name)+'</div>'+
+              (c.description?'<div class="ds">'+esc(c.description)+'</div>':'')+
+              '<div class="meta">'+targetPills(c)+
+                '<span class="pill">'+n+' item'+(n===1?"":"s")+'</span>'+
+                (c.visible?'':'<span class="pill off">hidden</span>')+
+              '</div></div>'+
+            '<div class="acts">'+
+              '<label class="switch" title="Visible"><input type="checkbox" data-act="cvis"'+
+                (c.visible?" checked":"")+'><span class="tr"></span></label>'+
+              '<button class="btn sm" data-act="cedit">Edit</button>'+
+              '<button class="btn sm danger" data-act="cdel">Delete</button>'+
+            '</div></div>';
+        }).join("") : emptyState("🗂","No categories yet",
+            "Material works without them — add one when you want to group a term's files together."))+
+      '</div>';
+
+    function itemRow(i){
+      return '<div class="lrow" data-item="'+i.id+'">'+
+        '<div class="ic">'+fileIcon(i.ext)+'</div>'+
+        '<div class="info"><div class="nm">'+esc(i.title)+'</div>'+
+          (i.description?'<div class="ds">'+esc(i.description)+'</div>':'')+
+          '<div class="meta">'+targetPills(i)+
+            '<span class="pill">'+esc(i.ext||"file")+' · '+esc(fmtBytes(i.size))+'</span>'+
+            '<span class="pill">'+i.downloads+' download'+(i.downloads===1?"":"s")+'</span>'+
+            (i.visible?'':'<span class="pill off">hidden</span>')+
+            // The row is fine and the bytes are gone. Students don't see it at all in that
+            // state, so without this the item would just quietly stop existing for them.
+            (i.missing?'<span class="pill danger">⚠ file missing</span>':'')+
+          '</div></div>'+
+        '<div class="acts">'+
+          '<label class="switch" title="Visible"><input type="checkbox" data-act="ivis"'+
+            (i.visible?" checked":"")+'><span class="tr"></span></label>'+
+          (i.missing?'':'<a class="btn sm" href="/api/library/file/'+i.id+
+            '" target="_blank" rel="noopener">Preview</a>')+
+          '<button class="btn sm" data-act="iedit">Edit</button>'+
+          '<button class="btn sm danger" data-act="idel">Delete</button>'+
+        '</div></div>';
+    }
+    var groups="";
+    cats.forEach(function(c){
+      var mine=byCat[String(c.id)]||[];
+      if(!mine.length) return;
+      groups+='<div class="card" style="margin-bottom:16px"><h2>'+esc(c.name)+'</h2>'+
+        '<p class="hint">'+mine.length+' item'+(mine.length===1?"":"s")+
+        (c.visible?'':' · category hidden, so none of these reach anyone')+'</p>'+
+        mine.map(itemRow).join("")+'</div>';
+    });
+    var loose=byCat._||[];
+    if(loose.length){
+      groups+='<div class="card" style="margin-bottom:16px"><h2>Uncategorized</h2>'+
+        '<p class="hint">Not filed under any category — students still see these if they match.</p>'+
+        loose.map(itemRow).join("")+'</div>';
+    }
+    if(!items.length){
+      groups='<div class="card">'+emptyState("▤","Nothing uploaded yet",
+        "Upload a PDF or a document and choose the grade it belongs to.")+'</div>';
+    }
+
+    view.innerHTML=head+catCard+groups;
+    $("#newCat").onclick=function(){catEditor(null);};
+    $("#newItem").onclick=function(){itemEditor(null,d);};
+    $("#libOn").onchange=function(){
+      var on=this.checked, box=this;
+      api("/settings",{method:"PUT",body:{settings:{library_enabled:on?"1":"0"}}})
+        .then(function(){toast(on?"Library is open to students.":"Library closed.");})
+        .catch(function(e){box.checked=!on;if(e.message!=="session")toast(e.message,"err");});
+    };
+    wireLibrary(d,byCat);
+  }).catch(function(e){ if(e.message!=="session") view.innerHTML=errState(e.message); });
+};
+
+function wireLibrary(d,byCat){
+  var find=function(list,id){
+    return list.filter(function(x){return String(x.id)===String(id);})[0];
+  };
+  Array.prototype.forEach.call(view.querySelectorAll("[data-cat]"),function(el){
+    var c=find(d.categories,el.getAttribute("data-cat"));
+    if(!c) return;
+    Array.prototype.forEach.call(el.querySelectorAll("[data-act]"),function(btn){
+      var act=btn.getAttribute("data-act");
+      if(act==="cvis"){
+        btn.onchange=function(){
+          var on=btn.checked;
+          api("/library/categories/"+c.id,{method:"PUT",body:{
+            name:c.name,description:c.description,stage:c.stage,grade:c.grade,major:c.major,
+            sort:c.sort,visible:on}})
+            .then(function(){toast('"'+c.name+'"'+(on?" is visible.":" is hidden."));VIEWS.library();})
+            .catch(function(e){btn.checked=!on;if(e.message!=="session")toast(e.message,"err");});
+        };
+        return;
+      }
+      btn.onclick=function(){
+        if(act==="cedit") return catEditor(c);
+        var n=(byCat[String(c.id)]||[]).length;
+        confirmDialog("Delete this category?",
+          '"'+c.name+'" will be removed. '+(n?"Its "+n+" item"+(n===1?"":"s")+
+          " will move to Uncategorized — no files are deleted.":"It holds no material."),
+          "Delete category",function(){
+            return api("/library/categories/"+c.id,{method:"DELETE"}).then(function(r){
+              toast(r.unfiled?("Category deleted · "+r.unfiled+" item"+(r.unfiled===1?"":"s")+
+                " moved to Uncategorized."):"Category deleted.");
+              VIEWS.library();
+            });
+          });
+      };
+    });
+  });
+  Array.prototype.forEach.call(view.querySelectorAll("[data-item]"),function(el){
+    var i=find(d.items,el.getAttribute("data-item"));
+    if(!i) return;
+    Array.prototype.forEach.call(el.querySelectorAll("[data-act]"),function(btn){
+      var act=btn.getAttribute("data-act");
+      if(act==="ivis"){
+        btn.onchange=function(){
+          var on=btn.checked;
+          api("/library/items/"+i.id,{method:"PUT",body:{
+            title:i.title,description:i.description,categoryId:i.categoryId,stage:i.stage,
+            grade:i.grade,major:i.major,fileName:i.fileName,visible:on}})
+            .then(function(){toast('"'+i.title+'"'+(on?" is visible.":" is hidden."));VIEWS.library();})
+            .catch(function(e){btn.checked=!on;if(e.message!=="session")toast(e.message,"err");});
+        };
+        return;
+      }
+      if(act==="iedit"){ btn.onclick=function(){itemEditor(i,d);}; return; }
+      if(act==="idel") btn.onclick=function(){
+        confirmDialog("Delete this material?",
+          '"'+i.title+'" and its uploaded file are removed permanently.',
+          "Delete material",function(){
+            return api("/library/items/"+i.id,{method:"DELETE"}).then(function(){
+              toast("Material deleted."); VIEWS.library();
+            });
+          });
+      };
+    });
+  });
+}
+
+/* Raw-body upload: the file's bytes go up as-is rather than as a base64 data URL, which
+   would inflate a 20 MB scan by a third for no benefit. The CSRF header rides along, so
+   this is exactly as protected as every other mutating call the panel makes. */
+function uploadFile(file,onProgress){
+  return new Promise(function(resolve,reject){
+    var xhr=new XMLHttpRequest();
+    xhr.open("POST","/api/admin/library/upload");
+    xhr.withCredentials=true;
+    xhr.setRequestHeader("X-Admin-CSRF",CSRF||"");
+    // Header values are latin-1 and these filenames are usually Persian, so it travels
+    // percent-encoded and the server decodes it.
+    xhr.setRequestHeader("X-File-Name",encodeURIComponent(file.name||"file"));
+    xhr.setRequestHeader("Content-Type","application/octet-stream");
+    if(xhr.upload&&onProgress) xhr.upload.onprogress=function(e){
+      if(e.lengthComputable) onProgress(Math.round(e.loaded/e.total*100));
+    };
+    xhr.onload=function(){
+      var j={}; try{j=JSON.parse(xhr.responseText||"{}");}catch(_){}
+      if(xhr.status>=200&&xhr.status<300) resolve(j);
+      else reject(new Error(j.error||("Upload failed ("+xhr.status+")")));
+    };
+    xhr.onerror=function(){reject(new Error("Upload failed — the connection dropped."));};
+    xhr.send(file);
+  });
+}
+
+function itemEditor(it,d){
+  var isNew=!it;
+  var uploaded=null;   // {path,name,size} once the bytes are on the server
+  var t={stage:it?it.stage:"school",grade:it?it.grade:"",major:it?it.major:""};
+  var catOpts='<option value="">— No category —</option>'+d.categories.map(function(c){
+    return '<option value="'+c.id+'"'+(it&&String(it.categoryId)===String(c.id)?" selected":"")+'>'+
+      esc(c.name)+(c.visible?"":" (hidden)")+'</option>';}).join("");
+
+  modal('<div class="mhead"><b>'+(isNew?"Upload study material":"Edit material")+
+      '</b><button class="x">×</button></div>'+
+    '<div class="mbody">'+
+      '<div class="fld"><label class="lbl">Title</label>'+
+        '<input type="text" id="iTitle" value="'+esc(it?it.title:"")+
+        '" placeholder="e.g. Calculus — chapter 3 worksheet"></div>'+
+      '<div class="fld"><label class="lbl">File</label>'+
+        (it?'<div class="filedrop" style="margin-bottom:9px'+
+            (it.missing?';border-color:var(--danger)':'')+'">'+fileIcon(it.ext)+' <b>'+
+          esc(it.fileName||it.title)+'</b> · '+esc(fmtBytes(it.size))+
+          '<div style="font-size:11px;margin-top:5px;color:'+(it.missing?'var(--danger)':'var(--muted)')+'">'+
+          (it.missing
+            ? 'This file is no longer on the server, so students can\'t see this item at all. '+
+              'Choose the file below to restore it.'
+            : 'Choose a file below only if you want to replace it.')+
+          '</div></div>':'')+
+        '<input type="file" id="iFile" style="font-size:13px" '+
+          'accept=".pdf,.docx,.pptx,.xlsx,.epub,.zip,.txt,.md,.csv,image/*">'+
+        '<div id="iUp" style="font-size:12px;color:var(--muted);margin-top:7px">'+
+          'PDF, Word, PowerPoint, Excel, ePub, zip, plain text or an image — up to '+
+          Math.round((d.maxBytes||0)/1048576)+' MB.</div></div>'+
+      '<div class="fld"><label class="lbl">Description <span style="opacity:.6">(optional)</span></label>'+
+        '<input type="text" id="iDesc" value="'+esc(it?it.description:"")+
+        '" placeholder="One line telling students what this is"></div>'+
+      '<div class="f2">'+
+        '<div class="fld"><label class="lbl">Category</label><select id="iCat">'+catOpts+'</select></div>'+
+        '<div class="fld"><label class="lbl">Status</label>'+
+          '<div class="row" style="height:42px;background:var(--surface-2);border-radius:12px;padding:0 13px;'+
+            'justify-content:space-between">'+
+            '<span style="font-size:13px">Visible to students</span>'+
+            '<label class="switch"><input type="checkbox" id="iVis"'+
+              ((!it||it.visible)?" checked":"")+'><span class="tr"></span></label>'+
+          '</div></div>'+
+      '</div>'+
+      targetFields(t,"i")+
+    '</div>'+
+    '<div class="mfoot"><button class="btn ghost" id="iCancel">Cancel</button>'+
+      '<button class="btn primary" id="iSave">'+(isNew?"Publish":"Save changes")+'</button></div>');
+
+  var readTarget=wireTarget("i");
+  var up=$("#iUp");
+  $("#iFile").addEventListener("change",function(e){
+    var f=e.target.files[0]; if(!f) return;
+    if(d.maxBytes&&f.size>d.maxBytes){
+      toast("That file is larger than "+Math.round(d.maxBytes/1048576)+" MB.","err");
+      this.value=""; return;
+    }
+    // The title is usually the filename with the extension taken off — fill it in, but
+    // never over something already typed.
+    var title=$("#iTitle");
+    if(!title.value.trim()) title.value=(f.name||"").replace(/\.[^.]+$/,"");
+    up.innerHTML='<span class="spin"></span> Uploading…';
+    uploadFile(f,function(pct){up.innerHTML='<span class="spin"></span> Uploading… '+pct+"%";})
+      .then(function(r){
+        uploaded=r;
+        up.innerHTML='<span style="color:var(--ok)">Uploaded · '+esc(r.name)+' · '+
+          esc(fmtBytes(r.size))+'</span>';
+      })
+      .catch(function(err){
+        up.innerHTML='<span style="color:var(--danger)">'+esc(err.message)+'</span>';
+        toast(err.message,"err");
+      });
+  });
+
+  $("#iCancel").onclick=closeModal;
+  $("#iSave").onclick=function(){
+    var title=$("#iTitle").value.trim();
+    if(!title){toast("Give this material a title.","err");$("#iTitle").focus();return;}
+    if(isNew&&!uploaded){toast("Choose a file to upload first.","err");return;}
+    var t2=readTarget();
+    var body={title:title,description:$("#iDesc").value.trim(),categoryId:$("#iCat").value,
+              stage:t2.stage,grade:t2.grade,major:t2.major,visible:$("#iVis").checked};
+    if(uploaded){body.path=uploaded.path;body.fileName=uploaded.name;}
+    else if(it){body.fileName=it.fileName;}
+    var btn=this; btn.disabled=true; btn.innerHTML='<span class="spin"></span> Saving';
+    api(isNew?"/library/items":"/library/items/"+it.id,{method:isNew?"POST":"PUT",body:body})
+      .then(function(){closeModal();toast(isNew?"Material published.":"Material saved.");VIEWS.library();})
+      .catch(function(e){
+        btn.disabled=false; btn.textContent=isNew?"Publish":"Save changes";
+        if(e.message!=="session") toast(e.message,"err");
+      });
+  };
+}
+
+function catEditor(c){
+  var isNew=!c;
+  var t={stage:c?c.stage:"all",grade:c?c.grade:"",major:c?c.major:""};
+  modal('<div class="mhead"><b>'+(isNew?"New category":"Edit category")+'</b><button class="x">×</button></div>'+
+    '<div class="mbody">'+
+      '<div class="fld"><label class="lbl">Name</label>'+
+        '<input type="text" id="cName" value="'+esc(c?c.name:"")+
+        '" placeholder="e.g. Riyazi 11 — first term"></div>'+
+      '<div class="fld"><label class="lbl">Description <span style="opacity:.6">(optional)</span></label>'+
+        '<input type="text" id="cDesc" value="'+esc(c?c.description:"")+
+        '" placeholder="Shown to students under the category name"></div>'+
+      '<div class="f2">'+
+        '<div class="fld"><label class="lbl">Order</label>'+
+          '<input type="number" id="cSort" min="0" max="999" value="'+(c?(c.sort||0):0)+'">'+
+          '<div style="font-size:11px;color:var(--muted);margin-top:6px">Lower comes first.</div></div>'+
+        '<div class="fld"><label class="lbl">Status</label>'+
+          '<div class="row" style="height:42px;background:var(--surface-2);border-radius:12px;padding:0 13px;'+
+            'justify-content:space-between">'+
+            '<span style="font-size:13px">Visible to students</span>'+
+            '<label class="switch"><input type="checkbox" id="cVis"'+
+              ((!c||c.visible)?" checked":"")+'><span class="tr"></span></label>'+
+          '</div></div>'+
+      '</div>'+
+      '<div class="note" style="margin-bottom:13px"><b>Hiding a category hides its material.</b> '+
+      'Build a whole term behind a hidden category, then publish it all with one switch.</div>'+
+      targetFields(t,"c")+
+    '</div>'+
+    '<div class="mfoot"><button class="btn ghost" id="cCancel2">Cancel</button>'+
+      '<button class="btn primary" id="cSave">'+(isNew?"Create category":"Save changes")+'</button></div>');
+
+  var readTarget=wireTarget("c");
+  $("#cCancel2").onclick=closeModal;
+  $("#cSave").onclick=function(){
+    var name=$("#cName").value.trim();
+    if(!name){toast("Give the category a name.","err");$("#cName").focus();return;}
+    var t2=readTarget();
+    var body={name:name,description:$("#cDesc").value.trim(),stage:t2.stage,grade:t2.grade,
+              major:t2.major,visible:$("#cVis").checked,sort:$("#cSort").value};
+    var btn=this; btn.disabled=true; btn.innerHTML='<span class="spin"></span> Saving';
+    api(isNew?"/library/categories":"/library/categories/"+c.id,{method:isNew?"POST":"PUT",body:body})
+      .then(function(){closeModal();toast(isNew?"Category created.":"Category saved.");VIEWS.library();})
+      .catch(function(e){
+        btn.disabled=false; btn.textContent=isNew?"Create category":"Save changes";
+        if(e.message!=="session") toast(e.message,"err");
+      });
+  };
+}
+
+/* ---------------- app settings ---------------- */
+VIEWS.settings=function(){
+  view.innerHTML=skeleton(4);
+  api("/settings").then(function(d){
+    var s=d.settings;
+    var themeOpts=d.themes.map(function(t){
+      return '<option value="'+t.id+'"'+(String(s.default_theme)===String(t.id)?" selected":"")+'>'+
+             esc(t.name)+'</option>';
+    }).join("");
+    function bgOpts(platform,cur){
+      return d.backgrounds.filter(function(b){
+        return b.platform==="both"||b.platform===platform;
+      }).map(function(b){
+        return '<option value="'+b.id+'"'+(String(cur)===String(b.id)?" selected":"")+'>'+
+               esc(b.name)+(b.kind==="image"?" (image)":"")+'</option>';
+      }).join("");
+    }
+    view.innerHTML=
+      '<div class="cols">'+
+        '<div class="card">'+
+          '<h2>Global defaults</h2>'+
+          '<p class="hint">These apply to users who have never picked their own theme or background. '+
+          'Saving them never overwrites a preference a user has already set.</p>'+
+          '<div class="fld"><label class="lbl">Default theme</label>'+
+            '<select id="sTheme">'+themeOpts+'</select></div>'+
+          '<div class="fld"><label class="lbl">Default web background</label>'+
+            '<select id="sWeb">'+bgOpts("web",s.web_default_background)+'</select>'+
+            '<div class="prev" id="pWeb" style="height:96px;border-radius:14px;margin-top:10px"></div></div>'+
+          '<div class="fld"><label class="lbl">Default mobile background</label>'+
+            '<select id="sMobile">'+bgOpts("mobile",s.mobile_default_background)+'</select>'+
+            '<div class="prev" id="pMobile" style="height:96px;border-radius:14px;margin-top:10px"></div></div>'+
+          '<div class="f2">'+
+            '<div class="fld"><label class="lbl">Default dim — <span id="vDim">'+esc(s.default_dim||"0")+
+              '</span>%</label><input type="range" id="sDim" min="0" max="100" value="'+
+              esc(s.default_dim||"0")+'"></div>'+
+            '<div class="fld"><label class="lbl">Default blur — <span id="vBlur">'+esc(s.default_blur||"0")+
+              '</span>%</label><input type="range" id="sBlur" min="0" max="100" value="'+
+              esc(s.default_blur||"0")+'"></div>'+
+          '</div>'+
+          '<div class="fld"><label class="lbl">Default language</label>'+
+            '<select id="sLang">'+
+              '<option value="en"'+(s.default_language!=="fa"?" selected":"")+'>English</option>'+
+              '<option value="fa"'+(s.default_language==="fa"?" selected":"")+'>فارسی — Farsi</option>'+
+            '</select></div>'+
+          '<button class="btn primary" id="sSave" style="width:100%;height:46px;margin-top:6px">Save settings</button>'+
+        '</div>'+
+        '<div>'+
+          '<div class="card" style="margin-bottom:16px">'+
+            '<h2>How a background is chosen</h2>'+
+            '<p class="hint">Every page resolves this order server-side on load.</p>'+
+            '<div class="flow">'+
+              '<b>1 · User preference</b> — whatever they picked in the timer\'s settings.<br>'+
+              '<span style="opacity:.6">↓ if they never picked one</span><br>'+
+              '<b>2 · Your platform default</b> — the web or mobile setting on the left.<br>'+
+              '<span style="opacity:.6">↓ if none is configured or it is disabled</span><br>'+
+              '<b>3 · App fallback</b> — the built-in Warm gradient.'+
+            '</div>'+
+            '<div class="note" style="margin-top:14px">Themes follow the same three steps. '+
+            'The platform is taken from the app shell on mobile and the viewport on the web — '+
+            'the detection the app already used, not a new one.</div>'+
+          '</div>'+
+          '<div class="card">'+
+            '<h2>Currently resolving to</h2>'+
+            '<p class="hint">What a brand-new user sees right now on each platform.</p>'+
+            '<div id="resolved"></div>'+
+          '</div>'+
+        '</div>'+
+      '</div>';
+
+    d.backgrounds.forEach(function(b){ if(b.kind==="preset") PRESETS[b.slug]=b.value; });
+    function prev(selId,prevId){
+      var sel=$(selId), id=sel.value;
+      var b=d.backgrounds.filter(function(x){return String(x.id)===String(id);})[0];
+      $(prevId).setAttribute("style","height:96px;border-radius:14px;margin-top:10px;"+
+        (b?bgStyle(b.kind,b.value):"background:var(--surface-2)"));
+    }
+    $("#sWeb").onchange=function(){prev("#sWeb","#pWeb");};
+    $("#sMobile").onchange=function(){prev("#sMobile","#pMobile");};
+    prev("#sWeb","#pWeb"); prev("#sMobile","#pMobile");
+    $("#sDim").oninput=function(){$("#vDim").textContent=this.value;};
+    $("#sBlur").oninput=function(){$("#vBlur").textContent=this.value;};
+    renderResolved(d.resolved);
+
+    $("#sSave").onclick=function(){
+      var btn=this; btn.disabled=true; btn.innerHTML='<span class="spin"></span> Saving';
+      api("/settings",{method:"PUT",body:{settings:{
+        default_theme:$("#sTheme").value,
+        web_default_background:$("#sWeb").value,
+        mobile_default_background:$("#sMobile").value,
+        default_dim:$("#sDim").value,
+        default_blur:$("#sBlur").value,
+        default_language:$("#sLang").value
+      }}}).then(function(r){
+        btn.disabled=false; btn.textContent="Save settings";
+        toast("Settings saved — users without their own preference will see this.");
+        renderResolved(r.resolved);
+      }).catch(function(e){
+        btn.disabled=false; btn.textContent="Save settings";
+        if(e.message!=="session") toast(e.message,"err");
+      });
+    };
+  }).catch(function(e){ if(e.message!=="session") view.innerHTML=errState(e.message); });
+
+  function renderResolved(res){
+    var box=$("#resolved"); if(!box) return;
+    box.innerHTML=["web","mobile"].map(function(p){
+      var r=res[p]; if(!r) return "";
+      var bg=r.background||{}, th=r.theme||{}, k=th.tokens||{};
+      return '<div style="margin-bottom:14px">'+
+        '<div class="row" style="justify-content:space-between;margin-bottom:7px">'+
+          '<span class="pill '+p+'">'+(p==="web"?"Web app":"Mobile app")+'</span>'+
+          '<span style="font-size:11px;color:var(--muted)">source: '+esc(r.source.background)+'</span>'+
+        '</div>'+
+        '<div class="prefbox">'+
+          '<span class="sw" style="width:56px;height:56px;border-radius:12px;'+
+            bgStyle(bg.kind,bg.value)+'"></span>'+
+          '<div><div class="t">'+esc(bg.name||"—")+'</div>'+
+          '<div class="s">'+esc(th.name||"—")+' theme · dim '+(r.dim||0)+'% · blur '+(r.blur||0)+'%</div></div>'+
+          '<span class="tchip" style="margin-left:auto;width:26px;height:26px;background:'+
+            safeCss(k.accent||"var(--accent)")+'"></span>'+
+        '</div></div>';
+    }).join("");
+  }
+};
+
+/* ---------------- admin account ---------------- */
+VIEWS.account=function(){
+  view.innerHTML=
+    '<div class="cols">'+
+      '<div class="card">'+
+        '<h2>Change password</h2>'+
+        '<p class="hint">Your password is stored PBKDF2-hashed with a per-account salt — the same '+
+        'scheme user accounts use. Changing it signs out every other admin session immediately.</p>'+
+        '<div class="fld"><label class="lbl">Current password</label>'+
+          '<input type="password" id="pCur" autocomplete="current-password"></div>'+
+        '<div class="fld"><label class="lbl">New password</label>'+
+          '<input type="password" id="pNew" autocomplete="new-password"></div>'+
+        '<div class="fld"><label class="lbl">Confirm new password</label>'+
+          '<input type="password" id="pNew2" autocomplete="new-password"></div>'+
+        '<button class="btn primary" id="pSave" style="width:100%;height:46px">Update password</button>'+
+      '</div>'+
+      '<div class="card">'+
+        '<h2>This account</h2>'+
+        '<p class="hint">The administrator record for this server.</p>'+
+        '<dl class="kv">'+
+          '<dt>Username</dt><dd class="mono">'+esc(ADMIN.username)+'</dd>'+
+          '<dt>Admin since</dt><dd>'+esc(fmtDate(ADMIN.created_at))+'</dd>'+
+          '<dt>Last sign-in</dt><dd>'+esc(ADMIN.last_login?fmtDate(ADMIN.last_login):"—")+'</dd>'+
+          '<dt>Last address</dt><dd class="mono">'+esc(ADMIN.last_ip||"—")+'</dd>'+
+        '</dl>'+
+        '<div class="note" style="margin-top:18px">'+
+          '<b>Session policy.</b> Admin sessions end after 8 hours, or 60 minutes without activity, '+
+          'whichever comes first. The cookie is HttpOnly and SameSite=Strict, and every change you '+
+          'make carries a per-session token that a cross-site page cannot obtain.'+
+        '</div>'+
+        '<div class="note" style="margin-top:11px">'+
+          '<b>Seed file.</b> If <span class="mono">admin_credentials.txt</span> is still next to '+
+          'server.py, delete it once you have changed this password — it is only read when the '+
+          'admin table is empty.'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+
+  $("#pSave").onclick=function(){
+    var cur=$("#pCur").value, nw=$("#pNew").value, nw2=$("#pNew2").value;
+    if(!cur){toast("Enter your current password.","err");return;}
+    if(nw.length<10){toast("New password must be at least 10 characters.","err");return;}
+    if(nw!==nw2){toast("The new passwords don't match.","err");return;}
+    var btn=this; btn.disabled=true; btn.innerHTML='<span class="spin"></span> Updating';
+    api("/password",{method:"POST",body:{current:cur,new:nw}}).then(function(){
+      btn.disabled=false; btn.textContent="Update password";
+      $("#pCur").value=$("#pNew").value=$("#pNew2").value="";
+      toast("Password updated. Other admin sessions were signed out.");
+    }).catch(function(e){
+      btn.disabled=false; btn.textContent="Update password";
+      if(e.message!=="session") toast(e.message,"err");
+    });
+  };
+};
+
+/* ============================ router + boot ============================ */
+function route(){
+  var v=(location.hash.replace(/^#\/?/,"")||"dashboard").split("/")[0];
+  if(!VIEWS[v]) v="dashboard";
+  Array.prototype.forEach.call($("#nav").querySelectorAll("a"),function(a){
+    a.classList.toggle("active",a.getAttribute("data-v")===v);
+  });
+  $("#ttl").textContent=TITLES[v][0];
+  $("#sub").textContent=TITLES[v][1];
+  closeSidebar();
+  VIEWS[v]();
+}
+window.addEventListener("hashchange",route);
+$("#refresh").onclick=route;
+
+function openSidebar(){$("#side").classList.add("open");$("#scrim").classList.add("show");}
+function closeSidebar(){$("#side").classList.remove("open");$("#scrim").classList.remove("show");}
+$("#burger").onclick=openSidebar;
+$("#scrim").onclick=closeSidebar;
+
+$("#logout").onclick=function(){
+  confirmDialog("Log out of the admin panel?",
+    "Your admin session ends now and you'll need your password to get back in.",
+    "Log out",function(){
+      return api("/logout",{method:"POST"}).then(function(){location.href="/admin";});
+    });
+};
+
+/* Boot: confirm the session with the server and take the CSRF token from it. The panel never
+   assumes it is signed in just because it was served — if this call fails it bounces out. */
+api("/me").then(function(d){
+  ADMIN=d.admin; CSRF=d.csrf;
+  $("#adminName").textContent=ADMIN.username;
+  $("#adminAv").textContent=(ADMIN.username||"A").charAt(0).toUpperCase();
+  // Warm the preset lookup so user rows can paint real gradient swatches on first render.
+  return api("/backgrounds").then(function(b){
+    b.backgrounds.forEach(function(x){ if(x.kind==="preset") PRESETS[x.slug]=x.value; });
+  }).catch(function(){}).then(route);
+}).catch(function(e){ if(e.message!=="session") view.innerHTML=errState(e.message); });
+})();
+</script>
+</body>
+</html>

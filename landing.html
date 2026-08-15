@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#04050d">
+<title>Study Planet — a calmer place to study</title>
+<meta name="description" content="A Pomodoro study timer with study rooms, a study calendar, subjects and a library published for your grade. On the web and on Android.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Study Planet — a calmer place to study">
+<meta property="og:description" content="A Pomodoro study timer with study rooms, a study calendar, subjects and a library published for your grade. On the web and on Android.">
+<meta name="twitter:card" content="summary">
+<!-- Planet mark, inline so the page stays a single file with no asset folder. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23070a1c'/%3E%3Ccircle cx='16' cy='15' r='7' fill='%23f3c67d'/%3E%3Cellipse cx='16' cy='15' rx='12' ry='4.2' fill='none' stroke='%237fc9ff' stroke-width='1.6' transform='rotate(-20 16 15)'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&family=Lalezar&family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* ===========================================================================
+     STUDY PLANET — the landing page.
+
+     Everything below is presentation. The page talks to no API and holds no
+     state: it is the front door, and its only moving parts are the two links in
+     the LINKS object at the top of the script.
+
+     The cosmos is built from four layers, cheapest first:
+       1. body + .neb   — CSS gradients. No filters on big surfaces; the softness
+                          is in the gradient stops, so nothing is rasterised twice.
+       2. #stars        — ONE canvas. Every star, every shooting star. Parallax is
+                          computed per star from its depth, so there is no stack
+                          of scrolling DOM layers.
+       3. .system       — the planet, its rings and the orbiting subjects. CSS 3D
+                          transforms only, which stay on the compositor.
+       4. content       — glass where it earns its keep, flat where it doesn't.
+     =========================================================================== */
+  :root{
+    --void:#04050d;
+    --ink:#e9efff;
+    --dim:rgba(203,216,246,.72);
+    --dimmer:rgba(184,199,234,.5);
+    --line:rgba(150,175,255,.15);
+    --glass:rgba(120,150,235,.06);
+    --cyan:#63dcff;
+    --violet:#a78bfa;
+    --indigo:#5b6cf9;
+    --gold:#f3c67d;
+    --maxw:1120px;
+    --gut:clamp(20px,4vw,40px);
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-tap-highlight-color:transparent;scroll-behavior:smooth}
+  :focus:not(:focus-visible){outline:none}
+  :focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:8px}
+  body{
+    margin:0;
+    font-family:'Instrument Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    color:var(--ink);
+    background:var(--void);
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+    line-height:1.62;
+  }
+  /* Persian: Lalezar is a display face — it carries the headings, Vazirmatn the prose. */
+  html[lang="fa"] body{font-family:'Vazirmatn','Segoe UI',Tahoma,sans-serif}
+  html[lang="fa"] h1,html[lang="fa"] h2,html[lang="fa"] .wordmark,html[lang="fa"] .cta b{
+    font-family:'Lalezar','Vazirmatn',sans-serif;font-weight:400;letter-spacing:0}
+  html[lang="fa"] .eyebrow,html[lang="fa"] .kicker,html[lang="fa"] .scroll-hint{letter-spacing:normal;text-transform:none}
+  .mono{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace}
+  img,svg{max-width:100%}
+
+  /* ============================ 1. deep space ============================ */
+  /* Fixed, so a 4000px page doesn't stretch the gradient into bands. */
+  .cosmos{position:fixed;inset:0;z-index:-3;overflow:hidden;pointer-events:none;
+    background:
+      radial-gradient(120% 80% at 50% -20%,#131a3d 0%,#0a0d22 38%,var(--void) 72%),
+      var(--void)}
+  /* Regions of space. One per section; the observer lights the matching one, and the
+     1.6s fade is what makes scrolling feel like crossing into somewhere else. */
+  .neb{position:absolute;inset:-20%;opacity:0;transition:opacity 1.6s ease;will-change:opacity}
+  .neb.on{opacity:1}
+  .neb-hero{
+    background:
+      radial-gradient(48% 38% at 72% 26%,rgba(120,86,255,.30),transparent 68%),
+      radial-gradient(42% 34% at 22% 62%,rgba(28,120,200,.24),transparent 70%),
+      radial-gradient(30% 26% at 52% 88%,rgba(190,90,220,.14),transparent 72%);
+    opacity:1}
+  .neb-features{
+    background:
+      radial-gradient(46% 36% at 18% 24%,rgba(30,140,220,.26),transparent 70%),
+      radial-gradient(40% 34% at 82% 70%,rgba(90,80,240,.22),transparent 70%)}
+  .neb-android{
+    background:
+      radial-gradient(44% 36% at 78% 30%,rgba(30,190,190,.20),transparent 70%),
+      radial-gradient(46% 38% at 20% 74%,rgba(70,90,230,.22),transparent 70%)}
+  .neb-start{
+    background:
+      radial-gradient(44% 34% at 50% 20%,rgba(140,90,255,.24),transparent 70%),
+      radial-gradient(42% 36% at 16% 78%,rgba(30,120,210,.20),transparent 72%)}
+  .neb-close{
+    background:
+      radial-gradient(50% 40% at 50% 42%,rgba(150,80,240,.26),transparent 68%),
+      radial-gradient(40% 32% at 82% 78%,rgba(240,150,90,.12),transparent 72%)}
+  /* Distant galaxies: two soft ellipses, tilted. Purely gradient, no filter. */
+  .galaxy{position:absolute;border-radius:50%;opacity:.5;
+    background:radial-gradient(closest-side,rgba(226,235,255,.5),rgba(150,130,255,.22) 42%,transparent 72%)}
+  .g1{width:340px;height:96px;top:16%;left:8%;transform:rotate(-24deg)}
+  .g2{width:220px;height:64px;top:64%;right:10%;transform:rotate(16deg)}
+  @media (max-width:720px){.g1{width:200px;height:60px}.g2{display:none}}
+
+  /* width/height come from CSS, never from window.innerWidth — that measurement
+     includes the scrollbar, and a fixed element sized to it juts past the content
+     box and raises a horizontal scrollbar of its own. build() reads this box back. */
+  #stars{position:fixed;inset:0;width:100%;height:100%;z-index:-2;pointer-events:none;display:block}
+
+  /* A thin vignette keeps the corners quiet so text always wins. */
+  .vignette{position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:radial-gradient(120% 90% at 50% 40%,transparent 52%,rgba(2,3,10,.55) 100%)}
+
+  .wrap{width:100%;max-width:var(--maxw);margin:0 auto;
+    padding-inline:max(var(--gut),env(safe-area-inset-left)) max(var(--gut),env(safe-area-inset-right))}
+
+  /* ============================ header ============================ */
+  header{position:sticky;top:0;z-index:60;padding-top:env(safe-area-inset-top);
+    transition:background .3s,border-color .3s,backdrop-filter .3s;
+    border-bottom:1px solid transparent}
+  header.stuck{background:rgba(6,9,24,.72);border-bottom-color:var(--line);
+    backdrop-filter:blur(18px) saturate(1.3);-webkit-backdrop-filter:blur(18px) saturate(1.3)}
+  .bar{display:flex;align-items:center;justify-content:space-between;gap:16px;height:70px}
+  .brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--ink);flex:none}
+  .brand .mark{width:28px;height:28px;flex:none}
+  .wordmark{font-weight:600;font-size:17.5px;letter-spacing:-.015em}
+  .nav{display:flex;align-items:center;gap:4px}
+  /* Nav as a little planetary system: each link is a body, and the one you're
+     inside lights up. The dot is the only thing that moves. */
+  .nav .lnk{position:relative;color:var(--dim);text-decoration:none;font-size:14px;font-weight:500;
+    padding:9px 14px;border-radius:10px;display:flex;align-items:center;gap:8px;transition:color .2s,background .2s}
+  .nav .lnk::before{content:"";width:5px;height:5px;border-radius:50%;background:rgba(160,185,255,.3);
+    box-shadow:0 0 0 0 rgba(99,220,255,0);transition:background .3s,box-shadow .3s,transform .3s}
+  .nav .lnk:hover{color:var(--ink);background:rgba(140,170,255,.08)}
+  .nav .lnk.here{color:var(--ink)}
+  .nav .lnk.here::before{background:var(--cyan);box-shadow:0 0 10px 2px rgba(99,220,255,.6);transform:scale(1.25)}
+  .nav .go{margin-inline-start:6px;border:1px solid rgba(160,185,255,.24);background:rgba(140,170,255,.1);
+    color:var(--ink);text-decoration:none;font-size:14px;font-weight:600;padding:10px 16px;border-radius:11px;
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:.2s}
+  .nav .go:hover{background:rgba(150,180,255,.2);box-shadow:0 0 24px rgba(99,180,255,.25)}
+  .langsw{border:1px solid rgba(160,185,255,.2);background:rgba(140,170,255,.07);color:var(--dim);
+    font-family:inherit;font-size:13px;font-weight:600;height:36px;padding:0 13px;border-radius:99px;cursor:pointer;transition:.2s}
+  .langsw:hover{color:var(--ink);background:rgba(150,180,255,.18)}
+  @media (max-width:860px){.nav .hide-sm{display:none}}
+
+  /* ============================ 3. the system ============================ */
+  .stage{position:relative;display:flex;align-items:center;justify-content:center;
+    perspective:1200px;perspective-origin:50% 50%}
+  .system{position:relative;width:min(100%,560px);aspect-ratio:1;transform-style:preserve-3d;
+    /* --mx/--my come from the pointer; 0 until JS says otherwise. */
+    transform:translate3d(calc(var(--mx,0)*-16px),calc(var(--my,0)*-12px),0)
+              rotateY(calc(var(--mx,0)*5deg)) rotateX(calc(var(--my,0)*-4deg));
+    transition:transform .5s cubic-bezier(.22,.61,.36,1)}
+
+  /* volumetric glow — one soft disc behind everything */
+  .halo{position:absolute;left:50%;top:50%;width:120%;height:120%;transform:translate(-50%,-50%);
+    border-radius:50%;pointer-events:none;
+    background:radial-gradient(closest-side,rgba(243,198,125,.20),rgba(120,90,255,.16) 44%,transparent 72%);
+    animation:pulse 9s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:.75;transform:translate(-50%,-50%) scale(1)}
+                   50%{opacity:1;transform:translate(-50%,-50%) scale(1.06)}}
+
+  .planet{position:absolute;left:50%;top:50%;width:38%;height:38%;
+    transform:translate(-50%,-50%);border-radius:50%;overflow:hidden;
+    background:radial-gradient(circle at 33% 27%,
+      #fff3d8 0%,#f6cd8a 16%,#e5a05a 34%,#b96b3f 54%,#6d3a3f 74%,#2b1a3c 92%,#1b1230 100%);
+    box-shadow:
+      inset -22px -18px 54px rgba(4,6,18,.9),
+      inset 12px 10px 34px rgba(255,222,175,.16),
+      0 0 44px rgba(243,198,125,.30),
+      0 0 120px rgba(120,90,255,.24)}
+  /* Bands drift sideways to read as rotation. The layer is twice as wide and the
+     pattern is periodic, so translating it exactly -50% loops seamlessly. */
+  .surface{position:absolute;top:0;left:0;width:200%;height:100%;opacity:.5;
+    background:repeating-linear-gradient(97deg,
+      rgba(255,255,255,.07) 0 5px,transparent 5px 13px,
+      rgba(60,24,30,.16) 13px 19px,transparent 19px 34px);
+    animation:drift 46s linear infinite}
+  @keyframes drift{to{transform:translateX(-50%)}}
+  /* Atmospheric rim: a ring of light just outside the disc, cyan on the lit side. */
+  .atmo{position:absolute;left:50%;top:50%;width:44%;height:44%;transform:translate(-50%,-50%);
+    border-radius:50%;pointer-events:none;
+    background:radial-gradient(closest-side,transparent 78%,rgba(120,215,255,.30) 87%,rgba(167,139,250,.16) 93%,transparent 100%)}
+
+  /* orbital rings — tilted circles, drawn above the planet at low opacity */
+  .ring{position:absolute;left:50%;top:50%;border-radius:50%;
+    border:1px solid rgba(170,200,255,.22);
+    transform:translate(-50%,-50%) rotateX(72deg) rotateZ(-14deg)}
+  .ring.r1{width:58%;height:58%;border-color:rgba(243,198,125,.30);
+    box-shadow:0 0 22px rgba(243,198,125,.14),inset 0 0 22px rgba(243,198,125,.08)}
+  .ring.r2{width:78%;height:78%;border-color:rgba(150,190,255,.20)}
+  .ring.r3{width:98%;height:98%;border-style:dashed;border-color:rgba(150,190,255,.13)}
+
+  /* Orbiting subjects. Three nested elements per satellite:
+       .track  tilts the orbit into the screen
+       .spin   carries it round
+       .sat    undoes both, so the label stays upright and face-on
+     --f is where on the orbit it starts (0–1); it seeds both the static angle and
+     the negative animation-delay, so the reduced-motion layout matches the moving one. */
+  .track{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotateX(72deg) rotateZ(-14deg);
+    transform-style:preserve-3d;pointer-events:none}
+  .track.t2{width:78%;height:78%;--dur:38s}
+  .track.t3{width:98%;height:98%;--dur:56s}
+  /* Both endpoints are written out. With only a `to` frame the implicit `from` is the
+     element's own base transform — which is rotateZ(f·360deg) here, so each satellite
+     would sweep a different partial arc and drift out of step with its counter-rotation.
+     Phase belongs to animation-delay alone; the keyframes are always a full turn. */
+  .spin{position:absolute;inset:0;transform-style:preserve-3d;
+    transform:rotateZ(calc(var(--f) * 360deg));
+    animation:orbit var(--dur) linear infinite;
+    animation-delay:calc(var(--f) * var(--dur) * -1)}
+  @keyframes orbit{from{transform:rotateZ(0deg)}to{transform:rotateZ(360deg)}}
+  /* To face the screen, .sat has to invert everything above it, in reverse order:
+     the spin (−f·360°), then the track's roll (+14°), then its tilt (−72°). Leaving
+     the roll out leaves the label rotated about a near-vertical axis — a subtle
+     squeeze that reads as "slightly wrong" without ever looking obviously broken. */
+  .sat{position:absolute;top:0;left:50%;transform-style:preserve-3d;
+    transform:translate(-50%,-50%) rotateZ(calc(14deg - var(--f) * 360deg)) rotateX(-72deg);
+    animation:unorbit var(--dur) linear infinite;
+    animation-delay:calc(var(--f) * var(--dur) * -1)}
+  @keyframes unorbit{
+    from{transform:translate(-50%,-50%) rotateZ(14deg) rotateX(-72deg)}
+    to{transform:translate(-50%,-50%) rotateZ(-346deg) rotateX(-72deg)}}
+  /* The far half of the orbit is smaller and dimmer — that, not the tilt, is what
+     sells the depth, and it costs one more compositor animation. */
+  .sat-in{display:flex;align-items:center;gap:7px;padding:6px 12px 6px 8px;border-radius:99px;
+    border:1px solid rgba(170,200,255,.24);background:rgba(14,20,44,.72);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    font-size:12px;font-weight:600;white-space:nowrap;color:var(--ink);
+    box-shadow:0 4px 20px rgba(0,0,0,.4);
+    animation:depth var(--dur) ease-in-out infinite;
+    animation-delay:calc(var(--f) * var(--dur) * -1)}
+  @keyframes depth{
+    0%{opacity:.4;transform:scale(.8)}
+    50%{opacity:1;transform:scale(1.06)}
+    100%{opacity:.4;transform:scale(.8)}}
+  .sat-in i{width:7px;height:7px;border-radius:50%;flex:none;background:var(--sc);
+    box-shadow:0 0 8px 1px var(--sc)}
+
+  /* ============================ hero ============================ */
+  /* padding-block, not the padding shorthand: this element is also a .wrap, whose
+     horizontal padding the shorthand would reset to 0 (edge-to-edge text on a phone). */
+  .hero{position:relative;padding-block:clamp(28px,5vh,64px) clamp(48px,8vh,96px)}
+  .hero-grid{display:grid;grid-template-columns:minmax(0,1.02fr) minmax(0,.98fr);
+    gap:clamp(24px,4vw,56px);align-items:center}
+
+  .eyebrow{display:inline-flex;align-items:center;gap:9px;font-size:11px;letter-spacing:.18em;
+    text-transform:uppercase;font-weight:600;color:var(--dim);
+    border:1px solid var(--line);background:rgba(120,150,235,.07);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    padding:8px 15px;border-radius:99px;margin-bottom:24px}
+  .eyebrow .d{width:6px;height:6px;border-radius:50%;background:var(--cyan);flex:none;
+    box-shadow:0 0 10px 2px rgba(99,220,255,.7);animation:breathe 2.8s ease-in-out infinite}
+  @keyframes breathe{0%,100%{opacity:.35}50%{opacity:1}}
+
+  h1{margin:0;font-size:clamp(40px,6.6vw,74px);line-height:1.02;letter-spacing:-.04em;font-weight:700;
+    text-wrap:balance}
+  html[lang="fa"] h1{line-height:1.26;font-size:clamp(34px,5.8vw,62px);letter-spacing:0}
+  h1 em{font-style:normal;
+    background:linear-gradient(105deg,var(--gold) 0%,#ffd9a0 30%,var(--cyan) 68%,var(--violet) 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    /* If background-clip:text isn't supported the gradient would paint over the word,
+       so the fallback colour is set first and only overridden inside @supports. */
+  }
+  @supports not ((-webkit-background-clip:text) or (background-clip:text)){
+    h1 em{color:var(--gold);background:none}
+  }
+  .lede{margin:22px 0 0;font-size:clamp(15.5px,1.4vw,18px);color:var(--dim);max-width:36em}
+
+  .ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:34px}
+  .cta{display:flex;align-items:center;gap:13px;text-decoration:none;border-radius:16px;
+    padding:13px 22px;min-height:62px;border:1px solid transparent;
+    transition:transform .18s,box-shadow .18s,background .18s,border-color .18s}
+  .cta .ic{flex:none;display:flex;align-items:center;justify-content:center}
+  .cta .tx{display:flex;flex-direction:column;line-height:1.25;text-align:start}
+  .cta b{font-size:15.5px;font-weight:700;letter-spacing:-.012em}
+  .cta i{font-style:normal;font-size:12.5px;opacity:.8;font-weight:500;margin-top:2px}
+  .cta.primary{color:#060a1c;
+    background:linear-gradient(135deg,#8fe9ff 0%,#a99bff 52%,#c79bff 100%);
+    box-shadow:0 10px 34px rgba(110,170,255,.30),inset 0 1px 0 rgba(255,255,255,.45)}
+  .cta.primary:hover{transform:translateY(-2px);
+    box-shadow:0 18px 50px rgba(130,170,255,.44),inset 0 1px 0 rgba(255,255,255,.5)}
+  .cta.ghost{background:rgba(130,160,255,.08);color:var(--ink);border-color:rgba(160,185,255,.22);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+  .cta.ghost:hover{transform:translateY(-2px);background:rgba(150,180,255,.16);
+    border-color:rgba(170,200,255,.4);box-shadow:0 0 34px rgba(99,180,255,.2)}
+  /* A link that hasn't been filled in yet: says so instead of leading nowhere. */
+  .cta.soon{opacity:.55;cursor:default;pointer-events:none}
+  .cta.soon:hover{transform:none}
+  .undercta{margin-top:16px;font-size:13px;color:var(--dimmer);max-width:44ch}
+
+  .scroll-hint{display:inline-flex;align-items:center;gap:10px;margin-top:40px;
+    font-family:'DM Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.2em;
+    text-transform:uppercase;color:var(--dimmer);text-decoration:none}
+  .scroll-hint .rail{width:1px;height:26px;background:linear-gradient(180deg,rgba(99,220,255,.7),transparent);
+    position:relative;overflow:hidden}
+  .scroll-hint .rail::after{content:"";position:absolute;left:0;width:1px;height:9px;background:var(--cyan);
+    animation:fall 2.2s ease-in-out infinite}
+  @keyframes fall{0%{top:-9px;opacity:0}30%{opacity:1}100%{top:26px;opacity:0}}
+  .scroll-hint:hover{color:var(--dim)}
+  @media (max-width:860px){.scroll-hint{display:none}}
+
+  /* ============================ sections ============================ */
+  section{position:relative;padding-block:clamp(56px,9vh,110px)}
+  .kicker{display:inline-flex;align-items:center;gap:9px;font-family:'DM Mono',ui-monospace,monospace;
+    font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--cyan);margin-bottom:16px}
+  .kicker::before{content:"";width:22px;height:1px;background:linear-gradient(90deg,transparent,var(--cyan))}
+  h2{margin:0;font-size:clamp(27px,3.6vw,42px);line-height:1.14;letter-spacing:-.03em;font-weight:700;
+    max-width:20ch;text-wrap:balance}
+  html[lang="fa"] h2{line-height:1.4;letter-spacing:0}
+  .sec-lede{margin:16px 0 0;color:var(--dim);font-size:16px;max-width:54ch}
+  .sec-head{margin-bottom:42px;position:relative}
+
+  /* A constellation behind a heading, used twice on the page and nowhere else. */
+  .constel{position:absolute;pointer-events:none;opacity:.55}
+  .constel.c1{inset-inline-end:0;top:-18px;width:210px}
+  .constel.c2{left:50%;top:-30px;width:280px;transform:translateX(-50%)}
+  .constel line{stroke:rgba(150,190,255,.4);stroke-width:1;
+    stroke-dasharray:var(--len,120);stroke-dashoffset:var(--len,120)}
+  .in .constel line{animation:trace 1.5s ease forwards}
+  @keyframes trace{to{stroke-dashoffset:0}}
+  .constel circle{fill:#dce9ff}
+  @media (max-width:820px){.constel.c1{display:none}}
+
+  /* cards — glass, with a light that follows the cursor */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(258px,1fr));gap:16px}
+  .card{position:relative;overflow:hidden;border-radius:20px;padding:26px 22px;
+    border:1px solid var(--line);background:var(--glass);
+    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    transition:border-color .25s,transform .25s,box-shadow .25s}
+  .card::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s;
+    background:radial-gradient(240px circle at var(--cx,50%) var(--cy,0%),rgba(140,190,255,.16),transparent 70%)}
+  .card:hover{transform:translateY(-3px);border-color:rgba(160,195,255,.34);
+    box-shadow:0 18px 46px rgba(2,4,16,.5),0 0 40px rgba(80,140,255,.1)}
+  .card:hover::before{opacity:1}
+  /* Top hairline: catches the light like a curved surface would. */
+  .card::after{content:"";position:absolute;top:0;left:12%;right:12%;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(180,210,255,.4),transparent)}
+  .card .ic{position:relative;width:42px;height:42px;border-radius:13px;display:flex;align-items:center;
+    justify-content:center;color:var(--cyan);margin-bottom:17px;
+    background:linear-gradient(150deg,rgba(99,220,255,.18),rgba(167,139,250,.12));
+    border:1px solid rgba(150,200,255,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.14)}
+  .card h3{position:relative;margin:0 0 8px;font-size:16.5px;font-weight:600;letter-spacing:-.015em}
+  .card p{position:relative;margin:0;font-size:14.2px;color:var(--dim);line-height:1.64}
+
+  /* ---- android: a module in a different region of space ---- */
+  .panel{position:relative;overflow:hidden;border-radius:28px;
+    padding:clamp(26px,4vw,48px);border:1px solid var(--line);
+    background:linear-gradient(155deg,rgba(40,90,120,.14),rgba(60,70,160,.10));
+    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+    box-shadow:0 30px 80px rgba(2,4,16,.5)}
+  .panel::after{content:"";position:absolute;top:0;left:8%;right:8%;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(120,215,255,.45),transparent)}
+  .panel-grid{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);
+    gap:clamp(26px,4vw,54px);align-items:center}
+  .feat{display:flex;gap:16px;padding:16px 0;border-top:1px solid rgba(150,180,255,.12)}
+  .feat:first-child{border-top:none;padding-top:0}
+  .feat .n{font-family:'DM Mono',ui-monospace,monospace;font-size:12px;color:var(--cyan);flex:none;
+    padding-top:3px;min-width:26px;opacity:.85}
+  .feat b{display:block;font-size:15px;font-weight:600;margin-bottom:5px;letter-spacing:-.01em}
+  .feat p{margin:0;font-size:14px;color:var(--dim);line-height:1.62}
+
+  /* ---- steps: three waypoints on one orbit ---- */
+  .steps{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .orbit-path{position:absolute;inset-inline:6%;top:26px;height:120px;pointer-events:none;overflow:visible}
+  .orbit-path path{fill:none;stroke:rgba(150,190,255,.28);stroke-width:1.4;stroke-dasharray:6 8}
+  .step{position:relative;padding:26px 22px;border-radius:20px;border:1px solid var(--line);
+    background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    transition:border-color .25s,transform .25s}
+  .step:hover{transform:translateY(-3px);border-color:rgba(160,195,255,.3)}
+  .step .n{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-family:'DM Mono',ui-monospace,monospace;font-weight:500;font-size:14.5px;margin-bottom:16px;
+    color:#060a1c;background:linear-gradient(135deg,#8fe9ff,#a99bff);
+    box-shadow:0 0 24px rgba(120,180,255,.45)}
+  .step b{display:block;font-size:16px;font-weight:600;margin-bottom:7px;letter-spacing:-.01em}
+  .step p{margin:0;font-size:14.2px;color:var(--dim)}
+
+  /* ---- closing ---- */
+  .close-box{position:relative;overflow:hidden;text-align:center;border-radius:30px;
+    padding:clamp(38px,6vw,68px) clamp(22px,5vw,56px);
+    border:1px solid var(--line);
+    background:radial-gradient(90% 120% at 50% 0%,rgba(120,90,255,.16),rgba(10,14,34,.5) 70%);
+    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+    box-shadow:0 30px 90px rgba(2,4,16,.55)}
+  .close-box h2{margin-inline:auto;max-width:17ch}
+  .close-box .sec-lede{margin-inline:auto;text-align:center}
+  .close-box .ctas{justify-content:center}
+
+  /* ============================ footer ============================ */
+  footer{position:relative;border-top:1px solid var(--line);margin-top:clamp(40px,7vh,90px);
+    padding-block:36px calc(36px + env(safe-area-inset-bottom))}
+  .foot{display:flex;flex-wrap:wrap;gap:18px;align-items:center;justify-content:space-between}
+  .foot-links{display:flex;flex-wrap:wrap;gap:4px}
+  .foot-links a{color:var(--dim);text-decoration:none;font-size:14px;padding:8px 12px;border-radius:9px;transition:.2s}
+  .foot-links a:hover{color:var(--ink);background:rgba(140,170,255,.1)}
+  .foot-links a.soon{opacity:.45;pointer-events:none}
+  .copy{font-size:13px;color:var(--dimmer)}
+
+  /* ============================ reveal ============================
+     Hidden only under html.reveal, which the script adds the moment before it starts
+     observing. The content is therefore visible by default: with JavaScript off, or if
+     anything above it throws, the page still reads — a landing page that needs a script
+     to show its own words is one broken line away from being blank.
+     Coming "from depth": scale + lift, both compositor-only. */
+  html.reveal .rise{opacity:0;transform:translateY(30px) scale(.965);
+    transition:opacity .75s cubic-bezier(.22,.61,.36,1),transform .75s cubic-bezier(.22,.61,.36,1)}
+  html.reveal .rise.in{opacity:1;transform:none}
+
+  /* ============================ responsive ============================
+     Tablet drops to one column and simplifies the system; phone recomposes the hero
+     entirely — the planet becomes a header element above the words rather than a
+     backdrop behind them, so nothing decorative ever sits on top of text. */
+  @media (max-width:980px){
+    .hero-grid{grid-template-columns:1fr;gap:clamp(26px,5vw,40px)}
+    .stage{order:-1}
+    .system{width:min(76vw,400px)}
+    .hero{padding-block:clamp(20px,3vh,36px) clamp(40px,7vh,72px)}
+    .panel-grid{grid-template-columns:1fr;gap:30px}
+    .steps{grid-template-columns:1fr}
+    .orbit-path{display:none}
+    h1,.lede,.eyebrow,.ctas,.undercta{text-align:start}
+  }
+  @media (max-width:760px){
+    .steps{gap:14px}
+    .sec-head{margin-bottom:30px}
+    .cards{gap:13px}
+    .ctas{gap:10px}
+    .cta{flex:1 1 100%;justify-content:flex-start}
+  }
+  @media (max-width:640px){
+    /* Phone: a smaller system, one satellite per ring, no dashed outer ring.
+       Fewer moving parts on the hardware least able to afford them. */
+    .system{width:min(70vw,290px)}
+    .ring.r3{display:none}
+    .track.t3 .spin:nth-child(2){display:none}
+    .track.t2 .spin:nth-child(2){display:none}
+    .sat-in{font-size:11px;padding:5px 10px 5px 7px}
+    .halo{width:150%;height:150%}
+    .card{padding:22px 19px}
+    .g1{opacity:.35}
+  }
+
+  /* ============================ reduced motion ============================
+     Everything that moves on its own stops. The satellites keep the positions their
+     --f seed gives them, so the composition is identical — just still. */
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    .surface,.halo,.spin,.sat,.sat-in,.eyebrow .d,.scroll-hint .rail::after,.constel line{animation:none!important}
+    .constel line{stroke-dashoffset:0}
+    .sat-in{opacity:.9;transform:none}
+    .system{transition:none;transform:none}
+    html.reveal .rise{opacity:1;transform:none;transition:none}
+    .cta:hover,.card:hover,.step:hover{transform:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- ---------------- the cosmos: three fixed layers, no scroll cost ---------------- -->
+<div class="cosmos" aria-hidden="true">
+  <div class="neb neb-hero on" data-region="hero"></div>
+  <div class="neb neb-features" data-region="features"></div>
+  <div class="neb neb-android" data-region="android"></div>
+  <div class="neb neb-start" data-region="start"></div>
+  <div class="neb neb-close" data-region="close"></div>
+  <div class="galaxy g1"></div>
+  <div class="galaxy g2"></div>
+</div>
+<canvas id="stars" aria-hidden="true"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+
+<header id="top">
+  <div class="wrap bar">
+    <a class="brand" href="#top">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+        <defs><radialGradient id="bm" cx="34%" cy="30%">
+          <stop offset="0%" stop-color="#ffe9c2"/><stop offset="60%" stop-color="#eda75c"/><stop offset="100%" stop-color="#7b3a52"/>
+        </radialGradient></defs>
+        <circle cx="16" cy="16" r="7.5" fill="url(#bm)"/>
+        <ellipse cx="16" cy="16" rx="13" ry="4.6" fill="none" stroke="rgba(140,200,255,.75)" stroke-width="1.6" transform="rotate(-20 16 16)"/>
+      </svg>
+      <span class="wordmark">Study Planet</span>
+    </a>
+    <nav class="nav">
+      <a class="lnk hide-sm" href="#features" data-nav="features" data-i18n="nav_features">Features</a>
+      <a class="lnk hide-sm" href="#android" data-nav="android" data-i18n="nav_android">Android</a>
+      <a class="lnk hide-sm" href="#start" data-nav="start" data-i18n="nav_start">Get started</a>
+      <button class="langsw" id="langSw" type="button">فارسی</button>
+      <a class="go" id="navWeb" href="/app" data-i18n="nav_open">Open the app</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <!-- ---------------- hero ---------------- -->
+  <div class="wrap hero" id="hero">
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <span class="eyebrow"><span class="d"></span><span data-i18n="eyebrow">Web &amp; Android · Free</span></span>
+        <h1 data-i18n="h1">A calmer place to <em>study</em>.</h1>
+        <p class="lede" data-i18n="lede">A Pomodoro timer that keeps count for you, study rooms you share with friends, a calendar of everything you've done, and a library filled with the material for your own grade.</p>
+
+        <div class="ctas">
+          <a class="cta primary" id="ctaWeb" href="/app">
+            <span class="ic" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18"/>
+              </svg>
+            </span>
+            <span class="tx"><b data-i18n="cta_web">Open the web version</b><i data-i18n="cta_web_sub">Works in any browser</i></span>
+          </a>
+
+          <a class="cta ghost" id="ctaApk" href="#">
+            <span class="ic" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M4 20h16"/>
+              </svg>
+            </span>
+            <span class="tx"><b data-i18n="cta_apk">Download for Android</b><i data-i18n="cta_apk_sub" id="apkSub">APK · Android 8 and up</i></span>
+          </a>
+        </div>
+        <p class="undercta" data-i18n="undercta">No account needed to try the timer — sign in when you want your stats, rooms and library.</p>
+
+        <a class="scroll-hint" href="#features">
+          <span class="rail" aria-hidden="true"></span>
+          <span data-i18n="scroll_hint">Scroll to explore</span>
+        </a>
+      </div>
+
+      <!-- The planet and everything in orbit around it. Decorative: the subjects are
+           labels, not links, and the whole stage is hidden from assistive tech. -->
+      <div class="stage" aria-hidden="true">
+        <div class="system" id="system">
+          <div class="halo"></div>
+          <div class="planet"><span class="surface"></span></div>
+          <div class="atmo"></div>
+          <div class="ring r1"></div>
+          <div class="ring r2"></div>
+          <div class="ring r3"></div>
+
+          <div class="track t2">
+            <div class="spin" style="--f:.06"><div class="sat" style="--f:.06">
+              <span class="sat-in" style="--sc:#63dcff"><i></i><span data-i18n="sat_math">Math</span></span></div></div>
+            <div class="spin" style="--f:.58"><div class="sat" style="--f:.58">
+              <span class="sat-in" style="--sc:#f3c67d"><i></i><span data-i18n="sat_physics">Physics</span></span></div></div>
+          </div>
+          <div class="track t3">
+            <div class="spin" style="--f:.33"><div class="sat" style="--f:.33">
+              <span class="sat-in" style="--sc:#7ee0a8"><i></i><span data-i18n="sat_bio">Biology</span></span></div></div>
+            <div class="spin" style="--f:.81"><div class="sat" style="--f:.81">
+              <span class="sat-in" style="--sc:#a78bfa"><i></i><span data-i18n="sat_history">History</span></span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---------------- features ---------------- -->
+  <section id="features">
+    <div class="wrap">
+      <div class="sec-head rise">
+        <svg class="constel c1" viewBox="0 0 210 90" aria-hidden="true">
+          <line x1="12" y1="66" x2="58" y2="30" style="--len:60"/>
+          <line x1="58" y1="30" x2="104" y2="52" style="--len:52"/>
+          <line x1="104" y1="52" x2="150" y2="16" style="--len:60"/>
+          <line x1="150" y1="16" x2="192" y2="44" style="--len:52"/>
+          <circle cx="12" cy="66" r="2"/><circle cx="58" cy="30" r="2.8"/><circle cx="104" cy="52" r="2"/>
+          <circle cx="150" cy="16" r="3.2"/><circle cx="192" cy="44" r="2.2"/>
+        </svg>
+        <div class="kicker" data-i18n="k_features">What's inside</div>
+        <h2 data-i18n="feat_h">Everything a study day needs, and nothing it doesn't.</h2>
+        <p class="sec-lede" data-i18n="feat_lede">Your sessions, settings and subjects live on your account, so the timer you set on a laptop is the one waiting on your phone.</p>
+      </div>
+
+      <div class="cards" id="cards">
+        <div class="card rise">
+          <div class="ic" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg></div>
+          <h3 data-i18n="f1_h">Timer or stopwatch</h3>
+          <p data-i18n="f1_p">A Pomodoro countdown or a count-up stopwatch. Starting either hides everything else for a clean screen — and pausing logs your time, so a half-finished session is never lost.</p>
+        </div>
+
+        <div class="card rise">
+          <div class="ic" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3.4"/><path d="M22 20v-2a4 4 0 0 0-3-3.9M16.5 3.6a4 4 0 0 1 0 7"/></svg></div>
+          <h3 data-i18n="f2_h">Study rooms</h3>
+          <p data-i18n="f2_p">Make a room public so anyone can find it, or invite-only with a share link. A live leaderboard shows everyone's focus time and who is studying right now.</p>
+        </div>
+
+        <div class="card rise">
+          <div class="ic" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11.5 11.5 14 16 9"/><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 9.5h18"/></svg></div>
+          <h3 data-i18n="f3_h">Work you're given</h3>
+          <p data-i18n="f3_p">Whoever runs a room can hand out a task with a deadline and a suggested length. It lands in your timer's task panel with a “Let's do it” button that sets the clock for you.</p>
+        </div>
+
+        <div class="card rise">
+          <div class="ic" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 20V9M9.5 20V4M15 20v-8M20.5 20v-5"/></svg></div>
+          <h3 data-i18n="f4_h">Calendar &amp; streaks</h3>
+          <p data-i18n="f4_p">Every finished session records its minutes and its subject. The dashboard shows a month at a glance, a 14-day chart and your streak — tap any day to see exactly what you studied.</p>
+        </div>
+
+        <div class="card rise">
+          <div class="ic" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.6 13.6 20.6a2 2 0 0 1-2.8 0l-7.4-7.4a2 2 0 0 1-.6-1.4V4.5a2 2 0 0 1 2-2h7.3a2 2 0 0 1 1.4.6l7.1 7.1a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.4"/></svg></div>
+          <h3 data-i18n="f5_h">Your own subjects</h3>
+          <p data-i18n="f5_p">Make the subjects you actually study, pick one before you start, and each shows the time you've put into it today right next to its name.</p>
+        </div>
+
+        <div class="card rise">
+          <div class="ic" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5v13A1.5 1.5 0 0 0 5.5 19H20"/><path d="M20 3H7.5A1.5 1.5 0 0 0 6 4.5v13A1.5 1.5 0 0 1 4.5 19"/><path d="M9.5 7.5h7M9.5 11h5"/></svg></div>
+          <h3 data-i18n="f6_h">A library that fits you</h3>
+          <p data-i18n="f6_p">Tell us your grade and major when you sign up, and your shelf holds the material published for exactly that — organised into categories, open or downloadable.</p>
+        </div>
+
+        <div class="card rise">
+          <div class="ic" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18Z" fill="currentColor" stroke="none" opacity=".55"/></svg></div>
+          <h3 data-i18n="f7_h">Make it yours</h3>
+          <p data-i18n="f7_p">Choose a background — a gradient or your own photo — dim it, blur it, pick an accent, and switch between the classic and glass looks. Whatever you choose follows you to every page.</p>
+        </div>
+
+        <div class="card rise">
+          <div class="ic" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18"/></svg></div>
+          <h3 data-i18n="f8_h">English &amp; فارسی</h3>
+          <p data-i18n="f8_p">The whole app speaks both, right-to-left included — the timer, the dashboard, the rooms and the library. Switch language any time; nothing you've saved changes.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------- android ---------------- -->
+  <section id="android">
+    <div class="wrap">
+      <div class="panel rise">
+        <div class="panel-grid">
+          <div>
+            <div class="kicker" data-i18n="k_android">The Android app</div>
+            <h2 data-i18n="and_h">It keeps counting after you put the phone down.</h2>
+            <p class="sec-lede" data-i18n="and_lede">The same app, wrapped in a native shell — plus four things only a phone can do.</p>
+            <div class="ctas">
+              <a class="cta primary" id="ctaApk2" href="#">
+                <span class="ic" aria-hidden="true">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M4 20h16"/></svg>
+                </span>
+                <span class="tx"><b data-i18n="cta_apk_short">Download the APK</b><i data-i18n="cta_apk_sub2" id="apkSub2">Android 8 and up</i></span>
+              </a>
+            </div>
+          </div>
+
+          <div>
+            <div class="feat"><span class="n mono">01</span><div><b data-i18n="a1_h">A timer in the notification bar</b><p data-i18n="a1_p">The session runs as a real foreground service, so it keeps counting with the app closed — or swiped away. Pause, resume and end it from the shade.</p></div></div>
+            <div class="feat"><span class="n mono">02</span><div><b data-i18n="a2_h">App lock</b><p data-i18n="a2_p">Optional, and off by default. While a focus block runs, opening an app you didn't allow covers it with a reminder and a way straight back.</p></div></div>
+            <div class="feat"><span class="n mono">03</span><div><b data-i18n="a3_h">A real “time's up”</b><p data-i18n="a3_p">The end-of-block alert is scheduled natively, so it arrives even if Android had put the app to sleep long before.</p></div></div>
+            <div class="feat"><span class="n mono">04</span><div><b data-i18n="a4_h">Library downloads</b><p data-i18n="a4_p">Files from your shelf go through Android's own download manager — a progress notification, a retry, and a tap to open, exactly like any other download.</p></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------- steps ---------------- -->
+  <section id="start">
+    <div class="wrap">
+      <div class="sec-head rise">
+        <div class="kicker" data-i18n="k_start">Getting started</div>
+        <h2 data-i18n="start_h">Three minutes to your first session.</h2>
+      </div>
+      <div class="steps">
+        <svg class="orbit-path" viewBox="0 0 1000 120" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M20 84 C 200 8, 340 8, 500 60 S 800 112, 980 30"/>
+        </svg>
+        <div class="step rise"><div class="n">1</div><b data-i18n="s1_h">Make an account</b><p data-i18n="s1_p">An email and a password. You're asked what you study — that's how your library shelf gets filled.</p></div>
+        <div class="step rise"><div class="n">2</div><b data-i18n="s2_h">Add your subjects</b><p data-i18n="s2_p">Name the things you're actually revising. Every session you finish gets filed under one of them.</p></div>
+        <div class="step rise"><div class="n">3</div><b data-i18n="s3_h">Press start</b><p data-i18n="s3_p">Set the length, pick a subject and go. Join a room first if you'd rather not do it alone.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------- closing ---------------- -->
+  <section id="close">
+    <div class="wrap">
+      <div class="close-box rise">
+        <div class="sec-head" style="margin-bottom:26px">
+          <svg class="constel c2" viewBox="0 0 280 70" aria-hidden="true">
+            <line x1="18" y1="40" x2="76" y2="16" style="--len:64"/>
+            <line x1="76" y1="16" x2="140" y2="46" style="--len:72"/>
+            <line x1="140" y1="46" x2="204" y2="14" style="--len:72"/>
+            <line x1="204" y1="14" x2="262" y2="38" style="--len:64"/>
+            <circle cx="18" cy="40" r="2"/><circle cx="76" cy="16" r="2.6"/><circle cx="140" cy="46" r="3.2"/>
+            <circle cx="204" cy="14" r="2.6"/><circle cx="262" cy="38" r="2"/>
+          </svg>
+          <h2 data-i18n="close_h">Start on the web. Take it with you.</h2>
+          <p class="sec-lede" data-i18n="close_p">Your account carries the same sessions, subjects and settings across both.</p>
+        </div>
+        <div class="ctas">
+          <a class="cta primary" id="ctaWeb2" href="/app">
+            <span class="ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18"/></svg></span>
+            <span class="tx"><b data-i18n="cta_web">Open the web version</b><i data-i18n="cta_web_sub">Works in any browser</i></span>
+          </a>
+          <a class="cta ghost" id="ctaApk3" href="#">
+            <span class="ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M4 20h16"/></svg></span>
+            <span class="tx"><b data-i18n="cta_apk">Download for Android</b><i data-i18n="cta_apk_sub3" id="apkSub3">APK · Android 8 and up</i></span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <a class="brand" href="#top">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="7.5" fill="#eda75c"/>
+        <ellipse cx="16" cy="16" rx="13" ry="4.6" fill="none" stroke="rgba(140,200,255,.55)" stroke-width="1.6" transform="rotate(-20 16 16)"/>
+      </svg>
+      <span class="wordmark">Study Planet</span>
+    </a>
+    <div class="foot-links">
+      <a id="footWeb" href="/app" data-i18n="foot_web">Web version</a>
+      <a id="footApk" href="#" data-i18n="foot_apk">Android APK</a>
+      <a id="footIn" href="/login" data-i18n="foot_signin">Sign in</a>
+    </div>
+    <div class="copy" data-i18n="copy">Study Planet — made for students.</div>
+  </div>
+</footer>
+
+<script>
+/* ============================================================================
+   THE TWO LINKS — this is the only part you need to edit.
+
+   web : where the browser version lives.
+         "/app" works as-is when this page is served by server.py (it's the
+         timer's own route). Replace it with the full address once the app is
+         hosted, e.g. "https://studyplanet.ir/app".
+
+   apk : the direct download for the Android build. Leave it "" until you have
+         one — every Download button then says "coming soon" and is disabled,
+         rather than sending people to a dead link.
+
+   apkNote : the small line under the Download buttons (version, size, whatever
+         you want it to say).
+   ============================================================================ */
+var LINKS = {
+  web: "/app",
+  apk: "",
+  apkNote: ""
+};
+
+(function () {
+  "use strict";
+
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var fine   = window.matchMedia("(pointer: fine)").matches;
+
+  /* ======================= strings ======================= */
+  var DICT = {
+    en: {
+      title: "Study Planet — a calmer place to study",
+      nav_features: "Features", nav_android: "Android", nav_start: "Get started", nav_open: "Open the app",
+      eyebrow: "Web & Android · Free",
+      h1: ["A calmer place to ", "study", "."],
+      lede: "A Pomodoro timer that keeps count for you, study rooms you share with friends, a calendar of everything you've done, and a library filled with the material for your own grade.",
+      cta_web: "Open the web version", cta_web_sub: "Works in any browser",
+      cta_apk: "Download for Android", cta_apk_short: "Download the APK",
+      apk_sub: "APK · Android 8 and up", apk_sub_short: "Android 8 and up",
+      apk_soon: "Link coming soon",
+      undercta: "No account needed to try the timer — sign in when you want your stats, rooms and library.",
+      planet_alt: "An illustration of a ringed planet",
+      scroll_hint: "Scroll to explore",
+      sat_math: "Math", sat_physics: "Physics", sat_bio: "Biology", sat_history: "History",
+
+      k_features: "What's inside",
+      feat_h: "Everything a study day needs, and nothing it doesn't.",
+      feat_lede: "Your sessions, settings and subjects live on your account, so the timer you set on a laptop is the one waiting on your phone.",
+      f1_h: "Timer or stopwatch",
+      f1_p: "A Pomodoro countdown or a count-up stopwatch. Starting either hides everything else for a clean screen — and pausing logs your time, so a half-finished session is never lost.",
+      f2_h: "Study rooms",
+      f2_p: "Make a room public so anyone can find it, or invite-only with a share link. A live leaderboard shows everyone's focus time and who is studying right now.",
+      f3_h: "Work you're given",
+      f3_p: "Whoever runs a room can hand out a task with a deadline and a suggested length. It lands in your timer's task panel with a “Let's do it” button that sets the clock for you.",
+      f4_h: "Calendar & streaks",
+      f4_p: "Every finished session records its minutes and its subject. The dashboard shows a month at a glance, a 14-day chart and your streak — tap any day to see exactly what you studied.",
+      f5_h: "Your own subjects",
+      f5_p: "Make the subjects you actually study, pick one before you start, and each shows the time you've put into it today right next to its name.",
+      f6_h: "A library that fits you",
+      f6_p: "Tell us your grade and major when you sign up, and your shelf holds the material published for exactly that — organised into categories, open or downloadable.",
+      f7_h: "Make it yours",
+      f7_p: "Choose a background — a gradient or your own photo — dim it, blur it, pick an accent, and switch between the classic and glass looks. Whatever you choose follows you to every page.",
+      f8_h: "English & فارسی",
+      f8_p: "The whole app speaks both, right-to-left included — the timer, the dashboard, the rooms and the library. Switch language any time; nothing you've saved changes.",
+
+      k_android: "The Android app",
+      and_h: "It keeps counting after you put the phone down.",
+      and_lede: "The same app, wrapped in a native shell — plus four things only a phone can do.",
+      a1_h: "A timer in the notification bar",
+      a1_p: "The session runs as a real foreground service, so it keeps counting with the app closed — or swiped away. Pause, resume and end it from the shade.",
+      a2_h: "App lock",
+      a2_p: "Optional, and off by default. While a focus block runs, opening an app you didn't allow covers it with a reminder and a way straight back.",
+      a3_h: "A real “time's up”",
+      a3_p: "The end-of-block alert is scheduled natively, so it arrives even if Android had put the app to sleep long before.",
+      a4_h: "Library downloads",
+      a4_p: "Files from your shelf go through Android's own download manager — a progress notification, a retry, and a tap to open, exactly like any other download.",
+
+      k_start: "Getting started",
+      start_h: "Three minutes to your first session.",
+      s1_h: "Make an account", s1_p: "An email and a password. You're asked what you study — that's how your library shelf gets filled.",
+      s2_h: "Add your subjects", s2_p: "Name the things you're actually revising. Every session you finish gets filed under one of them.",
+      s3_h: "Press start", s3_p: "Set the length, pick a subject and go. Join a room first if you'd rather not do it alone.",
+
+      close_h: "Start on the web. Take it with you.",
+      close_p: "Your account carries the same sessions, subjects and settings across both.",
+      foot_web: "Web version", foot_apk: "Android APK", foot_signin: "Sign in",
+      copy: "Study Planet — made for students.",
+      other_lang: "فارسی"
+    },
+
+    fa: {
+      title: "استادی پلنت — جایی آرام برای درس خواندن",
+      nav_features: "امکانات", nav_android: "اندروید", nav_start: "شروع", nav_open: "باز کردن برنامه",
+      eyebrow: "وب و اندروید · رایگان",
+      h1: ["جایی آرام برای ", "درس خواندن", "."],
+      lede: "یک تایمر پومودورو که حساب وقتت را نگه می‌دارد، اتاق‌های مطالعه برای درس خواندن با دوستان، تقویمی از هر چه خوانده‌ای، و کتابخانه‌ای پر از منابعِ پایهٔ خودت.",
+      cta_web: "باز کردن نسخهٔ وب", cta_web_sub: "در هر مرورگری کار می‌کند",
+      cta_apk: "دانلود برای اندروید", cta_apk_short: "دانلود فایل APK",
+      apk_sub: "فایل APK · اندروید ۸ به بالا", apk_sub_short: "اندروید ۸ به بالا",
+      apk_soon: "لینک به‌زودی",
+      undercta: "برای امتحان کردن تایمر لازم نیست حساب بسازی — وقتی آمار، اتاق‌ها و کتابخانه را خواستی وارد شو.",
+      planet_alt: "تصویری از یک سیارهٔ حلقه‌دار",
+      scroll_hint: "برای گشتن، اسکرول کن",
+      sat_math: "ریاضی", sat_physics: "فیزیک", sat_bio: "زیست", sat_history: "تاریخ",
+
+      k_features: "چه چیزهایی دارد",
+      feat_h: "هرچه یک روزِ درس خواندن لازم دارد، نه بیشتر.",
+      feat_lede: "جلسه‌ها، تنظیمات و درس‌هایت روی حسابت می‌مانند؛ پس همان تایمری که روی لپ‌تاپ تنظیم کردی، روی گوشی هم منتظرت است.",
+      f1_h: "تایمر یا کرنومتر",
+      f1_p: "شمارش معکوس پومودورو یا کرنومترِ رو به بالا. با شروع هرکدام بقیهٔ چیزها پنهان می‌شوند تا صفحه خلوت باشد — و مکث هم وقتت را ثبت می‌کند، پس یک جلسهٔ نیمه‌کاره هیچ‌وقت از دست نمی‌رود.",
+      f2_h: "اتاق‌های مطالعه",
+      f2_p: "اتاق را عمومی کن تا هرکسی پیدایش کند، یا خصوصی با یک لینک دعوت. جدولِ زندهٔ اتاق زمان تمرکز همه و اینکه چه کسی همین حالا مشغول است را نشان می‌دهد.",
+      f3_h: "کاری که به تو سپرده می‌شود",
+      f3_p: "مدیر اتاق می‌تواند کاری با مهلت و مدت پیشنهادی به تو بدهد. همان کار در پنل تایمرت می‌نشیند، با دکمهٔ «بزن بریم» که ساعت را برایت تنظیم می‌کند.",
+      f4_h: "تقویم و زنجیره",
+      f4_p: "هر جلسهٔ تمام‌شده دقیقه‌ها و درسش را ثبت می‌کند. داشبورد یک ماه را یکجا، نمودار ۱۴ روزه و زنجیره‌ات را نشان می‌دهد — روی هر روز بزن تا ببینی دقیقاً چه خوانده‌ای.",
+      f5_h: "درس‌های خودت",
+      f5_p: "درس‌هایی را بساز که واقعاً می‌خوانی، پیش از شروع یکی را انتخاب کن، و هر کدام وقتی را که امروز رویش گذاشته‌ای کنار نامش نشان می‌دهد.",
+      f6_h: "کتابخانه‌ای به اندازهٔ خودت",
+      f6_p: "موقع ثبت‌نام پایه و رشته‌ات را می‌گویی، و قفسه‌ات دقیقاً همان منابعی را دارد که برای آن منتشر شده — دسته‌بندی‌شده، برای باز کردن یا دانلود.",
+      f7_h: "به سلیقهٔ خودت",
+      f7_p: "یک پس‌زمینه انتخاب کن — گرادیان یا عکس خودت — تیره‌اش کن، محوش کن، رنگ تأکید را عوض کن و بین ظاهر کلاسیک و شیشه‌ای جابه‌جا شو. هرچه انتخاب کنی در همهٔ صفحه‌ها با تو می‌آید.",
+      f8_h: "فارسی و English",
+      f8_p: "تمام برنامه به هر دو زبان حرف می‌زند، راست‌به‌چپ هم همین‌طور — تایمر، داشبورد، اتاق‌ها و کتابخانه. هر وقت خواستی زبان را عوض کن؛ هیچ‌کدام از چیزهایی که ذخیره کرده‌ای تغییر نمی‌کند.",
+
+      k_android: "برنامهٔ اندروید",
+      and_h: "بعد از اینکه گوشی را زمین بگذاری، شمردن ادامه دارد.",
+      and_lede: "همان برنامه، داخل یک پوستهٔ نیتیو — به‌علاوهٔ چهار چیزی که فقط از گوشی برمی‌آید.",
+      a1_h: "تایمر در نوار اعلان",
+      a1_p: "جلسه به‌صورت یک سرویس واقعیِ پیش‌زمینه اجرا می‌شود، پس با بسته بودن برنامه — یا حتی بعد از بستنش از لیست اخیر — شمردن ادامه دارد. از همان نوار مکث، ادامه و پایانش بده.",
+      a2_h: "قفل برنامه‌ها",
+      a2_p: "اختیاری و به‌طور پیش‌فرض خاموش. وقتی یک بلوک تمرکز در جریان است، باز کردن برنامه‌ای که اجازه‌اش را نداده‌ای با یک یادآور و راه برگشت پوشانده می‌شود.",
+      a3_h: "یک «وقت تمام» واقعی",
+      a3_p: "هشدار پایان بلوک به‌صورت نیتیو زمان‌بندی می‌شود، پس حتی اگر اندروید خیلی قبل‌تر برنامه را خوابانده باشد هم می‌رسد.",
+      a4_h: "دانلود از کتابخانه",
+      a4_p: "فایل‌های قفسه‌ات از مدیر دانلود خود اندروید رد می‌شوند — اعلان پیشرفت، تلاش دوباره، و یک لمس برای باز کردن؛ دقیقاً مثل هر دانلود دیگری.",
+
+      k_start: "شروع کن",
+      start_h: "سه دقیقه تا اولین جلسه‌ات.",
+      s1_h: "یک حساب بساز", s1_p: "یک ایمیل و یک رمز. از تو می‌پرسیم چه می‌خوانی — قفسهٔ کتابخانه‌ات از همین پر می‌شود.",
+      s2_h: "درس‌هایت را اضافه کن", s2_p: "اسم چیزهایی را بنویس که واقعاً مرور می‌کنی. هر جلسه‌ای که تمام کنی زیر یکی از آن‌ها ثبت می‌شود.",
+      s3_h: "استارت را بزن", s3_p: "مدت را تنظیم کن، یک درس انتخاب کن و شروع کن. اگر دوست نداری تنها باشی، اول به یک اتاق بپیوند.",
+
+      close_h: "از وب شروع کن. با خودت ببرش.",
+      close_p: "حسابت همان جلسه‌ها، درس‌ها و تنظیمات را در هر دو نگه می‌دارد.",
+      foot_web: "نسخهٔ وب", foot_apk: "فایل اندروید", foot_signin: "ورود",
+      copy: "استادی پلنت — ساخته‌شده برای دانش‌آموزها.",
+      other_lang: "English"
+    }
+  };
+
+  /* ======================= language =======================
+     Own key, so nothing here can disturb the ff_prefs the app itself writes. If the
+     visitor has already used the app on this device, start in the language they chose. */
+  function stored() {
+    try {
+      var own = localStorage.getItem("sp_lang");
+      if (own === "en" || own === "fa") return own;
+      var p = JSON.parse(localStorage.getItem("ff_prefs") || "null");
+      if (p && (p.lang === "en" || p.lang === "fa")) return p.lang;
+    } catch (e) {}
+    return (navigator.language || "").toLowerCase().indexOf("fa") === 0 ? "fa" : "en";
+  }
+  var lang = stored();
+
+  function paint() {
+    var d = DICT[lang] || DICT.en;
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === "fa" ? "rtl" : "ltr";
+    document.title = d.title;
+
+    // The headline keeps its gradient word, so it is rebuilt rather than assigned.
+    var h1 = document.querySelector("h1");
+    if (h1) {
+      h1.textContent = "";
+      h1.appendChild(document.createTextNode(d.h1[0]));
+      var em = document.createElement("em");
+      em.textContent = d.h1[1];
+      h1.appendChild(em);
+      h1.appendChild(document.createTextNode(d.h1[2]));
+    }
+
+    document.querySelectorAll("[data-i18n]").forEach(function (el) {
+      var k = el.getAttribute("data-i18n");
+      if (k === "h1") return;
+      // Keys the download wiring owns; it repaints them after this runs.
+      if (k.indexOf("cta_apk_sub") === 0) return;
+      if (d[k] !== undefined) el.textContent = d[k];
+    });
+
+    var sw = document.getElementById("langSw");
+    if (sw) { sw.textContent = d.other_lang; sw.setAttribute("aria-label", d.other_lang); }
+    wireLinks();
+  }
+
+  document.getElementById("langSw").addEventListener("click", function () {
+    lang = lang === "fa" ? "en" : "fa";
+    try { localStorage.setItem("sp_lang", lang); } catch (e) {}
+    paint();
+  });
+
+  /* ======================= the two links =======================
+     An empty apk in LINKS turns every Download control into a disabled "coming soon"
+     rather than an anchor to nowhere — a dead download is worse than an honest wait. */
+  function wireLinks() {
+    var d = DICT[lang] || DICT.en;
+
+    ["ctaWeb", "ctaWeb2", "navWeb", "footWeb"].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el && LINKS.web) el.href = LINKS.web;
+    });
+
+    var subs = { apkSub: "apk_sub", apkSub2: "apk_sub_short", apkSub3: "apk_sub" };
+    var ready = !!LINKS.apk;
+
+    ["ctaApk", "ctaApk2", "ctaApk3"].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (ready) {
+        el.href = LINKS.apk;
+        el.setAttribute("download", "");
+        el.classList.remove("soon");
+        el.removeAttribute("aria-disabled");
+      } else {
+        el.removeAttribute("href");
+        el.removeAttribute("download");
+        el.classList.add("soon");
+        el.setAttribute("aria-disabled", "true");
+      }
+    });
+
+    Object.keys(subs).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = ready ? (LINKS.apkNote || d[subs[id]]) : d.apk_soon;
+    });
+
+    var fa = document.getElementById("footApk");
+    if (fa) {
+      if (ready) { fa.href = LINKS.apk; fa.setAttribute("download", ""); fa.classList.remove("soon"); }
+      else { fa.removeAttribute("href"); fa.classList.add("soon"); }
+    }
+  }
+
+  /* ======================= 2. the starfield =======================
+     One canvas, one rAF. Each star carries a depth z (0 = far, 1 = near) which sets
+     its size, its brightness and how far it slides with the pointer and the scroll —
+     that single number is the whole parallax system, so there are no stacked layers
+     to composite and no DOM nodes per star.
+
+     Count is derived from viewport area and capped hard on touch devices, where the
+     GPU budget is smallest and the screen is too small to show the difference. */
+  var cvs = document.getElementById("stars");
+  var ctx = cvs.getContext("2d");
+  var W = 0, H = 0, DPR = 1;
+  var stars = [], shoots = [], glow = null, sized = false;
+  var mx = 0, my = 0, tmx = 0, tmy = 0;      // pointer, smoothed → target
+  var sy = 0, raf = 0, last = 0, nextShoot = 4000;
+
+  var HUES = ["#ffffff", "#dbe9ff", "#b7cdff", "#ffe7c6", "#e0d0ff"];
+
+  // One pre-rendered glow sprite, stamped for the brightest stars. Building a
+  // gradient per star per frame is what makes canvas starfields expensive.
+  function buildGlow() {
+    var s = 48, o = document.createElement("canvas");
+    o.width = o.height = s;
+    var g = o.getContext("2d"), rg = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+    rg.addColorStop(0, "rgba(255,255,255,.9)");
+    rg.addColorStop(.25, "rgba(190,220,255,.35)");
+    rg.addColorStop(1, "rgba(160,200,255,0)");
+    g.fillStyle = rg; g.fillRect(0, 0, s, s);
+    return o;
+  }
+
+  function build() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    // The element's own box, which CSS has already fitted to the viewport minus any
+    // scrollbar. innerWidth would be that scrollbar too wide.
+    var box = cvs.getBoundingClientRect();
+    W = Math.round(box.width); H = Math.round(box.height);
+    // A page can be laid out before it has a size — a hidden pane, an embedded frame,
+    // a tab restored in the background. Building a 0×0 canvas there would leave an
+    // empty sky for good, so bail and let the observer call back once there is room.
+    if (W < 2 || H < 2) { sized = false; return; }
+    sized = true;
+    cvs.width = Math.round(W * DPR); cvs.height = Math.round(H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+    var n = Math.round(W * H / 4200);
+    n = Math.min(n, fine ? 260 : 110);
+    // A margin either side so parallax never drags an empty edge into view.
+    var mgn = 90;
+    stars.length = 0;
+    for (var i = 0; i < n; i++) {
+      var z = Math.pow(Math.random(), 1.7);          // biased far: a deep field, a few near
+      stars.push({
+        x: -mgn + Math.random() * (W + mgn * 2),
+        y: -mgn + Math.random() * (H + mgn * 2),
+        z: z,
+        r: 0.5 + z * 1.7,
+        b: 0.30 + z * 0.70,
+        c: HUES[(Math.random() * HUES.length) | 0],
+        tw: 0.4 + Math.random() * 1.5,               // twinkle speed
+        tp: Math.random() * 6.28                     // twinkle phase
+      });
+    }
+    if (!glow) glow = buildGlow();
+  }
+
+  function spawnShoot() {
+    // Always downward-ish, from the top half, crossing with the reading direction.
+    var fromLeft = Math.random() < .5;
+    var sp = 7 + Math.random() * 5;
+    shoots.push({
+      x: fromLeft ? -60 : W + 60,
+      y: Math.random() * H * 0.5,
+      vx: (fromLeft ? 1 : -1) * sp,
+      vy: sp * (0.32 + Math.random() * 0.3),
+      len: 90 + Math.random() * 130,
+      life: 0, max: 60 + Math.random() * 30
+    });
+  }
+
+  function render(dt, t) {
+    if (!sized) return;
+    ctx.clearRect(0, 0, W, H);
+
+    // Pointer eases toward its target; scroll is read straight. Both are multiplied
+    // by z, so near stars sweep and far ones barely move.
+    mx += (tmx - mx) * 0.055;
+    my += (tmy - my) * 0.055;
+
+    var i, s, x, y, a, tw;
+    for (i = 0; i < stars.length; i++) {
+      s = stars[i];
+      x = s.x + mx * (6 + s.z * 42) - 0;
+      y = s.y + my * (5 + s.z * 32) - sy * (0.012 + s.z * 0.085);
+
+      // Wrap vertically so scrolling never runs out of sky.
+      var span = H + 180;
+      y = ((y + 90) % span + span) % span - 90;
+
+      tw = reduce ? 1 : 0.72 + 0.28 * Math.sin(t * 0.0011 * s.tw + s.tp);
+      a = s.b * tw;
+
+      if (s.z > 0.86) {
+        ctx.globalAlpha = a * 0.55;
+        var gs = 10 + s.z * 20;
+        ctx.drawImage(glow, x - gs / 2, y - gs / 2, gs, gs);
+      }
+      ctx.globalAlpha = a;
+      ctx.fillStyle = s.c;
+      if (s.r < 1.15) ctx.fillRect(x, y, s.r * 1.5, s.r * 1.5);
+      else { ctx.beginPath(); ctx.arc(x, y, s.r, 0, 6.2832); ctx.fill(); }
+    }
+
+    // Shooting stars: at most two at a time, one gradient each.
+    for (i = shoots.length - 1; i >= 0; i--) {
+      var sh = shoots[i];
+      sh.x += sh.vx; sh.y += sh.vy; sh.life++;
+      if (sh.life > sh.max || sh.x < -240 || sh.x > W + 240 || sh.y > H + 240) { shoots.splice(i, 1); continue; }
+      var fade = Math.sin(Math.PI * (sh.life / sh.max));
+      var d = Math.hypot(sh.vx, sh.vy), ux = sh.vx / d, uy = sh.vy / d;
+      var tx = sh.x - ux * sh.len, ty = sh.y - uy * sh.len;
+      var lg = ctx.createLinearGradient(sh.x, sh.y, tx, ty);
+      lg.addColorStop(0, "rgba(255,255,255," + (0.85 * fade) + ")");
+      lg.addColorStop(.35, "rgba(160,215,255," + (0.35 * fade) + ")");
+      lg.addColorStop(1, "rgba(160,215,255,0)");
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = lg; ctx.lineWidth = 1.6; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(sh.x, sh.y); ctx.lineTo(tx, ty); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    if (!reduce) {
+      nextShoot -= dt;
+      if (nextShoot <= 0 && shoots.length < 2) { spawnShoot(); nextShoot = 6500 + Math.random() * 9000; }
+    }
+  }
+
+  function frame(t) {
+    var dt = Math.min(t - last, 50); last = t;
+    render(dt, t);
+    raf = requestAnimationFrame(frame);
+  }
+  function start() { if (!raf && !reduce) { last = performance.now(); raf = requestAnimationFrame(frame); } }
+  function stop() { if (raf) { cancelAnimationFrame(raf); raf = 0; } }
+
+  build();
+  if (reduce) render(16, 0);        // one static sky, no loop
+  else start();
+
+  // A hidden tab paints nothing; keeping the loop alive there is pure battery.
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) stop(); else start();
+  });
+
+  // ResizeObserver rather than window.onresize alone: it also fires when the page
+  // gains its size after layout (the 0×0 case above) and when a mobile browser's
+  // toolbar collapses, neither of which reliably raises a resize event.
+  var rt = 0;
+  function rebuild() {
+    clearTimeout(rt);
+    rt = setTimeout(function () {
+      var was = sized;
+      build();
+      if (!sized) return;
+      if (reduce) render(16, 0);
+      else if (!was) start();          // first real size: the loop may never have started
+    }, 180);
+  }
+  window.addEventListener("resize", rebuild);
+  if (window.ResizeObserver) new ResizeObserver(rebuild).observe(document.documentElement);
+
+  window.addEventListener("scroll", function () {
+    sy = window.scrollY || window.pageYOffset || 0;
+    if (reduce) render(16, 0);
+  }, { passive: true });
+
+  /* ======================= pointer parallax =======================
+     Only on a real pointer: on a touchscreen there is nothing to follow, and the
+     listener would just cost. Feeds both the canvas and the hero system, which
+     reads --mx/--my straight out of CSS. */
+  if (fine && !reduce) {
+    var sys = document.getElementById("system");
+    window.addEventListener("mousemove", function (e) {
+      tmx = (e.clientX / window.innerWidth - .5) * 2;
+      tmy = (e.clientY / window.innerHeight - .5) * 2;
+      if (sys) {
+        sys.style.setProperty("--mx", tmx.toFixed(3));
+        sys.style.setProperty("--my", tmy.toFixed(3));
+      }
+    }, { passive: true });
+  }
+
+  /* Hover illumination on the cards: one delegated listener, two custom properties. */
+  if (fine) {
+    var cards = document.getElementById("cards");
+    if (cards) cards.addEventListener("mousemove", function (e) {
+      var card = e.target.closest && e.target.closest(".card");
+      if (!card) return;
+      var r = card.getBoundingClientRect();
+      card.style.setProperty("--cx", ((e.clientX - r.left) / r.width * 100).toFixed(1) + "%");
+      card.style.setProperty("--cy", ((e.clientY - r.top) / r.height * 100).toFixed(1) + "%");
+    }, { passive: true });
+  }
+
+  /* ======================= header, regions, scroll spy ======================= */
+  var head = document.querySelector("header");
+  function onScroll() { head.classList.toggle("stuck", (window.scrollY || 0) > 10); }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
+  var REGIONS = ["hero", "features", "android", "start", "close"];
+  var nebs = {}, navs = {};
+  REGIONS.forEach(function (r) {
+    nebs[r] = document.querySelector('.neb[data-region="' + r + '"]');
+    navs[r] = document.querySelector('.nav .lnk[data-nav="' + r + '"]');
+  });
+  function enterRegion(r) {
+    REGIONS.forEach(function (k) {
+      if (nebs[k]) nebs[k].classList.toggle("on", k === r);
+      if (navs[k]) navs[k].classList.toggle("here", k === r);
+    });
+  }
+  if (window.IntersectionObserver) {
+    var regionIO = new IntersectionObserver(function (entries) {
+      // The most-visible section wins, so a short section between two tall ones
+      // can't flicker the backdrop on every pixel of scroll.
+      var best = null;
+      entries.forEach(function (e) {
+        if (e.isIntersecting && (!best || e.intersectionRatio > best.intersectionRatio)) best = e;
+      });
+      if (best) enterRegion(best.target.id);
+    }, { threshold: [.15, .4, .7] });
+    REGIONS.forEach(function (r) {
+      var el = document.getElementById(r);
+      if (el) regionIO.observe(el);
+    });
+  }
+
+  /* ======================= reveal ======================= */
+  var reveal = document.querySelectorAll(".rise");
+  function revealAll() { reveal.forEach(function (el) { el.classList.add("in"); }); }
+
+  if (window.IntersectionObserver && !reduce) {
+    document.documentElement.classList.add("reveal");   // only now is anything hidden
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e, i) {
+        if (!e.isIntersecting) return;
+        var el = e.target;
+        setTimeout(function () { el.classList.add("in"); }, Math.min(i, 5) * 70);
+        io.unobserve(el);
+      });
+    }, { rootMargin: "0px 0px -8% 0px", threshold: .08 });
+    reveal.forEach(function (el) { io.observe(el); });
+    // Backstop: an observer that never delivers (a background tab on first paint, a
+    // browser that throttles it) would otherwise leave the page looking empty.
+    setTimeout(revealAll, 2600);
+  }
+
+  paint();
+})();
+</script>
+</body>
+</html>

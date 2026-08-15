@@ -262,6 +262,7 @@
       <div class="navbtns">
         <a class="nbtn" href="/">⏱ <span data-i18n="timer">Timer</span></a>
         <a class="nbtn" href="/rooms">👥 <span data-i18n="rooms">Rooms</span></a>
+        <a class="nbtn" href="/library">📚 <span data-i18n="library">Library</span></a>
         <button class="nbtn" id="langBtn">🌐 <span id="langLabel">English</span></button>
         <button class="nbtn" id="logout" data-i18n="sign_out">Sign out</button>
       </div>
@@ -333,6 +334,17 @@
         <h2 data-i18n="profile">Profile</h2>
         <label for="pName" data-i18n="display_name">Display name</label>
         <input id="pName" type="text" maxlength="60" data-i18n-ph="your_name" placeholder="Your name">
+        <div style="margin-top:14px">
+          <!-- Optional here for the same reason it is optional at sign-up: nothing in the app
+               needs it. Emptying the box and saving removes it, which has to keep working. -->
+          <label for="pEmail"><span data-i18n="email">Email</span>
+            <span style="font-weight:400;opacity:.7" data-i18n="optional_suffix">— optional</span></label>
+          <input id="pEmail" type="email" maxlength="254" placeholder="you@example.com" autocomplete="email">
+        </div>
+        <div style="margin-top:14px">
+          <label data-i18n="phone">Mobile number</label>
+          <div id="pPhone" class="mono" style="font-size:14px;opacity:.85;direction:ltr">—</div>
+        </div>
         <div style="margin-top:14px">
           <label data-i18n="avatar">Avatar</label>
           <div class="avs" id="avs"></div>
@@ -430,12 +442,17 @@
     $("#loading").style.display="none"; $("#content").style.display="block";
 
     // ---- identity
-    const av=u.avatar||"🦊", nm=u.name||u.email.split("@")[0];
+    // Email is optional, so it can be neither the name fallback nor the line under it any
+    // more: the server sends a displayName it worked out, and the line shows whichever of
+    // the number and the email this account actually has.
+    const av=u.avatar||"🦊", nm=u.name||u.displayName||"";
     $("#hAvatar").textContent=av;
     $("#heroChip").textContent=av;
     $("#hName").textContent=nm;
-    $("#hEmail").textContent=u.email;
+    $("#hEmail").textContent=u.phone||u.email||"";
     $("#pName").value=u.name||"";
+    $("#pEmail").value=u.email||"";
+    $("#pPhone").textContent=u.phone||"—";
     selAvatar=av;
     const avs=$("#avs"); avs.innerHTML="";
     (AVATARS.includes(selAvatar)?AVATARS:[selAvatar,...AVATARS]).forEach(a=>{
@@ -507,14 +524,23 @@
 
   $("#saveProfile").onclick=async ()=>{
     const btn=$("#saveProfile");
+    // An empty box is a real value here — it means "I don't want an email on this account" —
+    // so it is sent as "" and the server clears the column rather than skipping the field.
+    const email=$("#pEmail").value.trim();
+    if(email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){
+      btn.textContent=t("error"); setTimeout(()=>btn.textContent=t("save"),1600);
+      $("#pEmail").focus(); return;
+    }
     try{
       const r=await fetch("/api/profile",{method:"PATCH",credentials:"same-origin",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({name:$("#pName").value.trim(),avatar:selAvatar})});
+        body:JSON.stringify({name:$("#pName").value.trim(),avatar:selAvatar,email:email})});
       const j=await r.json();
       if(j&&j.user){ $("#hAvatar").textContent=j.user.avatar; $("#heroChip").textContent=j.user.avatar;
-        $("#hName").textContent=j.user.name||j.user.email.split("@")[0];
+        $("#hName").textContent=j.user.name||j.user.displayName||"";
+        $("#hEmail").textContent=j.user.phone||j.user.email||"";
+        $("#pEmail").value=j.user.email||"";
         btn.textContent=t("saved"); btn.classList.add("saved"); setTimeout(()=>{btn.textContent=t("save");btn.classList.remove("saved");},1600);
-      }
+      }else{ btn.textContent=t("error"); setTimeout(()=>btn.textContent=t("save"),1600); }
     }catch(e){ btn.textContent=t("error"); setTimeout(()=>btn.textContent=t("save"),1600); }
   };
 

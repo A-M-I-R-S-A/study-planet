@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16303a">
+<meta name="robots" content="noindex, nofollow">
+<title>Focus — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Same tokens and the same card as login.html — the panel is part of this app, not a
+     bolted-on tool, so its front door reads as the app's front door. */
+  :root{--accent:oklch(0.7 0.12 62);--accent-ink:#16303a;--cream:#faf6ee;--cream2:#efe9de;
+        --ink:#2b2824;--muted:#8a8175;--white:#fbfdfd;--danger:#c0392b}
+  *{box-sizing:border-box}
+  html{-webkit-tap-highlight-color:transparent}
+  :focus:not(:focus-visible){outline:none}
+  html,body{height:100%}
+  body{margin:0;font-family:'Instrument Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    color:var(--ink);background:linear-gradient(180deg,#1f2838,#0d1420),#16303a;min-height:100vh;
+    display:flex;align-items:center;justify-content:center;-webkit-font-smoothing:antialiased;
+    padding:calc(24px + env(safe-area-inset-top)) max(24px,env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left))}
+  .mono{font-family:'DM Mono',ui-monospace,monospace}
+  .card{width:100%;max-width:410px;background:var(--cream);border-radius:24px;padding:34px 30px 28px;
+    box-shadow:0 24px 70px rgba(0,0,0,.5)}
+  .brand{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:6px}
+  .brand .dot{width:12px;height:12px;border-radius:50%;background:var(--accent)}
+  .brand b{font-size:19px;letter-spacing:-.01em}
+  .badge{font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+    background:var(--ink);color:var(--cream);padding:3px 8px;border-radius:7px}
+  .tag{text-align:center;color:var(--muted);font-size:13px;margin-bottom:26px}
+  label{display:block;font-size:12.5px;color:var(--muted);margin:0 2px 6px;font-weight:500}
+  .field{margin-bottom:16px}
+  input{width:100%;border:1px solid rgba(0,0,0,.14);background:#fff;border-radius:12px;padding:13px 14px;
+    font-size:15px;color:var(--ink);outline:none;transition:.15s;font-family:inherit}
+  input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in oklch,var(--accent) 22%,transparent)}
+  .submit{width:100%;height:50px;border:none;border-radius:14px;background:var(--accent);color:var(--accent-ink);
+    font-size:15px;font-weight:700;cursor:pointer;margin-top:6px;transition:.15s;font-family:inherit}
+  .submit:hover{filter:brightness(1.06)}
+  .submit:disabled{opacity:.6;cursor:default}
+  .msg{min-height:18px;text-align:center;font-size:13px;margin-top:14px}
+  .msg.err{color:var(--danger)}
+  .msg.ok{color:#2e7d46}
+  .foot{text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid rgba(0,0,0,.08)}
+  .foot a{color:var(--muted);font-size:12.5px;text-decoration:none}
+  .foot a:hover{color:var(--ink)}
+  .note{margin-top:14px;font-size:11.5px;color:var(--muted);text-align:center;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="brand"><span class="dot"></span><b>Focus</b><span class="badge">Admin</span></div>
+  <div class="tag">Restricted area — owner access only.</div>
+
+  <form id="form" autocomplete="off">
+    <div class="field">
+      <label for="username">Username</label>
+      <input id="username" name="username" type="text" autocomplete="username" required autofocus>
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+    </div>
+    <button class="submit" id="submit" type="submit">Sign in</button>
+    <div class="msg" id="msg" role="status" aria-live="polite"></div>
+  </form>
+
+  <div class="note">Sessions expire after 8 hours, or 60 minutes of inactivity.</div>
+  <div class="foot"><a href="/">← Back to Focus</a></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var form=document.getElementById("form"), msg=document.getElementById("msg"),
+      btn=document.getElementById("submit");
+  function say(text,kind){msg.textContent=text;msg.className="msg"+(kind?" "+kind:"");}
+
+  form.addEventListener("submit",function(e){
+    e.preventDefault();
+    var username=document.getElementById("username").value.trim();
+    var password=document.getElementById("password").value;
+    if(!username||!password){say("Enter your username and password.","err");return;}
+    btn.disabled=true; say("Signing in…");
+    fetch("/api/admin/login",{
+      method:"POST",credentials:"same-origin",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({username:username,password:password})
+    }).then(function(r){return r.json().then(function(j){return {ok:r.ok,body:j};});})
+      .then(function(res){
+        if(!res.ok){btn.disabled=false;say(res.body.error||"Sign-in failed.","err");
+          document.getElementById("password").value="";return;}
+        // The panel is fetched fresh from the server, which only hands it over once the
+        // cookie set by this response is present. Nothing about the session is kept here.
+        say("Welcome back.","ok");
+        location.href="/admin";
+      }).catch(function(){btn.disabled=false;say("Couldn't reach the server.","err");});
+  });
+})();
+</script>
+</body>
+</html>
