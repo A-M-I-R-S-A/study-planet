@@ -70,6 +70,12 @@ MAX_BODY = 8 * 1024 * 1024   # cap request bodies (bytes): stops memory-exhausti
 MAX_PW = 128                 # cap password length so PBKDF2 hashing cost stays bounded
 # Set SECURE_COOKIES=1 when serving over HTTPS so the session cookie gets the Secure flag.
 SECURE_COOKIES = os.environ.get("SECURE_COOKIES", "").lower() in ("1", "true", "yes", "on")
+# Set FORCE_HTTPS=1 in production to redirect plain-HTTP requests to the https:// URL and
+# send HSTS on the secure ones. Off by default because local `python server.py` has no TLS
+# in front of it -- turning this on without a working certificate makes the site unreachable.
+# It needs TRUST_PROXY=1 as well: the scheme is read from the X-Forwarded-Proto header that
+# passenger_wsgi.py stamps from the WSGI environ, since the app itself only ever speaks HTTP.
+FORCE_HTTPS = os.environ.get("FORCE_HTTPS", "").lower() in ("1", "true", "yes", "on")
 # "Study day" boundary. Days (streaks, calendar, per-day stats) are bucketed on UTC shifted
 # by DAY_OFFSET_MIN minutes, so behaviour is the same wherever the server runs. 0 = UTC;
 # e.g. 210 for Iran (UTC+3:30), 60 for CET, -480 for US Pacific. Set it to your users' zone.
@@ -341,6 +347,12 @@ SECURITY_HEADERS = [
      "form-action 'self'; "
      "frame-ancestors 'none'"),
 ]
+
+# Sent only on responses that actually travelled over TLS (see Handler._is_https), never on
+# plain HTTP -- a browser ignores it there anyway, and a year-long promise sent by a site
+# whose certificate later breaks locks every visitor out with no way back. A year is the
+# shortest max-age browsers and the preload list take seriously.
+HSTS_HEADER = ("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 
 # The only file types ever served as static assets. Everything the frontend needs — the
 # pages, the favicon, the two shared scripts, uploaded background images — is one of these.
@@ -865,6 +877,16 @@ def invite_code(raw):
 # Set TRUST_PROXY=1 only when behind a reverse proxy you control, so the client
 # IP is read from X-Forwarded-For instead of the (proxy's) socket address.
 TRUST_PROXY = os.environ.get("TRUST_PROXY", "").lower() in ("1", "true", "yes", "on")
+
+# FORCE_HTTPS reads the scheme from X-Forwarded-Proto, which _is_https() only believes when
+# TRUST_PROXY is set. Without it every request -- including the HTTPS ones -- looks insecure,
+# so the redirect would send https:// back to https:// forever and take the whole site down.
+# Refusing the combination here turns that outage into one startup line in the log.
+if FORCE_HTTPS and not TRUST_PROXY:
+    print("  ! FORCE_HTTPS ignored: it needs TRUST_PROXY=1 to tell http from https "
+          "(without it, every request would redirect to itself). Set both, or neither.")
+    FORCE_HTTPS = False
+
 _rl_lock = threading.Lock()
 _rl_hits = {}  # key -> [timestamps]; trimmed on access and hourly by purge_expired()
 
@@ -1651,6 +1673,8 @@ class Handler(SimpleHTTPRequestHandler):
     def end_headers(self):
         for k, v in SECURITY_HEADERS:
             self.send_header(k, v)
+        if FORCE_HTTPS and self._is_https():
+            self.send_header(*HSTS_HEADER)
         # Only add a Cache-Control if the handler hasn't already chosen one. _json() and the
         # admin pages send their own ("no-store"), and this used to append a second, weaker
         # header next to it -- two Cache-Control lines on one response, with which of them
@@ -1761,6 +1785,45 @@ class Handler(SimpleHTTPRequestHandler):
                 return xff.split(",")[0].strip()
         return self.client_address[0] if self.client_address else "?"
 
+    def _is_https(self):
+        """True when the request reached the browser over TLS.
+
+        The socket is never the answer: Apache terminates TLS and hands Passenger a plain
+        HTTP request, so every request looks insecure from in here. X-Forwarded-Proto is what
+        carries the truth, and passenger_wsgi.py stamps it from wsgi.url_scheme -- which
+        Passenger sets from the vhost the request actually arrived on -- overwriting anything
+        a client sent under that name. Gated on TRUST_PROXY for the same reason _client_ip()
+        is: with no trusted proxy in front, the header is just something a client typed.
+        """
+        if not TRUST_PROXY:
+            return False
+        proto = self.headers.get("X-Forwarded-Proto") or ""
+        return proto.split(",")[0].strip().lower() == "https"
+
+    def _require_https(self):
+        """Redirect a plain-HTTP request to the https:// URL. True once it has answered.
+
+        No-op unless FORCE_HTTPS is set, so local development over http is unaffected. 301 for
+        GET/HEAD and 308 for the rest: a 301 would let a client turn a POST into a GET and
+        drop the body, which for this API means a silently discarded write.
+        """
+        if not FORCE_HTTPS or self._is_https():
+            return False
+        host = self.headers.get("Host") or ""
+        # Host and the request target are both client-controlled, so neither is pasted into a
+        # Location as-is: anything but a bare hostname[:port] and an origin-form path would
+        # make this an open redirect (a request line in absolute form -- "GET http://elsewhere/"
+        # -- is the one that would otherwise send visitors off-site). The port goes with the
+        # host: the https URL belongs on 443, whatever port the plain-HTTP request came in on.
+        if not self.path.startswith("/") or not re.match(r"^[A-Za-z0-9.\-]+(:\d+)?$", host):
+            self._json(400, {"error": "bad host"})
+            return True
+        self.send_response(301 if self.command in ("GET", "HEAD") else 308)
+        self.send_header("Location", "https://%s%s" % (host.split(":")[0], self.path))
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+        return True
+
     def _set_cookie(self, token):
         sec = "; Secure" if SECURE_COOKIES else ""
         return [("Set-Cookie",
@@ -1834,27 +1897,31 @@ class Handler(SimpleHTTPRequestHandler):
             return True
         return False
 
+    # Every entry point starts with the same scheme check. It sits here rather than in
+    # _resolve_static()/api() so a plain-HTTP request is turned away before any routing,
+    # auth or database work happens -- and, more to the point, before a session cookie can
+    # be read off or written to a connection anyone on the path can read.
     def do_GET(self):
-        if self._resolve_static():
+        if self._require_https() or self._resolve_static():
             return
         return super().do_GET()
 
     def do_HEAD(self):
-        if self._resolve_static():
+        if self._require_https() or self._resolve_static():
             return
         return super().do_HEAD()
 
     def do_POST(self):
-        return self.api()
+        return None if self._require_https() else self.api()
 
     def do_PUT(self):
-        return self.api()
+        return None if self._require_https() else self.api()
 
     def do_PATCH(self):
-        return self.api()
+        return None if self._require_https() else self.api()
 
     def do_DELETE(self):
-        return self.api()
+        return None if self._require_https() else self.api()
 
     def api(self):
         p = urlparse(self.path).path

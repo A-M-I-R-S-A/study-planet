@@ -37,4 +37,4 @@ __pycache__/
 mobile/node_modules/
 mobile/www/
 # Uncomment the next line if you don't want the generated native project tracked:
-# mobile/android/
+mobile/*

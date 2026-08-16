@@ -77,7 +77,8 @@ Add each, then **Save**:
 | Variable | Value | Why |
 |---|---|---|
 | `SECURE_COOKIES` | `1` | HTTPS — session cookie gets the `Secure` flag |
-| `TRUST_PROXY` | `1` | Read the real client IP from `X-Forwarded-For` (rate limits) |
+| `TRUST_PROXY` | `1` | Read the real client IP from `X-Forwarded-For` (rate limits), and the real scheme from `X-Forwarded-Proto` |
+| `FORCE_HTTPS` | `1` | Redirect `http://` to `https://` and send HSTS. **Requires `TRUST_PROXY=1`** — see below |
 | `DAY_OFFSET_MIN` | `210` | Iran is UTC+3:30 — day boundary for streaks/calendar |
 | `ADMIN_USERNAME` | `Amir` | Seeds the admin on first run |
 | `ADMIN_PASSWORD` | *your NEW password* | Rotated — not the old plaintext one |
@@ -89,6 +90,30 @@ Add each, then **Save**:
 
 Copy the SMS/quotes values out of your local `.txt` files into these fields; don't upload the
 files. Env vars win over the files, and the files won't be present in production anyway.
+
+### Locking the site to HTTPS
+
+A certificate being installed is not the same as HTTPS being *used*. Until you do this, the
+site answers on plain `http://` too, and — because `SECURE_COOKIES=1` above marks the session
+cookie `Secure` — anyone who lands there **cannot stay signed in**: the browser throws the
+cookie away. Two layers, both worth having:
+
+1. **cPanel → Domains → study-planet.ir → Force HTTPS Redirect: on.** Apache answers the
+   redirect before the request ever reaches Python. This is the one that matters.
+2. **`FORCE_HTTPS=1` + `TRUST_PROXY=1`** (the table above). `server.py` redirects anything
+   that still arrives over http — 301 for GET/HEAD, 308 for writes so the body survives — and
+   adds `Strict-Transport-Security` to HTTPS responses, which is what stops browsers from
+   trying http again for a year. It's the backstop for a host-level setting getting flipped.
+
+**`FORCE_HTTPS` without `TRUST_PROXY` is refused on purpose.** The app only ever speaks plain
+HTTP to Passenger, so `X-Forwarded-Proto` is its only view of the real scheme, and
+`TRUST_PROXY` is what makes it trust that header. Set one without the other and every request
+would look insecure — including the HTTPS ones — so the redirect would point https at itself
+forever. The server disables the flag and logs `! FORCE_HTTPS ignored:` instead of doing that.
+
+Mind the one-way door: HSTS is a promise to browsers that lasts a year. Confirm HTTPS works
+(step 5) *before* turning `FORCE_HTTPS` on. If the certificate later lapses, visitors who
+already have the header get an error page with no "proceed anyway" — renew, don't wait.
 
 ---
 
@@ -113,6 +138,16 @@ the same startup lines you see locally.
 - `https://study-planet.ir/admin` → sign in with the new admin credentials
 
 If pages load but the SMS never comes, re-check the three `SMSIR_*` values and restart.
+
+Then confirm the HTTPS lock from step 3 is actually on:
+
+```bash
+curl -sI http://study-planet.ir/ | head -2      # want: 301, Location: https://study-planet.ir/
+curl -sI https://study-planet.ir/ | grep -i strict-transport   # want: max-age=31536000
+```
+
+A `200` on the first line means neither layer is redirecting: re-check the cPanel toggle, and
+look for `! FORCE_HTTPS ignored:` in `stderr.log` (that means `TRUST_PROXY` is unset).
 
 ---
 
@@ -163,7 +198,13 @@ The site root (`/`) serves the **landing page**; the timer app lives at `/app`. 
 links out to the web app (its `LINKS.web`, already `/app`) and the Android APK (edit the
 `LINKS` object at the top of its script).
 
-The Capacitor shell currently remote-loads a **dev LAN IP** (`server.url` in
-`mobile/capacitor.config.json`). When you rebuild the APK for production, point it at
-**`https://study-planet.ir/app`** — the timer route, **not** the site root, which is now the
-landing page. That's a separate step from this web deploy.
+The Capacitor shell remote-loads `server.url` from `mobile/capacitor.config.json`, which is
+already **`https://study-planet.ir/app`** — the timer route, **not** the site root, which is
+now the landing page. Keep it on `https://`: only the debug overlay at
+`mobile/android/app/src/debug/AndroidManifest.xml` sets `usesCleartextTraffic`, so a
+**release** APK pointed at an `http://` URL loads nothing at all on Android 9+.
+
+That overlay is why the old dev-LAN-IP builds worked over plain http. If a phone is still
+loading the app over http, it is running one of those debug builds — the fix is installing
+the current APK, not a config change. `server.url` is baked in at build time, so any edit to
+it means a rebuild.

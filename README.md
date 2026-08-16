@@ -270,7 +270,12 @@ quickest way to confirm a targeting rule does what you meant.
 - Invites are share-links/codes (no email is sent).
 - Runs on `127.0.0.1` for local use. To expose it publicly you'd put it behind a
   real web server (nginx etc.) with HTTPS. When you do, start it with
-  `SECURE_COOKIES=1` so the session cookie carries the `Secure` flag.
+  `SECURE_COOKIES=1` so the session cookie carries the `Secure` flag, plus
+  `FORCE_HTTPS=1` and `TRUST_PROXY=1` so plain-HTTP requests are redirected
+  (301 for GET/HEAD, 308 for writes) and HTTPS responses carry HSTS. Both are off
+  by default — local runs have no TLS — and `FORCE_HTTPS` refuses to act without
+  `TRUST_PROXY`, since `X-Forwarded-Proto` is the only thing that tells the two
+  schemes apart from in here.
 - Security headers (CSP, `X-Frame-Options`, `X-Content-Type-Options`,
   `Referrer-Policy`) are sent on every response; request bodies are capped at 8 MB
   and passwords at 128 chars; dotfiles/`.git`/`__pycache__` and directory listings

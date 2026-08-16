@@ -109,7 +109,16 @@ def _build_request(environ):
         name = key[5:].replace("_", "-").title()
         if name.lower() in ("content-length", "content-type"):
             continue
+        # Dropped here and re-added below from wsgi.url_scheme. server.py's HTTPS redirect
+        # and HSTS both hang off this header, so it must say what the *vhost* saw, not what
+        # a client typed -- a forged "https" would otherwise be a free pass past the redirect.
+        if name.lower() == "x-forwarded-proto":
+            continue
         lines.append("%s: %s" % (name, value))
+    # Passenger sets wsgi.url_scheme from the vhost the request arrived on, which is the only
+    # trustworthy view of the scheme: the app itself is always spoken to over plain HTTP.
+    lines.append("X-Forwarded-Proto: " +
+                 ("https" if environ.get("wsgi.url_scheme") == "https" else "http"))
     head = ("\r\n".join(lines) + "\r\n\r\n").encode("latin-1")
     return head + body
 
