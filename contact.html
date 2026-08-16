@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#04050d">
 <title>Contact — Study Planet</title>
-<meta name="description" content="Reach Study Planet directly — bug reports, feature ideas, and questions about the app all go to the one person who built it.">
+<meta name="description" content="Reach Study Planet directly by phone or email — bug reports, feature ideas, and questions about the app all go to the people who build it.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Contact — Study Planet">
-<meta property="og:description" content="Reach Study Planet directly — bug reports, feature ideas, and questions about the app all go to the one person who built it.">
+<meta property="og:description" content="Reach Study Planet directly by phone or email — bug reports, feature ideas, and questions about the app all go to the people who build it.">
 <meta name="twitter:card" content="summary">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23070a1c'/%3E%3Ccircle cx='16' cy='15' r='7' fill='%23f3c67d'/%3E%3Cellipse cx='16' cy='15' rx='12' ry='4.2' fill='none' stroke='%237fc9ff' stroke-width='1.6' transform='rotate(-20 16 15)'/%3E%3C/svg%3E">
+<link rel="icon" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&family=Lalezar&family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
@@ -139,9 +139,13 @@
     display:block;overflow-wrap:anywhere}
   a.cvalue:hover{color:var(--cyan)}
   .crow .csub{font-size:13px;color:var(--dim);margin-top:3px}
-  /* A phone number reads left-to-right in both languages — flipping its digit order
-     in RTL would make it wrong, not just mirrored. Same rule login.html uses. */
-  .tel{direction:ltr;unicode-bidi:isolate;display:inline-block}
+  /* A phone number, an address and a Latin name all read left-to-right in both
+     languages — flipping their order in RTL would make them wrong, not just
+     mirrored. Same rule login.html uses for the phone field. */
+  .tel,.ltr{direction:ltr;unicode-bidi:isolate;display:inline-block}
+  /* An address is longer than a phone number; give it room before it wraps. */
+  .crow .cvalue.mail{font-size:15.5px}
+  @media (max-width:420px){.crow .cvalue.mail{font-size:14px}}
   .copy-btn{flex:none;border:1px solid rgba(160,185,255,.24);background:rgba(140,170,255,.1);
     color:var(--ink);font-family:inherit;font-size:12.5px;font-weight:600;padding:9px 14px;border-radius:10px;
     cursor:pointer;transition:.2s;display:flex;align-items:center;gap:7px}
@@ -149,6 +153,11 @@
   .copy-btn.done{background:rgba(126,224,168,.16);border-color:rgba(126,224,168,.4);color:var(--good)}
   @media (max-width:560px){
     .crow{flex-wrap:wrap}
+    /* The button drops to its own line, indented past the icon to sit under the
+       value. That only happens if the value claims the whole first line: with a
+       flex-basis of 0 it shares the line instead and gets squeezed to a column
+       of one digit per row. 66px is the icon plus the row's gap. */
+    .crow .cbody{flex-basis:calc(100% - 66px)}
     .copy-btn{margin-inline-start:66px}
   }
 
@@ -253,14 +262,14 @@
   <div class="wrap hero">
     <span class="eyebrow"><span class="d"></span><span data-i18n="eyebrow">Contact</span></span>
     <h1 data-i18n="h1">Talk to <em>a person</em>, not a form.</h1>
-    <p class="lede" data-i18n="lede">Study Planet is built and run by one person. Bug reports, feature ideas, and questions about bringing it to a school or library all land in the same place.</p>
+    <p class="lede" data-i18n="lede">Study Planet is run by two people, not a support desk. Bug reports, feature ideas, and questions about bringing it to a school or library all land in the same place.</p>
   </div>
 
   <section id="reach">
     <div class="wrap">
       <div class="sec-head rise">
         <div class="kicker" data-i18n="k_reach">Reach out</div>
-        <h2 data-i18n="reach_h">Every channel goes to the same person.</h2>
+        <h2 data-i18n="reach_h">Every channel reaches us directly.</h2>
       </div>
 
       <div class="contact-card rise">
@@ -268,12 +277,48 @@
           <div class="ic" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 3h4l2 5-2.5 1.5a12 12 0 0 0 6 6L15.5 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3.5 5a2 2 0 0 1 2-2Z"/></svg></div>
           <div class="cbody">
             <div class="clabel" data-i18n="l_phone">Phone</div>
-            <a class="cvalue" id="telLink" href="tel:+989375317743"><span class="tel">0937 531 7743</span></a>
-            <div class="csub" data-i18n="phone_sub">Call, or text if that's easier</div>
+            <a class="cvalue" href="tel:+989375317743"><span class="ltr">0937 531 7743</span></a>
+            <div class="csub" data-i18n="phone_sub">AmirHossein — call, or text if that's easier</div>
           </div>
-          <button class="copy-btn" id="copyBtn" type="button">
+          <button class="copy-btn" type="button" data-copy="09375317743">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-            <span id="copyLabel" data-i18n="copy_btn">Copy</span>
+            <span class="copy-label" data-i18n="copy_btn">Copy</span>
+          </button>
+        </div>
+        <div class="crow">
+          <div class="ic" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 3h4l2 5-2.5 1.5a12 12 0 0 0 6 6L15.5 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3.5 5a2 2 0 0 1 2-2Z"/></svg></div>
+          <div class="cbody">
+            <div class="clabel" data-i18n="l_phone2">Phone</div>
+            <a class="cvalue" href="tel:+989371247924"><span class="ltr">0937 124 7924</span></a>
+            <div class="csub" data-i18n="phone2_sub">MohammadAmin — call, or text if that's easier</div>
+          </div>
+          <button class="copy-btn" type="button" data-copy="09371247924">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span class="copy-label" data-i18n="copy_btn">Copy</span>
+          </button>
+        </div>
+        <div class="crow">
+          <div class="ic" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="15" rx="2.6"/><path d="m3.6 6.6 8.4 6 8.4-6"/></svg></div>
+          <div class="cbody">
+            <div class="clabel" data-i18n="l_mail">Email</div>
+            <a class="cvalue mail" href="mailto:studypla@study-planet.ir"><span class="ltr">studypla@study-planet.ir</span></a>
+            <div class="csub" data-i18n="mail_sub">The app's own inbox — anything about Study Planet</div>
+          </div>
+          <button class="copy-btn" type="button" data-copy="studypla@study-planet.ir">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span class="copy-label" data-i18n="copy_btn">Copy</span>
+          </button>
+        </div>
+        <div class="crow">
+          <div class="ic" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="15" rx="2.6"/><path d="m3.6 6.6 8.4 6 8.4-6"/></svg></div>
+          <div class="cbody">
+            <div class="clabel" data-i18n="l_mail2">Email</div>
+            <a class="cvalue mail" href="mailto:sadeghi.mazidi.amir.hossein@gmail.com"><span class="ltr">sadeghi.mazidi.amir.hossein@gmail.com</span></a>
+            <div class="csub" data-i18n="mail2_sub">Straight to AmirHossein's own inbox</div>
+          </div>
+          <button class="copy-btn" type="button" data-copy="sadeghi.mazidi.amir.hossein@gmail.com">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span class="copy-label" data-i18n="copy_btn">Copy</span>
           </button>
         </div>
         <div class="crow">
@@ -285,11 +330,11 @@
           </div>
         </div>
         <div class="crow">
-          <div class="ic" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></div>
+          <div class="ic" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.6"/><path d="M2 20c0-3.9 3.1-6.4 7-6.4s7 2.5 7 6.4"/><path d="M16.4 4.9a3.6 3.6 0 0 1 0 6.6M18 14c2.9.7 4.4 2.9 4.4 6"/></svg></div>
           <div class="cbody">
             <div class="clabel" data-i18n="l_who">Who you'll reach</div>
-            <span class="cvalue">AmirHossein Sadeghi</span>
-            <div class="csub" data-i18n="who_sub">The person who built Study Planet — no support queue in between</div>
+            <span class="cvalue"><span class="ltr">AmirHossein Sadeghi · MohammadAmin Esmaeili</span></span>
+            <div class="csub" data-i18n="who_sub">The two people behind Study Planet — no support queue in between</div>
           </div>
         </div>
       </div>
@@ -364,12 +409,16 @@ var LINKS = { web: "/app", apk: "/study-planet.apk", apkNote: "" };
       nav_features: "Features", nav_android: "Android", nav_about: "About", nav_contact: "Contact", nav_open: "Open the app",
       eyebrow: "Contact",
       h1: ["Talk to ", "a person", ", not a form."],
-      lede: "Study Planet is built and run by one person. Bug reports, feature ideas, and questions about bringing it to a school or library all land in the same place.",
+      lede: "Study Planet is run by two people, not a support desk. Bug reports, feature ideas, and questions about bringing it to a school or library all land in the same place.",
       k_reach: "Reach out",
-      reach_h: "Every channel goes to the same person.",
-      l_phone: "Phone", phone_sub: "Call, or text if that's easier", copy_btn: "Copy", copied_btn: "Copied",
+      reach_h: "Every channel reaches us directly.",
+      l_phone: "Phone", phone_sub: "AmirHossein — call, or text if that's easier",
+      l_phone2: "Phone", phone2_sub: "MohammadAmin — call, or text if that's easier",
+      l_mail: "Email", mail_sub: "The app's own inbox — anything about Study Planet",
+      l_mail2: "Email", mail2_sub: "Straight to AmirHossein's own inbox",
+      copy_btn: "Copy", copied_btn: "Copied",
       l_loc: "Location", loc_val: "Shiraz, Fars, Iran", loc_sub: "Iran Standard Time, UTC+3:30",
-      l_who: "Who you'll reach", who_sub: "The person who built Study Planet — no support queue in between",
+      l_who: "Who you'll reach", who_sub: "The two people behind Study Planet — no support queue in between",
       r1_h: "Found a bug", r1_p: "What you were doing and what happened instead — that's usually enough to track it down.",
       r2_h: "Have an idea", r2_p: "Most of what's in the app started as exactly this kind of message.",
       r3_h: "A school or library", r3_p: "Want material published for your own students' grade and major? Say so and it can be arranged.",
@@ -383,12 +432,16 @@ var LINKS = { web: "/app", apk: "/study-planet.apk", apkNote: "" };
       nav_features: "امکانات", nav_android: "اندروید", nav_about: "درباره ما", nav_contact: "تماس با ما", nav_open: "باز کردن برنامه",
       eyebrow: "تماس با ما",
       h1: ["با ", "یک آدم", " حرف بزن، نه یک فرم."],
-      lede: "استادی پلنت را یک نفر می‌سازد و اداره می‌کند. گزارش باگ، ایدهٔ جدید، و سؤال دربارهٔ آوردنش به یک مدرسه یا کتابخانه — همه به یک جا می‌رسد.",
+      lede: "استادی پلنت را دو نفر می‌چرخانند، نه یک میز پشتیبانی. گزارش باگ، ایدهٔ جدید، و سؤال دربارهٔ آوردنش به یک مدرسه یا کتابخانه — همه به یک جا می‌رسد.",
       k_reach: "در تماس باش",
-      reach_h: "هر راهی، به همان یک نفر می‌رسد.",
-      l_phone: "تلفن", phone_sub: "زنگ بزن، یا اگر راحت‌تری پیامک بده", copy_btn: "کپی", copied_btn: "کپی شد",
+      reach_h: "هر راهی، مستقیم به خودِ ما می‌رسد.",
+      l_phone: "تلفن", phone_sub: "امیرحسین — زنگ بزن، یا اگر راحت‌تری پیامک بده",
+      l_phone2: "تلفن", phone2_sub: "محمدامین — زنگ بزن، یا اگر راحت‌تری پیامک بده",
+      l_mail: "ایمیل", mail_sub: "صندوق ایمیل خودِ برنامه — برای هر چیزی دربارهٔ استادی پلنت",
+      l_mail2: "ایمیل", mail2_sub: "مستقیم به ایمیل شخصی امیرحسین",
+      copy_btn: "کپی", copied_btn: "کپی شد",
       l_loc: "موقعیت", loc_val: "شیراز، فارس، ایران", loc_sub: "به وقت ایران، UTC+3:30",
-      l_who: "به دست چه کسی می‌رسد", who_sub: "همان کسی که استادی پلنت را ساخته — بدون هیچ صف پشتیبانی",
+      l_who: "به دست چه کسی می‌رسد", who_sub: "همان دو نفری که پشت استادی پلنت هستند — بدون هیچ صف پشتیبانی",
       r1_h: "باگ پیدا کردی", r1_p: "بگو داشتی چه کار می‌کردی و به‌جایش چه اتفاقی افتاد — معمولاً همین کافی است.",
       r2_h: "ایده‌ای داری", r2_p: "بیشتر چیزهایی که الان در برنامه هست، دقیقاً از همین جور پیام‌ها شروع شده‌اند.",
       r3_h: "یک مدرسه یا کتابخانه", r3_p: "می‌خواهی منابعی مخصوص پایه و رشتهٔ دانش‌آموزهای خودتان منتشر شود؟ بگو تا هماهنگ شود.",
@@ -430,9 +483,10 @@ var LINKS = { web: "/app", apk: "/study-planet.apk", apkNote: "" };
       if (k === "h1" || k === "copy_btn") return;   // copy_btn is the copy button's own transient state
       if (d[k] !== undefined) el.textContent = d[k];
     });
-    // Copy button repaints only when it isn't mid-"copied" confirmation.
-    var lbl = document.getElementById("copyLabel");
-    if (lbl && !lbl.dataset.done) lbl.textContent = d.copy_btn;
+    // Copy buttons repaint only while they aren't mid-"copied" confirmation.
+    document.querySelectorAll(".copy-label").forEach(function (lbl) {
+      if (!lbl.dataset.done) lbl.textContent = d.copy_btn;
+    });
 
     var sw = document.getElementById("langSw");
     if (sw) { sw.textContent = d.other_lang; sw.setAttribute("aria-label", d.other_lang); }
@@ -456,31 +510,34 @@ var LINKS = { web: "/app", apk: "/study-planet.apk", apkNote: "" };
     }
   }
 
-  /* ======================= copy the phone number =======================
+  /* ======================= copy a number or an address =======================
      navigator.clipboard needs a secure context (HTTPS, or localhost for dev) — it
      is simply absent otherwise, so this is a client-side nicety, never the only way
-     to get the number: the row is a real tel: link regardless of whether this works. */
-  var copyBtn = document.getElementById("copyBtn");
-  var copyLabel = document.getElementById("copyLabel");
-  var copyTimer = 0;
-  if (copyBtn && navigator.clipboard) {
-    copyBtn.addEventListener("click", function () {
-      navigator.clipboard.writeText("09375317743").then(function () {
+     to get a number: every row is a real tel:/mailto: link regardless of whether
+     this works. Each button carries its own value in data-copy, so rows can be
+     added without touching this. */
+  document.querySelectorAll(".copy-btn").forEach(function (btn) {
+    var label = btn.querySelector(".copy-label");
+    var timer = 0;
+    if (!navigator.clipboard) {
+      btn.style.display = "none";        // no Clipboard API: the link still works
+      return;
+    }
+    btn.addEventListener("click", function () {
+      navigator.clipboard.writeText(btn.dataset.copy || "").then(function () {
         var d = DICT[lang] || DICT.en;
-        clearTimeout(copyTimer);
-        copyBtn.classList.add("done");
-        copyLabel.dataset.done = "1";
-        copyLabel.textContent = d.copied_btn;
-        copyTimer = setTimeout(function () {
-          copyBtn.classList.remove("done");
-          delete copyLabel.dataset.done;
-          copyLabel.textContent = d.copy_btn;
+        clearTimeout(timer);
+        btn.classList.add("done");
+        label.dataset.done = "1";
+        label.textContent = d.copied_btn;
+        timer = setTimeout(function () {
+          btn.classList.remove("done");
+          delete label.dataset.done;
+          label.textContent = d.copy_btn;
         }, 1800);
       }).catch(function () {});
     });
-  } else if (copyBtn) {
-    copyBtn.style.display = "none";      // no Clipboard API: the tel: link still works
-  }
+  });
 
   /* ======================= starfield (same engine as landing.html) ======================= */
   var cvs = document.getElementById("stars");
