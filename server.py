@@ -2337,18 +2337,22 @@ class Handler(SimpleHTTPRequestHandler):
         """Build the {room, members[]} view for a room, ranked by today's focus time."""
         rid = room["id"]
         today = today_str()
+        # Today's total joins in rather than being fetched per member. It used to be a query
+        # per row, so a room of N cost N+1 round trips on a poll every member of that room
+        # makes -- the app's hottest read, multiplied by room size. stat_days' PK is
+        # (user_id, day), so the join is the same indexed lookup, just done once.
         rows = conn.execute(
-            "SELECT u.id,u.name,u.email,u.phone,u.avatar,u.focusing,u.last_seen,mm.role "
-            "FROM room_members mm JOIN users u ON u.id=mm.user_id WHERE mm.room_id=?",
-            (rid,),
+            "SELECT u.id,u.name,u.email,u.phone,u.avatar,u.focusing,u.last_seen,mm.role,"
+            "COALESCE(sd.seconds,0) AS today_seconds "
+            "FROM room_members mm JOIN users u ON u.id=mm.user_id "
+            "LEFT JOIN stat_days sd ON sd.user_id=u.id AND sd.day=? "
+            "WHERE mm.room_id=?",
+            (today, rid),
         ).fetchall()
         me_member = False
         members = []
         for r in rows:
-            td = conn.execute(
-                "SELECT seconds FROM stat_days WHERE user_id=? AND day=?", (r["id"], today)
-            ).fetchone()
-            secs = (td["seconds"] if td and td["seconds"] else 0)
+            secs = r["today_seconds"] or 0
             mine = r["id"] == u["id"]
             me_member = me_member or mine
             members.append({

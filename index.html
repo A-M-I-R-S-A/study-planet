@@ -147,6 +147,24 @@
   .panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
   .panel-head b{font-weight:600;font-size:15px}
   .panel-head .meta{font-size:12px;color:var(--muted)}
+  /* min-width:0 lets the room name give way instead of shoving the button past the panel
+     edge -- names are user-supplied and capped at 60 chars, which with no spaces in them is
+     wider than the head on a phone. The button is flex:none, so the name is what yields. */
+  .panel-head .head-side{display:flex;align-items:center;gap:9px;min-width:0}
+  .panel-head .head-side .meta{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* The roster refreshes itself every 30s and immediately on anything that changes it --
+     start, pause, end, reset, returning to the tab. This is for the gap in between, when
+     you just want to look now. Tokens only (--cream2/--line/--muted) so the glass theme's
+     token flip carries it; a hardcoded rgba would need its own html.glass override the way
+     .stepper button does. */
+  .refresh-btn{width:28px;height:28px;flex:none;padding:0;border-radius:50%;
+    border:1px solid var(--line,rgba(0,0,0,.12));background:var(--cream2);color:var(--muted);
+    font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;
+    justify-content:center;transition:color .15s,opacity .2s}
+  .refresh-btn:hover{color:var(--ink)}
+  .refresh-btn:disabled{opacity:.38;cursor:default}
+  .refresh-btn.spin{animation:rspin .6s linear infinite}
+  @keyframes rspin{to{transform:rotate(360deg)}}
   .task-form{display:flex;gap:8px;margin-bottom:14px}
   .task-form input{flex:1;border:1px solid rgba(0,0,0,.12);background:var(--cream2);border-radius:11px;padding:11px 13px;font-size:14px;color:var(--ink)}
   .task-form button{width:44px;border:none;border-radius:11px;background:var(--accent);color:var(--accent-ink);font-size:20px;font-weight:700;cursor:pointer;flex:none}
@@ -577,7 +595,7 @@
 
     <!-- ROOM (co-focus) -->
     <div class="panel light room-panel hidden" id="roomPanel">
-      <div class="panel-head"><b data-i18n="focus_together">Focusing together</b><span class="meta" id="roomMeta"></span></div>
+      <div class="panel-head"><b data-i18n="focus_together">Focusing together</b><span class="head-side"><span class="meta" id="roomMeta"></span><button class="refresh-btn" id="roomRefresh" type="button">⟳</button></span></div>
       <div class="cofocus" id="coList"></div>
     </div>
 
@@ -734,7 +752,7 @@
       confirm_reset:"Reset all settings, tasks, and progress?",img_big:"Image is large — it'll show now but may not persist.",
       am:"AM",pm:"PM",lang_switch:"English",sign_in:"Sign in",dashboard:"Dashboard",studying:"What are you studying?",
       timer_mode:"Timer",stopwatch:"Stopwatch",add_subjects:"＋ Create subjects on your dashboard",sign_in_subjects:"Sign in to track subjects",
-      focus_together:"Focusing together",room_tab:"Room",library:"Library",room_empty:"No one else here yet — invite a friend from the room.",you:"you",locked_hint:"Finish or pause your session to leave the timer.",focusing_now:"focusing now",idle:"idle",
+      focus_together:"Focusing together",room_tab:"Room",library:"Library",room_empty:"No one else here yet — invite a friend from the room.",you:"you",locked_hint:"Finish or pause your session to leave the timer.",focusing_now:"focusing now",idle:"idle",refresh_room:"Refresh",
       app_lock:"App lock",lock_note:"While a focus session runs, opening anything outside your allowed list shows a reminder instead.",
       lock_enable:"Block other apps while focusing",lock_breaks:"Keep blocking during breaks",allowed_apps:"Allowed apps",
       lock_mute:"Silence notifications while focusing",
@@ -776,7 +794,7 @@
       confirm_reset:"همهٔ تنظیمات، کارها و پیشرفت بازنشانی شود؟",img_big:"تصویر بزرگ است — اکنون نمایش داده می‌شود اما شاید ذخیره نشود.",
       am:"ق.ظ",pm:"ب.ظ",lang_switch:"فارسی",sign_in:"ورود",dashboard:"داشبورد",studying:"چه می‌خوانی؟",
       timer_mode:"تایمر",stopwatch:"کرنومتر",add_subjects:"＋ موضوع‌ها را در داشبورد بسازید",sign_in_subjects:"برای موضوع‌ها وارد شوید",
-      focus_together:"تمرکز باهم",room_tab:"روم",library:"کتابخانه",room_empty:"هنوز کسی اینجا نیست — از روم یک دوست را دعوت کن.",you:"شما",locked_hint:"برای خروج از تایمر، جلسه را تمام یا متوقف کن.",focusing_now:"در حال تمرکز",idle:"آرام",
+      focus_together:"تمرکز باهم",room_tab:"روم",library:"کتابخانه",room_empty:"هنوز کسی اینجا نیست — از روم یک دوست را دعوت کن.",you:"شما",locked_hint:"برای خروج از تایمر، جلسه را تمام یا متوقف کن.",focusing_now:"در حال تمرکز",idle:"آرام",refresh_room:"تازه‌سازی",
       app_lock:"قفل برنامه‌ها",lock_note:"در طول جلسهٔ تمرکز، باز کردن هر برنامه‌ای خارج از فهرست مجاز، به‌جای آن یک یادآوری نشان می‌دهد.",
       lock_enable:"مسدود کردن برنامه‌های دیگر هنگام تمرکز",lock_breaks:"مسدودسازی در زمان استراحت هم ادامه یابد",allowed_apps:"برنامه‌های مجاز",
       lock_mute:"بی‌صدا کردن اعلان‌ها هنگام تمرکز",
@@ -1203,7 +1221,12 @@
        - the beat is what OTHER people see -- presence and the focusing flag. A running
          timer keeps beating even while hidden, because going quiet there would drop me out
          of my co-focusers' roster after 90s. That would be a behaviour change, not an
-         optimisation, so it is deliberately kept. */
+         optimisation, so it is deliberately kept.
+     The roster therefore refreshes at 30s, not the 10s a second interval used to give it.
+     That faster loop was the app's heaviest read by a wide margin -- every member of a room
+     polling every other member's totals -- for liveness nobody was watching that closely.
+     The moments that actually matter still refresh at once: start/pause, end, reset, and
+     coming back to the tab all call refreshRoom() directly. */
   setInterval(()=>{
     if(!Cloud.enabled)return;
     if(document.hidden&&!running)return;      // nothing running, and nobody looking
@@ -1211,10 +1234,6 @@
     if(running)flushFocus(false);
     if(!document.hidden)refreshRoom();
   },30000);
-  setInterval(()=>{
-    if(document.hidden)return;
-    if(Cloud.enabled&&roomInfo&&(running||openPanel==="room"))refreshRoom();
-  },10000);
 
   function chime(){try{const c=new (window.AudioContext||window.webkitAudioContext)();[0,.18,.36].forEach(t=>{const o=c.createOscillator(),g=c.createGain();o.type="sine";o.frequency.value=760;o.connect(g);g.connect(c.destination);g.gain.setValueAtTime(.0001,c.currentTime+t);g.gain.exponentialRampToValueAtTime(.35,c.currentTime+t+.02);g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+t+.16);o.start(c.currentTime+t);o.stop(c.currentTime+t+.17);});}catch(e){}}
   function toast(msg){const n=document.createElement("div");n.className="toast";n.textContent=msg;document.body.appendChild(n);setTimeout(()=>{n.style.transition="opacity .4s";n.style.opacity="0";setTimeout(()=>n.remove(),400);},4000);}
@@ -1760,9 +1779,11 @@
       const fill=t.closest(".co").querySelector(".co-fill"); if(fill)fill.style.width=(m.sec/maxSec*100)+"%";
     });
   }
+  // Returns the in-flight fetch so the manual refresh can spin its button until it lands.
+  // Cloud.currentRoom() already swallows its own failures, so this never rejects.
   function refreshRoom(){
-    if(!Cloud.enabled) return;
-    Cloud.currentRoom().then(j=>{
+    if(!Cloud.enabled) return Promise.resolve();
+    return Cloud.currentRoom().then(j=>{
       if(!j || !j.room){ roomInfo=null; roomTasks=[]; doingId=null;
         if(openPanel==="room")openPanel=null; renderDock(); renderTasks(); return; }
       roomTasks=j.tasks||[];
@@ -1777,6 +1798,23 @@
       renderDock(); renderRoom(); renderTasks();   // the Room button lights up; the panel stays shut until you open it
     });
   }
+  /* Manual refresh. The cooldown is the point: without it, holding the button would cost
+     more than the 10s poll this replaced. It runs on its own timer rather than on the
+     fetch, so a request that fails or never answers still frees the button. */
+  const ROOM_REFRESH_COOLDOWN=5000;
+  $("#roomRefresh").onclick=function(){
+    const btn=this;
+    if(btn.disabled||!Cloud.enabled) return;
+    btn.disabled=true; btn.classList.add("spin");
+    const spunAt=Date.now(), stop=()=>btn.classList.remove("spin");
+    // Let one full turn play out. A 60ms round trip would otherwise flash the icon and read
+    // as a glitch rather than as the button having done something.
+    refreshRoom().then(()=>setTimeout(stop,Math.max(0,600-(Date.now()-spunAt))));
+    // The cooldown frees the button AND stops the spin. Both have to hang off this timer
+    // rather than off the fetch: a request that never answers would otherwise leave the
+    // icon spinning for good, claiming to be loading something that is long gone.
+    setTimeout(()=>{btn.disabled=false;stop();},ROOM_REFRESH_COOLDOWN);
+  };
 
   /* ---- settings ---- */
   function renderCfg(){["focusMin","shortMin","longMin"].forEach(k=>$("#v-"+k).textContent=L(cfg[k]));}
@@ -1991,6 +2029,8 @@
     Lock.render();
     renderSubjects();
     $("#uploadLabel").textContent=T.upload;
+    $("#roomRefresh").title=T.refresh_room;
+    $("#roomRefresh").setAttribute("aria-label",T.refresh_room);
     $("#langLabel").textContent=T.lang_switch;
     renderClock();renderTimer();renderQuote();renderTasks();renderStats();renderCfg();renderMusicNow();
     syncBgSliders();   // reads whatever is actually on screen, own pick or admin default
