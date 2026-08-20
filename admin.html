@@ -1224,6 +1224,27 @@ function bgEditor(b,wantUpload){
       bgStyle("preset",gv.value));
   });
 
+  /* Re-encode a data URL to fit inside `box` px on its longest side. Calls back with the
+     new data URL, or null if the browser couldn't do it (a tainted canvas, an image format
+     it won't decode) -- callers fall back to the original rather than failing the upload.
+     Never upscales: a picture already smaller than the box is left at its own size. */
+  function shrink(dataUrl,box,quality,done){
+    try{
+      var img=new Image();
+      img.onload=function(){
+        try{
+          var s=Math.min(1,box/Math.max(img.width,img.height));
+          var w=Math.max(1,Math.round(img.width*s)),h=Math.max(1,Math.round(img.height*s));
+          var cv=document.createElement("canvas");cv.width=w;cv.height=h;
+          cv.getContext("2d").drawImage(img,0,0,w,h);
+          done(cv.toDataURL("image/jpeg",quality));
+        }catch(_){done(null);}
+      };
+      img.onerror=function(){done(null);};
+      img.src=dataUrl;
+    }catch(_){done(null);}
+  }
+
   var file=$("#bFile");
   if(file) file.addEventListener("change",function(e){
     var f=e.target.files[0]; if(!f) return;
@@ -1232,15 +1253,32 @@ function bgEditor(b,wantUpload){
     rd.onload=function(){
       $("#bPrev").innerHTML='<div class="prev" style="height:150px;border-radius:14px;margin-bottom:10px;'+
         bgStyle("image",rd.result)+'"></div><div style="font-size:12px;color:var(--muted)">'+
-        '<span class="spin"></span> Uploading…</div>';
-      api("/backgrounds/upload",{method:"POST",body:{data:rd.result}}).then(function(r){
-        uploaded=r.path;
-        $("#bPrev").innerHTML='<div class="prev" style="height:150px;border-radius:14px;margin-bottom:10px;'+
-          bgStyle("image",r.path)+'"></div><div style="font-size:12px;color:var(--ok)">'+
-          'Uploaded · '+Math.round(r.bytes/1024)+' KB</div>';
-      }).catch(function(err){
-        $("#bPrev").innerHTML='<div style="font-size:12.5px;color:var(--danger)">'+esc(err.message)+'</div>';
-        if(err.message!=="session") toast(err.message,"err");
+        '<span class="spin"></span> Preparing…</div>';
+      /* Two versions go up, both made here in the browser.
+
+         The full-size one is capped at 1920px on its longest side: a phone camera photo is
+         4000px and 3MB, and every student who picks that background downloads all of it to
+         paint a screen that is at most 1920 wide. The thumbnail is what the picker's swatch
+         grid actually draws -- at ~70px -- and pointing that grid at full-size originals is
+         what made opening Settings pull tens of megabytes.
+
+         The server does no image processing at all (pure stdlib, no Pillow on shared
+         hosting), so this is the only place either can be produced. */
+      shrink(rd.result,1920,0.82,function(full){
+        shrink(rd.result,320,0.78,function(thumb){
+          $("#bPrev").innerHTML='<div class="prev" style="height:150px;border-radius:14px;margin-bottom:10px;'+
+            bgStyle("image",full||rd.result)+'"></div><div style="font-size:12px;color:var(--muted)">'+
+            '<span class="spin"></span> Uploading…</div>';
+          api("/backgrounds/upload",{method:"POST",body:{data:full||rd.result,thumb:thumb||null}}).then(function(r){
+            uploaded=r.path;
+            $("#bPrev").innerHTML='<div class="prev" style="height:150px;border-radius:14px;margin-bottom:10px;'+
+              bgStyle("image",r.path)+'"></div><div style="font-size:12px;color:var(--ok)">'+
+              'Uploaded · '+Math.round(r.bytes/1024)+' KB</div>';
+          }).catch(function(err){
+            $("#bPrev").innerHTML='<div style="font-size:12.5px;color:var(--danger)">'+esc(err.message)+'</div>';
+            if(err.message!=="session") toast(err.message,"err");
+          });
+        });
       });
     };
     rd.readAsDataURL(f);

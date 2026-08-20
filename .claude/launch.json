@@ -2,17 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "focus",
+      "name": "study-planet",
       "runtimeExecutable": "python",
       "runtimeArgs": ["server.py"],
       "port": 8000
-    },
-    {
-      "_comment": "Same server, but phone codes are printed to this console instead of being texted, and it writes to a throwaway database. Use it to work on the sign-in flow without spending SMS credit or touching real accounts.",
-      "name": "focus (dev — codes to console)",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["-u", "-c", "import os;os.environ['OTP_ECHO']='1';os.environ['FOCUS_DB']=os.path.join(os.getcwd(),'focus-dev.db');os.environ['PORT']='8010';import server;server.main()"],
-      "port": 8010
     }
   ]
 }

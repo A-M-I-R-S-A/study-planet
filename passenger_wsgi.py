@@ -17,6 +17,7 @@ import io
 import os
 import sys
 import threading
+import traceback
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -47,6 +48,11 @@ _GZIP_TYPES = (
     "application/json", "image/svg+xml",
 )
 _GZIP_MIN = 1024   # below this the gzip header costs more than it saves
+# Above this, don't. Compressing needs the whole body as one contiguous buffer plus room for
+# the result, which is exactly the memory spike the chunked handling below exists to avoid.
+# Everything in _GZIP_TYPES is a page or a JSON reply and lands far under this; anything
+# bigger is served as-is rather than risking the worker.
+_GZIP_MAX = 4 * 1024 * 1024
 
 
 def _gzip_ok(environ, status, headers):
@@ -67,20 +73,65 @@ def _gzip_ok(environ, status, headers):
 class _FakeConn:
     """A socket stand-in: hands the request bytes to the handler on makefile('rb')
     and collects everything written back (BaseHTTPRequestHandler writes via sendall
-    when wbufsize is 0, which is the default)."""
+    when wbufsize is 0, which is the default).
+
+    Writes are kept as a LIST of chunks rather than appended into one BytesIO. The handler
+    already streams large files 64KB at a time, and a BytesIO threw that away: it grew one
+    contiguous copy of the whole response, which was then sliced to separate head from body --
+    a second copy. Measured, that made serving the 4.3MB APK cost 8.6MB of peak allocation
+    and a 25MB library file about 50MB, per concurrent download, against the ~1GB a shared
+    cPanel account gets. Keeping the chunks apart means the head can be split off without
+    touching the body, and the body can be handed to the WSGI server as-is.
+    """
 
     def __init__(self, request_bytes):
         self._reader = io.BytesIO(request_bytes)
-        self.out = io.BytesIO()
+        self.chunks = []
 
     def makefile(self, mode="r", *args, **kwargs):
-        return self._reader if "r" in mode else self.out
+        if "r" in mode:
+            return self._reader
+        return _ChunkWriter(self.chunks)
 
     def sendall(self, data):
-        self.out.write(data)
+        # bytes() rather than keeping the caller's object: _SocketWriter can hand over a
+        # memoryview of a buffer it is about to reuse.
+        self.chunks.append(bytes(data))
 
     def close(self):
         pass
+
+
+class _ChunkWriter(io.RawIOBase):
+    """Fallback sink for the makefile('wb') path, so both write routes land in one list."""
+
+    def __init__(self, chunks):
+        self._chunks = chunks
+
+    def writable(self):
+        return True
+
+    def write(self, data):
+        self._chunks.append(bytes(data))
+        return len(data)
+
+
+def _split_head(chunks):
+    """(head_bytes, body_chunks). Joins only as many leading chunks as the head needs.
+
+    end_headers() flushes the whole status line and header block in a single write, so in
+    practice this consumes exactly one chunk and every body chunk is passed through
+    untouched -- no copy of the payload is made anywhere in this module.
+    """
+    head = b""
+    for i, chunk in enumerate(chunks):
+        head += chunk
+        cut = head.find(b"\r\n\r\n")
+        if cut >= 0:
+            rest = head[cut + 4:]
+            tail = chunks[i + 1:]
+            return head[:cut], ([rest] if rest else []) + tail
+    return head, []
 
 
 def _build_request(environ):
@@ -124,25 +175,32 @@ def _build_request(environ):
 
 
 def application(environ, start_response):
-    conn = _FakeConn(_build_request(environ))
-    client = (environ.get("REMOTE_ADDR", "") or "?", 0)
+    try:
+        conn = _FakeConn(_build_request(environ))
+        client = (environ.get("REMOTE_ADDR", "") or "?", 0)
 
-    # Instantiating the handler processes the single request start-to-finish (HTTP/1.0,
-    # so it handles exactly one and returns) and writes the full response into conn.out.
-    server.Handler(conn, client, None)
+        # Instantiating the handler processes the single request start-to-finish (HTTP/1.0,
+        # so it handles exactly one and returns), writing the response into conn.chunks.
+        server.Handler(conn, client, None)
+        return _respond(environ, start_response, conn.chunks)
+    except Exception:
+        # Last line of defence. server.Handler guards its own routing, but if anything in
+        # this bridge fails the alternative is Passenger's own error page -- which is not
+        # this application's, may say more about the host than it should, and is not what a
+        # fetch() in the app can parse. Log it here where the app's log is, answer JSON.
+        traceback.print_exc()
+        body = b'{"error": "Something went wrong."}'
+        start_response("500 Internal Server Error", [
+            ("Content-Type", "application/json; charset=utf-8"),
+            ("Content-Length", str(len(body))),
+            ("Cache-Control", "no-store"),
+        ])
+        return [body]
 
-    raw = conn.out.getvalue()
-    # Split on the index rather than with partition(): partition builds a copy of the head
-    # AND a copy of the body, so a 25MB library download briefly held three copies of itself
-    # in a worker. Slicing once keeps it to two, which on a 1GB shared-hosting memory cap is
-    # the difference between serving a few concurrent downloads and having workers killed.
-    cut = raw.find(b"\r\n\r\n")
-    if cut < 0:
-        cut, body = len(raw), b""
-    else:
-        body = raw[cut + 4:]
-    head_lines = raw[:cut].split(b"\r\n")
-    del raw
+
+def _respond(environ, start_response, chunks):
+    head, body = _split_head(chunks)
+    head_lines = head.split(b"\r\n")
 
     status_line = head_lines[0].decode("latin-1") if head_lines else "HTTP/1.0 500"
     # "HTTP/1.0 200 OK" -> "200 OK"; WSGI wants the code + reason, without the version.
@@ -159,11 +217,13 @@ def application(environ, start_response):
             continue
         headers.append((name, value.decode("latin-1").strip()))
 
-    if len(body) >= _GZIP_MIN and _gzip_ok(environ, status, headers):
-        body = gzip.compress(body, 6)   # 6: most of the ratio, a fraction of the CPU of 9
+    size = sum(len(c) for c in body)
+    if _GZIP_MIN <= size <= _GZIP_MAX and _gzip_ok(environ, status, headers):
+        blob = gzip.compress(b"".join(body), 6)   # 6: most of the ratio, a fraction of 9's CPU
+        body = [blob]
         headers = [(n, v) for n, v in headers if n.lower() != "content-length"]
         headers.append(("Content-Encoding", "gzip"))
-        headers.append(("Content-Length", str(len(body))))
+        headers.append(("Content-Length", str(len(blob))))
     # Announce that the body varies by encoding even when this particular response wasn't
     # compressed -- otherwise a shared cache can hand a gzipped copy to a client that never
     # asked for one.
@@ -171,4 +231,6 @@ def application(environ, start_response):
         headers.append(("Vary", "Accept-Encoding"))
 
     start_response(status, headers)
-    return [body]
+    # A list of chunks, not one joined blob: the WSGI server writes them out one at a time,
+    # so a large file is never assembled in memory here.
+    return body

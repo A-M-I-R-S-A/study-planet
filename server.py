@@ -70,6 +70,8 @@ MAX_BODY = 8 * 1024 * 1024   # cap request bodies (bytes): stops memory-exhausti
 MAX_PW = 128                 # cap password length so PBKDF2 hashing cost stays bounded
 # Set SECURE_COOKIES=1 when serving over HTTPS so the session cookie gets the Secure flag.
 SECURE_COOKIES = os.environ.get("SECURE_COOKIES", "").lower() in ("1", "true", "yes", "on")
+# One printed line per request. Off in production: see Handler.log_message.
+ACCESS_LOG = os.environ.get("ACCESS_LOG", "").lower() in ("1", "true", "yes", "on")
 # Set FORCE_HTTPS=1 in production to redirect plain-HTTP requests to the https:// URL and
 # send HSTS on the secure ones. Off by default because local `python server.py` has no TLS
 # in front of it -- turning this on without a working certificate makes the site unreachable.
@@ -81,6 +83,10 @@ FORCE_HTTPS = os.environ.get("FORCE_HTTPS", "").lower() in ("1", "true", "yes", 
 # e.g. 210 for Iran (UTC+3:30), 60 for CET, -480 for US Pacific. Set it to your users' zone.
 DAY_OFFSET_MIN = int(os.environ.get("DAY_OFFSET_MIN", "0"))
 MAX_DAY_SECONDS = 24 * 3600   # per-user daily ceiling on logged focus time (anti-inflation sanity cap)
+# How much of session_log to keep. It holds one row per flush (every 30s of a running timer)
+# and exists only to answer "how long on which subject" for the month the calendar is showing.
+# The day totals everything else reads live in stat_days and are never pruned.
+SESSION_LOG_KEEP_DAYS = int(os.environ.get("SESSION_LOG_KEEP_DAYS", "400"))
 STREAK_MIN_SECONDS = 45 * 60  # a day has to reach this much focus time to count toward the streak
 # Don't re-write `last_seen` if it is already younger than this. The client beats every 30s,
 # so the freshest a skipped row can be is this + one interval = 75s -- still inside the 90s
@@ -120,7 +126,24 @@ ADMIN_IDLE_MINUTES = float(os.environ.get("ADMIN_IDLE_MINUTES", "60"))
 # rest of the app already keeps its bytes out of SQLite, and a 4 MB blob per row would bloat
 # every query that touches the table.
 MEDIA_DIR = os.path.join(ROOT, "media", "backgrounds")
+# A student's own uploaded background. Kept under the backgrounds directory on purpose: the
+# "immutable, cache for a year" rule in _cache_control() and the service worker's on-device
+# cache both key off the /media/backgrounds/ prefix, so putting these below it means they
+# inherit both without a second rule to keep in sync. The subdirectory only separates whose
+# they are -- the admin gallery is the `backgrounds` table, which never looks in here.
+USER_BG_DIR = os.path.join(MEDIA_DIR, "u")
+USER_BG_URL = "/media/backgrounds/u/"
+# Swatch-sized copies of the gallery images, named after the original with a .jpg extension.
+# The picker draws them at ~70px and used to point at the 2-3MB originals to do it.
+THUMB_DIR = os.path.join(MEDIA_DIR, "thumb")
+THUMB_URL = "/media/backgrounds/thumb/"
 MAX_IMAGE_BYTES = 6 * 1024 * 1024
+# Ceiling on one account's settings blob once its background has been moved to disk. What is
+# left is preferences -- durations, language, accent, volume -- which run to a few hundred
+# bytes; 64KB is far above any honest value and far below anything that would slow a query
+# down. Without a cap the column was bounded only by MAX_BODY, i.e. 8MB per account, read
+# back on every page load.
+MAX_SETTINGS_BYTES = 64 * 1024
 # Accepted upload types, keyed by the magic bytes each file has to actually start with.
 # The declared MIME type is attacker-controlled, so it is never what decides.
 IMAGE_MAGIC = (
@@ -202,9 +225,41 @@ QUOTES_TTL = 6 * 3600   # refresh the pool at most this often (≈40 calls/day)
 # and a failed pass is remembered so the next request doesn't try again for QUOTES_RETRY.
 QUOTES_TIMEOUT = 2.0    # per-call ceiling (was 5s x 10 categories = 50s worst case)
 QUOTES_BUDGET = 6.0     # total wall-clock ceiling for one refresh pass
-QUOTES_RETRY = 600      # after a failed pass, serve the cache and don't retry for 10 min
-_quotes = {"at": 0.0, "items": []}
+QUOTES_RETRY = 3600     # after a failed pass, serve the cache and don't retry for an hour
+# The pool and the timestamp are kept in a file, not just in this process. Passenger starts a
+# worker on demand and shuts it down again when the site goes quiet, so an in-memory-only
+# cache was empty for the first request of nearly every visit -- and on a host that cannot
+# reach api-ninjas (which is the normal case from Iran) that first request paid the full
+# QUOTES_BUDGET before answering. Measured against the live site: 8.6s cold, 1.7s warm. On
+# disk the back-off outlives the worker, so a cold start reads the last good pool and the
+# retry clock keeps ticking across restarts.
+QUOTES_CACHE = os.path.join(ROOT, "quotes_cache.json")
+_quotes = {"at": 0.0, "items": [], "loaded": False}
 _quotes_lock = threading.Lock()
+
+
+def _quotes_load():
+    """Seed this process from the on-disk pool. Called once, under the lock."""
+    _quotes["loaded"] = True
+    try:
+        with open(QUOTES_CACHE, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        if isinstance(data, dict) and isinstance(data.get("items"), list):
+            _quotes["items"] = data["items"]
+            _quotes["at"] = float(data.get("at") or 0.0)
+    except (OSError, ValueError, TypeError):
+        pass
+
+
+def _quotes_store():
+    """Persist the pool for the next worker. Never raises -- a read-only disk is not fatal."""
+    try:
+        tmp = QUOTES_CACHE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump({"at": _quotes["at"], "items": _quotes["items"]}, fh)
+        os.replace(tmp, QUOTES_CACHE)   # atomic: a reader never sees a half-written file
+    except OSError:
+        pass
 
 # --- phone verification (SMS.ir) -----------------------------------------------------
 # The key stays server-side for the same reason the quotes key does: the browser talks to
@@ -242,6 +297,13 @@ OTP_RESEND_SECONDS = 90      # cooldown between two texts to the same number
 OTP_MAX_PER_HOUR = 5         # texts per number per hour — the cap on what one person can cost
 OTP_IP_MAX_PER_HOUR = 20     # and per network, so one client can't farm codes for many numbers
 OTP_MAX_ATTEMPTS = 5         # wrong guesses before the code is burned (5 digits = 100k space)
+# Background uploads one account can make in an hour. Each one writes a file that lives until
+# it is replaced, so this is the ceiling on how fast a single account can fill the disk.
+BG_UPLOADS_PER_HOUR = 20
+# How long an uploaded background file must have sat unreferenced before the hourly sweep
+# will delete it. Long enough that a file written by a request still in flight is never
+# mistaken for an orphan. See sweep_orphan_backgrounds().
+ORPHAN_BG_GRACE = 3600
 OTP_TICKET_TTL = 900         # a "this number is verified" ticket is good for 15 minutes
 # Dev switch: deliver codes to the server log *instead of* texting them. It short-circuits
 # the API call entirely rather than shadowing it, so working on the sign-in flow can't text
@@ -305,11 +367,16 @@ def quotes_cached():
     """
     now = time.time()
     with _quotes_lock:
+        if not _quotes["loaded"]:
+            _quotes_load()          # a freshly spawned worker inherits the last good pool
         if not QUOTES_API_KEY or (now - _quotes["at"]) < QUOTES_TTL:
             return _quotes["items"]
         # Claim the refresh slot before releasing the lock, so that concurrent callers see a
-        # fresh timestamp and return the cache instead of piling into the same fetch.
+        # fresh timestamp and return the cache instead of piling into the same fetch. Written
+        # through to disk as well, so a *second worker* starting during the fetch sees the
+        # claim too -- in-memory alone, every worker made its own attempt.
         _quotes["at"] = now
+        _quotes_store()
         stale = _quotes["items"]
 
     got = fetch_quotes()   # outside the lock: this is the part that can block for seconds
@@ -322,6 +389,7 @@ def quotes_cached():
             # Keep serving whatever we had, and try again in QUOTES_RETRY rather than a full
             # TTL -- backdating the timestamp is what makes the next attempt due early.
             _quotes["at"] = time.time() - QUOTES_TTL + QUOTES_RETRY
+        _quotes_store()
         return _quotes["items"] or stale
 
 # Sent on every response. 'unsafe-inline' is unavoidable (the pages use inline <script>/<style>),
@@ -369,13 +437,95 @@ STATIC_OK_EXT = (".html", ".htm", ".css", ".js", ".mjs", ".svg", ".png",
                  # path — e.g. /study-planet.apk — and point landing.html's LINKS.apk at it.
                  ".apk")
 
+# Static types a browser may hold on to without asking again. Deliberately excludes .html:
+# the pages are the deploy surface and must revalidate. See Handler._cache_control().
+CACHEABLE_ASSET_EXT = (".css", ".js", ".mjs", ".svg", ".png", ".jpg", ".jpeg",
+                       ".gif", ".webp", ".ico", ".woff", ".woff2", ".ttf")
+# How long, in seconds. Since these URLs carry no version or content hash, this doubles as
+# the worst-case delay before a deploy reaches a browser that is already on the site.
+ASSET_MAX_AGE = int(os.environ.get("ASSET_MAX_AGE", "600"))
+
 
 # ---------------------------------------------------------------- database ----
+class _Conn(sqlite3.Connection):
+    """A pooled connection. close() releases it back to the thread instead of closing it.
+
+    Opening a SQLite connection is not free: the handshake plus the four PRAGMAs below cost
+    a few milliseconds on a local SSD and considerably more on the network-backed disk a
+    shared host gives you. That was paid *per call*, and a single request makes several --
+    /api/me alone opened five (the session lookup, tasks, stats, subjects, and its own), and
+    /api/log five more every 30 seconds for every running timer. Reusing one connection per
+    thread turns all of those into one.
+
+    Overriding close() rather than editing seventy call sites is deliberate: every existing
+    `conn = db() ... conn.close()` keeps reading exactly as it did, and none of them can
+    accidentally close a connection another part of the same request is still using.
+
+    close() is a plain no-op, and specifically does NOT roll back. Several handlers call a
+    helper that opens and closes "its own" connection in the middle of their own work --
+    library_file() consults library_enabled() partway through, for instance -- and with one
+    shared connection that inner close() is the same object as the outer one. Rolling back
+    there would silently discard the caller's uncommitted writes. Cleanup belongs at the
+    boundary where a request actually ends, which is release_pooled(), called from
+    Handler._guard()'s finally.
+    """
+
+    def close(self):
+        pass
+
+    def _close_for_real(self):
+        sqlite3.Connection.close(self)
+
+
+_pool = threading.local()
+
+
+def _drop_pooled(conn=None):
+    """Forget this thread's pooled connection, closing it if it still can be closed."""
+    held = getattr(_pool, "conn", None)
+    if conn is not None and held is not conn:
+        return
+    _pool.conn = None
+    if held is not None:
+        try:
+            held._close_for_real()
+        except Exception:
+            pass
+
+
+def release_pooled():
+    """End-of-request cleanup for the pooled connection. Never raises.
+
+    A handler that raised between a write and its commit leaves a transaction open, and an
+    open transaction on a pooled connection holds SQLite's single write lock until something
+    ends it -- which, with a worker kept warm between requests, could be minutes. Rolling
+    back here bounds that to the request that caused it, and hands the next request a clean
+    connection. A connection too broken to roll back is dropped rather than reused.
+    """
+    conn = getattr(_pool, "conn", None)
+    if conn is None:
+        return
+    try:
+        if conn.in_transaction:
+            conn.rollback()
+    except Exception:
+        _drop_pooled(conn)
+
+
 def db():
-    conn = sqlite3.connect(DB_PATH, timeout=5.0)
+    conn = getattr(_pool, "conn", None)
+    if conn is not None:
+        try:
+            conn.execute("SELECT 1")     # cheap liveness check; a dead handle is replaced
+            return conn
+        except Exception:
+            _drop_pooled(conn)
+    conn = sqlite3.connect(DB_PATH, timeout=15.0, factory=_Conn)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
-    conn.execute("PRAGMA busy_timeout=5000")  # wait, don't fail, if another writer holds the lock
+    # Longer than it was: a pooled connection is reused rather than reopened, so waiting out
+    # a writer costs nothing extra, while failing outright costs the caller their request.
+    conn.execute("PRAGMA busy_timeout=15000")
     # With WAL on, the default synchronous=FULL fsyncs the log on every single commit, which
     # on shared hosting (network-backed disks, 5-20ms a flush) caps the WHOLE app at a few
     # dozen writes a second -- and heartbeats alone are one write per user per 30s. NORMAL
@@ -383,6 +533,11 @@ def db():
     # crash is still safe (WAL replays), only a kernel panic or power cut can lose the last
     # commits, which for a focus timer's presence data is the right trade.
     conn.execute("PRAGMA synchronous=NORMAL")
+    # Room for the hot pages (users, sessions, stat_days and their indexes) to sit in memory
+    # instead of being re-read per query. Negative = KiB, so this is a 16MB ceiling per
+    # connection -- and there is now one connection per thread, not one per call.
+    conn.execute("PRAGMA cache_size=-16000")
+    _pool.conn = conn
     return conn
 
 
@@ -634,7 +789,45 @@ def init_db():
     seed_appearance(conn)
     conn.commit()
     ensure_indexes(conn)
+    migrate_inline_backgrounds(conn)
     conn.close()
+
+
+def migrate_inline_backgrounds(conn):
+    """Move backgrounds that were stored inside settings as base64 out to files. Once.
+
+    Accounts created before backgrounds lived on disk carry a ~570KB data URL in their
+    settings column, and every page load sent it back twice. The row can't be left as it is
+    and simply ignored, because it is what /api/appearance reads to know what this student
+    picked -- so it is rewritten in place, pointing at a file holding the same bytes.
+
+    Bounded by a `LIKE` that an index can't help with, but it only ever matches rows that
+    haven't been converted yet, so the second run of this scans nothing and finds nothing.
+    """
+    try:
+        rows = conn.execute(
+            "SELECT id, settings FROM users WHERE settings LIKE '%data:image/%'").fetchall()
+    except sqlite3.Error:
+        traceback.print_exc()
+        return
+    moved = 0
+    for r in rows:
+        try:
+            settings = json.loads(r["settings"] or "{}")
+        except ValueError:
+            continue
+        if not isinstance(settings, dict):
+            continue
+        before = json.dumps(settings.get("bg"))
+        if externalize_bg(settings) is not None:
+            continue                      # unreadable image: leave the row alone, don't lose it
+        if json.dumps(settings.get("bg")) == before:
+            continue
+        conn.execute("UPDATE users SET settings=? WHERE id=?", (json.dumps(settings), r["id"]))
+        moved += 1
+    if moved:
+        conn.commit()
+        print("  + Moved %d inline background(s) out of the database and onto disk" % moved)
 
 
 def ensure_indexes(conn):
@@ -917,7 +1110,24 @@ def purge_expired():
         # was already used" stays answerable, then swept — they are of no use to anyone after.
         conn.execute("DELETE FROM otp_codes WHERE expires < ?", (now - 3600,))
         conn.execute("DELETE FROM phone_tickets WHERE expires < ?", (now,))
+        # session_log grows without bound and faster than anything else here: /api/log writes
+        # a row per flush, which is one every 30 seconds for every running timer. Nothing was
+        # ever deleting it. The day totals that the dashboard, the streak and the calendar
+        # actually read live in stat_days and are never touched by this -- session_log is only
+        # needed at per-subject granularity, which the app shows for the current month. A
+        # year is far more than that and keeps the table a few thousand rows per active user
+        # instead of an ever-growing scan behind every subject query.
+        conn.execute("DELETE FROM session_log WHERE day < ?",
+                     ((today_date() - timedelta(days=SESSION_LOG_KEEP_DAYS)).isoformat(),))
         conn.commit()
+        # Fold the write-ahead log back into the database and truncate it. Without this the
+        # -wal file only ever grows to its high-water mark and stays there, and every reader
+        # pays for walking it. Pages freed by the deletes above stay inside the file as free
+        # space for future rows -- reclaiming those to the filesystem would need a full
+        # VACUUM, which rewrites the whole database and is not something to do behind a
+        # request on a shared host.
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        sweep_orphan_backgrounds(conn)
         conn.close()
     except Exception:
         traceback.print_exc()
@@ -929,6 +1139,60 @@ def purge_expired():
                 _rl_hits[k] = hits
             else:
                 del _rl_hits[k]
+
+
+def sweep_orphan_backgrounds(conn):
+    """Delete uploaded backgrounds no account points at any more.
+
+    Replacing your own background deletes the file it replaced, and that covers the common
+    case -- but not every case. Deleting an account leaves its upload behind; so does a write
+    that stores the file and then fails before the settings row is updated. Neither is
+    recoverable from, and on a shared host the cost of never noticing is the disk quota.
+
+    The grace period is what makes this safe to run against a live site: a file written
+    seconds ago may belong to a request that has not committed its settings row yet, and
+    sweeping it would delete a background out from under the student who just chose it. An
+    hour is far longer than any request and far shorter than "forever".
+    """
+    if not os.path.isdir(USER_BG_DIR):
+        return
+    try:
+        names = os.listdir(USER_BG_DIR)
+    except OSError:
+        return
+    cutoff = time.time() - ORPHAN_BG_GRACE
+    stale = []
+    for name in names:
+        path = os.path.join(USER_BG_DIR, name)
+        try:
+            if os.path.isfile(path) and os.path.getmtime(path) < cutoff:
+                stale.append(name)
+        except OSError:
+            pass
+    if not stale:
+        return
+    # Only now read the accounts, and only because there is something that might be deleted.
+    keep = set()
+    for r in conn.execute("SELECT settings FROM users WHERE settings LIKE ?",
+                          ("%" + USER_BG_URL + "%",)):
+        try:
+            bg = (json.loads(r["settings"] or "{}") or {}).get("bg") or {}
+        except (ValueError, AttributeError):
+            continue
+        value = bg.get("value") if isinstance(bg, dict) else None
+        if isinstance(value, str) and value.startswith(USER_BG_URL):
+            keep.add(os.path.basename(value))
+    gone = 0
+    for name in stale:
+        if name in keep:
+            continue
+        try:
+            os.remove(os.path.join(USER_BG_DIR, name))
+            gone += 1
+        except OSError:
+            pass
+    if gone:
+        print("  + Removed %d unreferenced background file(s)" % gone)
 
 
 def cleanup_loop():
@@ -963,12 +1227,51 @@ def create_session(user_id):
     return token
 
 
+_LEAN_USER_COLS = None
+
+
+def lean_user_cols(conn):
+    """`u.*` minus the one column nothing on a hot path wants: `settings`.
+
+    Every authenticated request resolves its session through user_from_token(), and `u.*`
+    meant every one of them -- a heartbeat, a room poll, a stats read -- loaded, copied and
+    parsed the whole settings blob to look at `id`. Backgrounds live on disk now so the blob
+    is small again, but a per-request `SELECT *` over a free-form text column is the kind of
+    thing that silently comes back, so the hot path no longer asks for it at all. The two
+    endpoints that genuinely need it (/api/me, /api/appearance) read it by itself with
+    settings_of(); everything else goes through col(), which already answers "a narrower
+    SELECT didn't ask for this" with a default.
+
+    Built from the live table rather than hardcoded so a migration that adds a column does
+    not have to remember to come back here.
+    """
+    global _LEAN_USER_COLS
+    if _LEAN_USER_COLS is None:
+        names = [r["name"] for r in conn.execute("PRAGMA table_info(users)")]
+        keep = [n for n in names if n != "settings"] or ["*"]
+        _LEAN_USER_COLS = ",".join("u." + n for n in keep)
+    return _LEAN_USER_COLS
+
+
+def settings_of(uid):
+    """One user's settings blob, parsed. {} for anything unreadable."""
+    conn = db()
+    row = conn.execute("SELECT settings FROM users WHERE id=?", (uid,)).fetchone()
+    conn.close()
+    try:
+        out = json.loads((row["settings"] if row else None) or "{}")
+    except ValueError:
+        return {}
+    return out if isinstance(out, dict) else {}
+
+
 def user_from_token(token):
     if not token:
         return None
     conn = db()
     row = conn.execute(
-        "SELECT s.expires AS _exp, u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=?",
+        "SELECT s.expires AS _exp, " + lean_user_cols(conn) +
+        " FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=?",
         (token,),
     ).fetchone()
     conn.close()
@@ -1253,11 +1556,53 @@ def settings_map():
     return {r["key"]: r["value"] for r in rows}
 
 
+_thumbs = {"at": 0.0, "names": frozenset()}
+_thumbs_lock = threading.Lock()
+
+
+def thumb_names():
+    """Filenames present in media/backgrounds/thumb, re-read at most once a minute.
+
+    One listdir instead of a stat() per background per request, and the answer barely ever
+    changes -- a new entry appears only when an admin uploads a background.
+    """
+    now = time.time()
+    with _thumbs_lock:
+        if now - _thumbs["at"] < 60:
+            return _thumbs["names"]
+        try:
+            names = frozenset(os.listdir(THUMB_DIR))
+        except OSError:
+            names = frozenset()
+        _thumbs.update(at=now, names=names)
+        return names
+
+
+def thumb_for(value):
+    """The swatch-sized copy of a background image, if one has been generated.
+
+    The picker renders these at about 70px, and it was pointing them at the originals --
+    which are full-resolution photographs of 2-3MB each. Opening Settings once downloaded
+    roughly 30MB to draw a grid of thumbnails; the generated versions total 110KB. Returns
+    None when there is no thumbnail, and the client falls back to the original.
+    """
+    if not isinstance(value, str) or not value.startswith("/media/backgrounds/"):
+        return None
+    name = os.path.basename(value)
+    if not name:
+        return None
+    jpg = os.path.splitext(name)[0] + ".jpg"
+    return (THUMB_URL + jpg) if jpg in thumb_names() else None
+
+
 def bg_payload(row):
-    return {"id": row["id"], "name": row["name"], "slug": row["slug"], "kind": row["kind"],
-            "value": row["value"], "platform": row["platform"], "enabled": bool(row["enabled"]),
-            "description": row["description"] or "", "is_system": bool(row["is_system"]),
-            "created_at": row["created_at"], "updated_at": row["updated_at"]}
+    out = {"id": row["id"], "name": row["name"], "slug": row["slug"], "kind": row["kind"],
+           "value": row["value"], "platform": row["platform"], "enabled": bool(row["enabled"]),
+           "description": row["description"] or "", "is_system": bool(row["is_system"]),
+           "created_at": row["created_at"], "updated_at": row["updated_at"]}
+    if row["kind"] == "image":
+        out["thumb"] = thumb_for(row["value"])
+    return out
 
 
 def theme_payload(row):
@@ -1268,6 +1613,140 @@ def theme_payload(row):
     return {"id": row["id"], "name": row["name"], "slug": row["slug"], "tokens": tokens,
             "is_system": bool(row["is_system"]), "enabled": bool(row["enabled"]),
             "created_at": row["created_at"], "updated_at": row["updated_at"]}
+
+
+def decode_image(raw):
+    """(bytes, ext) for a data: URL that really is an image, or (None, reason).
+
+    The declared MIME type never decides -- the magic bytes do. Shared with the admin
+    uploader so both doors accept exactly the same set of files.
+    """
+    if not isinstance(raw, str) or not raw.startswith("data:") or "," not in raw:
+        return None, "Expected an image data URL."
+    try:
+        blob = base64.b64decode(raw.split(",", 1)[1], validate=True)
+    except Exception:
+        return None, "That image couldn't be decoded."
+    if not blob:
+        return None, "That image is empty."
+    if len(blob) > MAX_IMAGE_BYTES:
+        return None, "Image is larger than %d MB." % (MAX_IMAGE_BYTES // (1024 * 1024))
+    for magic, ext, _mime in IMAGE_MAGIC:
+        if blob.startswith(magic):
+            if magic == b"RIFF" and blob[8:12] != b"WEBP":
+                continue
+            return blob, ext
+    return None, "Only JPEG, PNG, GIF or WebP images are accepted."
+
+
+def store_user_bg(raw):
+    """Write a student's uploaded background to disk. Returns (url, None) or (None, error).
+
+    This is the whole point of the change: a background used to live inside the account's
+    settings JSON as a base64 data URL, which meant ~570KB of it went out again with every
+    /api/appearance AND every /api/me -- twice per page load, uncompressible (it is already
+    JPEG), through a worker that serves one request at a time. On disk it is a 40-byte path
+    that the browser fetches once and then caches for a year.
+    """
+    blob, ext = decode_image(raw)
+    if blob is None:
+        return None, ext            # `ext` carries the reason when the decode failed
+    try:
+        os.makedirs(USER_BG_DIR, exist_ok=True)
+        # Server-generated name: nothing from the request reaches the filesystem path. A new
+        # name per upload is also what makes "cache this forever" safe -- replacing a
+        # background produces a new URL rather than new bytes at an old one.
+        fname = "%s.%s" % (secrets.token_urlsafe(12).replace("-", "_"), ext)
+        with open(os.path.join(USER_BG_DIR, fname), "wb") as fh:
+            fh.write(blob)
+    except OSError:
+        traceback.print_exc()
+        return None, "Couldn't save that image — try again."
+    return USER_BG_URL + fname, None
+
+
+def user_bg_present(url):
+    """Is this account's uploaded background still on disk?
+
+    Worth asking because the answer can be no. The database stores a path and the bytes live
+    in media/, so the two can come apart -- a database restored without its media directory
+    is the obvious way, and it is exactly what a routine "just restore the database" does.
+    Before this check the student got a page pointing at a 404 and simply no background;
+    now they fall through to the admin's default, which is what someone who never chose one
+    sees. Only their own uploads are checked: gallery backgrounds are the admin's to fix.
+    """
+    if not isinstance(url, str) or not url.startswith(USER_BG_URL):
+        return True                      # not one of ours to vouch for
+    name = os.path.basename(url)
+    return bool(name) and os.path.isfile(os.path.join(USER_BG_DIR, name))
+
+
+def without_missing_bg(settings):
+    """`settings` with a background whose file has gone missing reset to the default.
+
+    resolve_appearance() already refuses to serve a dead path, but /api/me hands the raw
+    settings straight to the browser, which caches them in localStorage and paints from
+    there before /api/appearance has answered. Left alone, the dead path would live on in
+    the client for as long as that entry did. Returning the default in its place is what
+    makes the browser overwrite it -- omitting the key entirely would leave the stale copy
+    untouched. Their dim and blur are kept; only the dead image goes.
+    """
+    if not isinstance(settings, dict):
+        return settings
+    bg = settings.get("bg")
+    if not isinstance(bg, dict) or user_bg_present(bg.get("value")):
+        return settings
+    fixed = dict(settings)
+    fixed["bg"] = {"type": "preset", "value": FALLBACK_BG_SLUG, "chosen": False,
+                   "dim": bg.get("dim") or 0, "blur": bg.get("blur") or 0}
+    return fixed
+
+
+def drop_user_bg(url):
+    """Delete a background this account no longer points at. Never raises.
+
+    Only ever touches a file inside USER_BG_DIR, and only by basename, so a value that
+    somehow arrived from a request cannot reach anything else on disk.
+    """
+    if not isinstance(url, str) or not url.startswith(USER_BG_URL):
+        return
+    name = os.path.basename(url)
+    if not name or name in (".", ".."):
+        return
+    try:
+        os.remove(os.path.join(USER_BG_DIR, name))
+    except OSError:
+        pass
+
+
+def externalize_bg(settings, previous=None):
+    """Move an inline data: URL background in `settings` out to a file, in place.
+
+    Called on every settings write, not just at migration time, because an older tab or a
+    cached copy of the page can still be sending the old shape hours after a deploy. Returns
+    an error string if the image was rejected, None otherwise (including "nothing to do").
+    """
+    if not isinstance(settings, dict):
+        return None
+    bg = settings.get("bg")
+    if not isinstance(bg, dict):
+        return None
+    value = bg.get("value")
+    old = (previous or {}).get("bg") if isinstance(previous, dict) else None
+    old_url = old.get("value") if isinstance(old, dict) else None
+    if isinstance(value, str) and value.startswith("data:"):
+        url, err = store_user_bg(value)
+        if err:
+            return err
+        bg["value"] = url
+        bg["type"] = "image"
+        # The file this account used to point at is now unreachable; don't leave it behind.
+        if old_url != url:
+            drop_user_bg(old_url)
+    elif old_url and old_url != value:
+        # Switched to a preset or to a different image: the old upload is orphaned either way.
+        drop_user_bg(old_url)
+    return None
 
 
 def user_picked_bg(bg):
@@ -1312,17 +1791,25 @@ def resolve_appearance(platform, user_row=None):
            "source": {"theme": "fallback", "background": "fallback"},
            "dim": None, "blur": None}
 
+    # The session lookup no longer carries the settings blob (see lean_user_cols), so read it
+    # here by id. col() covers the case where a caller *did* hand over a row that has it.
     settings = {}
     if user_row is not None:
-        try:
-            settings = json.loads(user_row["settings"] or "{}")
-        except ValueError:
-            settings = {}
+        raw = col(user_row, "settings")
+        if raw is None:
+            settings = settings_of(user_row["id"])
+        else:
+            try:
+                settings = json.loads(raw or "{}")
+            except ValueError:
+                settings = {}
     ubg = settings.get("bg") if isinstance(settings, dict) else None
     uprefs = settings.get("prefs") if isinstance(settings, dict) else None
 
     # ---- background ----
-    if user_picked_bg(ubg):
+    # An upload whose file has gone missing is treated as "never chose one", so the answer
+    # falls through to the admin default below instead of pointing the page at a 404.
+    if user_picked_bg(ubg) and user_bg_present(ubg.get("value")):
         out["background"] = {"kind": "image" if ubg.get("type") == "image" else "preset",
                              "value": ubg.get("value"), "name": "Your background"}
         out["dim"] = ubg.get("dim") or 0
@@ -1596,19 +2083,25 @@ def get_tasks(uid):
 
 
 def subjects_for(uid):
+    """Every subject with the time on it today, in two queries rather than N+1.
+
+    This ran one SUM per subject, and /api/log calls it on every flush -- i.e. every 30
+    seconds for every running timer, multiplied by however many subjects that student keeps.
+    The grouped query below walks exactly the same (user_id, day, subject_id) index, once.
+    """
     conn = db()
     today = today_str()
     rows = conn.execute("SELECT id,name,color FROM subjects WHERE user_id=? ORDER BY id", (uid,)).fetchall()
-    out = []
-    for r in rows:
-        tm = conn.execute(
-            "SELECT COALESCE(SUM(seconds),0) AS s FROM session_log WHERE user_id=? AND day=? AND subject_id=?",
-            (uid, today, r["id"]),
-        ).fetchone()
-        out.append({"id": r["id"], "name": r["name"], "color": r["color"],
-                    "todayMinutes": tm["s"] // 60, "todaySeconds": tm["s"]})
+    totals = {r["subject_id"]: r["s"] for r in conn.execute(
+        "SELECT subject_id, COALESCE(SUM(seconds),0) AS s FROM session_log "
+        "WHERE user_id=? AND day=? AND subject_id IS NOT NULL GROUP BY subject_id",
+        (uid, today),
+    )}
     conn.close()
-    return out
+    return [{"id": r["id"], "name": r["name"], "color": r["color"],
+             "todayMinutes": totals.get(r["id"], 0) // 60,
+             "todaySeconds": totals.get(r["id"], 0)}
+            for r in rows]
 
 
 def compute_streak(by):
@@ -1661,11 +2154,29 @@ def stats_summary(uid):
 
 # ---------------------------------------------------------------- handler ----
 class Handler(SimpleHTTPRequestHandler):
+    _sent = False   # has a status line gone out yet? _guard() needs to know (see below)
+
     def __init__(self, *a, **k):
         super().__init__(*a, directory=ROOT, **k)
 
+    def send_response(self, *a, **k):
+        self._sent = True
+        return super().send_response(*a, **k)
+
+    def send_response_only(self, *a, **k):
+        self._sent = True
+        return super().send_response_only(*a, **k)
+
     def log_message(self, fmt, *args):
-        print("  %s - %s" % (self.command, self.path))
+        """Quiet by default.
+
+        This printed a line per request, and under Passenger stderr is a file on the same
+        shared, network-backed disk everything else is competing for -- a synchronous write
+        on the way out of every response, including the 304s that make up most of a repeat
+        visit, into a log nothing rotates. Set ACCESS_LOG=1 to get it back while debugging.
+        """
+        if ACCESS_LOG:
+            print("  %s - %s" % (self.command, self.path))
 
     def version_string(self):
         return "Study Planet"  # don't advertise the Python/stdlib version in the Server header
@@ -1694,15 +2205,29 @@ class Handler(SimpleHTTPRequestHandler):
         one-year immutable cache safe, and it is what lets a phone keep a background across
         launches instead of re-downloading a megabyte of JPEG on every single page load.
 
-        Everything else keeps "no-cache". The pages must stay on it: they carry only
-        Last-Modified otherwise, and clients -- the Android WebView especially -- invent a
-        freshness window from that and serve a stale copy for hours, so deployed changes
-        silently never arrive. "no-cache" still permits conditional requests, so an unchanged
-        page still comes back as a cheap 304.
+        The *pages* must stay on "no-cache". They carry only Last-Modified otherwise, and
+        clients -- the Android WebView especially -- invent a freshness window from that and
+        serve a stale copy for hours, so deployed changes silently never arrive. "no-cache"
+        still permits conditional requests, so an unchanged page comes back as a cheap 304.
+
+        Their assets do not need the same treatment, and giving it to them was expensive: a
+        page load revalidated i18n.js, theme.js and favicon.svg every single time, and each
+        of those 304s is a full round trip that occupies a worker for the duration -- of which
+        this app has very few, and they serve one request at a time. A short window instead
+        means a visitor moving between /app, /dashboard and /rooms fetches them once. It is
+        deliberately short, because these URLs are not versioned: ASSET_MAX_AGE is the longest
+        a deploy can take to reach somebody who is already on the site, so it is a number to
+        raise only alongside cache-busting filenames.
         """
         path = urlparse(self.path).path
         if path.startswith("/media/backgrounds/"):
             return "public, max-age=31536000, immutable"
+        low = path.lower()
+        if low.endswith(".apk"):
+            # A 4MB download nobody expects to change between two taps of the same button.
+            return "public, max-age=3600"
+        if low.endswith(CACHEABLE_ASSET_EXT):
+            return "public, max-age=%d" % ASSET_MAX_AGE
         return "no-cache"
 
     def list_directory(self, path):
@@ -1901,27 +2426,60 @@ class Handler(SimpleHTTPRequestHandler):
     # _resolve_static()/api() so a plain-HTTP request is turned away before any routing,
     # auth or database work happens -- and, more to the point, before a session cookie can
     # be read off or written to a connection anyone on the path can read.
+    def _guard(self, fn):
+        """Run one request, and answer even when it fails.
+
+        api() has always caught its own exceptions, but the static and /admin paths did not,
+        and nothing above them does either: BaseHTTPRequestHandler lets anything that isn't a
+        timeout propagate, so under Passenger it came out of application() and the visitor got
+        Passenger's own 500 page instead of the app's JSON -- with a stack trace's worth of
+        detail about the host in some configurations. _resolve_static() reaches the database
+        (the /admin route asks whether there is a live admin session), so "this can't fail" was
+        never true. Anything already half-written is left alone: a second send_response() on a
+        response that has begun would corrupt it, so the guard only speaks when nothing has.
+        """
+        try:
+            return fn()
+        except Exception:
+            traceback.print_exc()
+            if not getattr(self, "_sent", False):
+                try:
+                    self._json(500, {"error": "Something went wrong."})
+                except Exception:
+                    pass
+            return None
+        finally:
+            # The request is over, whether it succeeded or not: this is the one place that
+            # knows that, and the only safe place to undo a transaction a handler abandoned.
+            release_pooled()
+
     def do_GET(self):
+        return self._guard(self._do_get)
+
+    def _do_get(self):
         if self._require_https() or self._resolve_static():
             return
         return super().do_GET()
 
     def do_HEAD(self):
+        return self._guard(self._do_head)
+
+    def _do_head(self):
         if self._require_https() or self._resolve_static():
             return
         return super().do_HEAD()
 
     def do_POST(self):
-        return None if self._require_https() else self.api()
+        return self._guard(lambda: None if self._require_https() else self.api())
 
     def do_PUT(self):
-        return None if self._require_https() else self.api()
+        return self._guard(lambda: None if self._require_https() else self.api())
 
     def do_PATCH(self):
-        return None if self._require_https() else self.api()
+        return self._guard(lambda: None if self._require_https() else self.api())
 
     def do_DELETE(self):
-        return None if self._require_https() else self.api()
+        return self._guard(lambda: None if self._require_https() else self.api())
 
     def api(self):
         p = urlparse(self.path).path
@@ -1930,7 +2488,14 @@ class Handler(SimpleHTTPRequestHandler):
         # worth of scanned PDF doesn't fit in the budget sized for a settings blob. It gets
         # its own, larger ceiling; everything else keeps the old one.
         cap = LIBRARY_MAX_BYTES if p == "/api/admin/library/upload" else MAX_BODY
-        if int(self.headers.get("Content-Length", 0) or 0) > cap:
+        # A header is whatever the client typed: "Content-Length: abc" used to raise ValueError
+        # from here, outside the try below, which on the standalone server dropped the
+        # connection without a reply at all. Unreadable means "not a length I can trust".
+        try:
+            declared = int(self.headers.get("Content-Length", 0) or 0)
+        except (TypeError, ValueError):
+            return self._json(400, {"error": "Bad Content-Length."})
+        if declared > cap:
             return self._json(413, {"error": "Request too large."})
         try:
             if p.startswith("/api/admin/"):
@@ -1956,6 +2521,8 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json(200, {"quotes": quotes_cached()})
             if p == "/api/settings" and m == "PUT":
                 return self.save_settings()
+            if p == "/api/background" and m == "POST":
+                return self.background_upload()
             if p == "/api/tasks" and m == "PUT":
                 return self.save_tasks()
             if p == "/api/session-complete" and m == "POST":
@@ -2220,7 +2787,7 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(200, {"user": None})
         return self._json(200, {
             "user": public_user(u),
-            "settings": json.loads(u["settings"] or "{}"),
+            "settings": without_missing_bg(settings_of(u["id"])),
             "tasks": get_tasks(u["id"]),
             "stats": stats_summary(u["id"]),
             "subjects": subjects_for(u["id"]),
@@ -2238,11 +2805,58 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(401, {"error": "Not signed in."})
         d = self._read_json()
         settings = d.get("settings", d)
+        if not isinstance(settings, dict):
+            return self._json(400, {"error": "Expected a settings object."})
+        # An older tab can still be sending its background inline. Move it to a file rather
+        # than refusing the write, so a client that hasn't reloaded since the deploy keeps
+        # working -- and so the account stops carrying the blob from here on either way.
+        err = externalize_bg(settings, settings_of(u["id"]))
+        if err:
+            return self._json(400, {"error": err})
+        blob = json.dumps(settings)
+        if len(blob) > MAX_SETTINGS_BYTES:
+            return self._json(413, {"error": "Those settings are too large to save."})
+        conn = db()
+        conn.execute("UPDATE users SET settings=? WHERE id=?", (blob, u["id"]))
+        conn.commit()
+        conn.close()
+        return self._json(200, {"ok": True, "settings": settings})
+
+    def background_upload(self):
+        """Store an uploaded background and hand back its URL.
+
+        The dedicated door, used by the picker in the timer. Uploading through /api/settings
+        still works (externalize_bg above catches it), but going through here means the
+        573KB of image crosses the wire exactly once instead of riding along with every
+        subsequent preference write -- dragging the dim slider used to resend the whole
+        picture, because the image was a field inside the object being saved.
+        """
+        u = self._user()
+        if not u:
+            return self._json(401, {"error": "Not signed in."})
+        d = self._read_json()
+        if not rate_ok("bg:%d" % u["id"], BG_UPLOADS_PER_HOUR, 3600):
+            return self._json(429, {"error": "Too many background uploads — try again later."},
+                              [("Retry-After", "3600")])
+        url, err = store_user_bg(d.get("data") or "")
+        if err:
+            return self._json(400, {"error": err})
+        # Point the account at the new file in the same call, so a client that drops the
+        # connection before its follow-up settings write still ends up consistent.
+        settings = settings_of(u["id"])
+        bg = settings.get("bg")
+        old = bg.get("value") if isinstance(bg, dict) else None
+        base = bg if isinstance(bg, dict) else {}
+        base.update({"type": "image", "value": url, "chosen": True})
+        if not base.get("dim"):
+            base["dim"] = 40        # an unreadable clock over a bright photo helps nobody
+        settings["bg"] = base
         conn = db()
         conn.execute("UPDATE users SET settings=? WHERE id=?", (json.dumps(settings), u["id"]))
         conn.commit()
         conn.close()
-        return self._json(200, {"ok": True})
+        drop_user_bg(old)
+        return self._json(200, {"ok": True, "path": url, "bg": base})
 
     def save_tasks(self):
         u = self._user()
@@ -3156,7 +3770,11 @@ class Handler(SimpleHTTPRequestHandler):
             {"id": r["id"], "name": display_name(r), "email": r["email"], "phone": r["phone"],
              "avatar": r["avatar"] or "🦊", "created_at": r["created_at"],
              "last_seen": r["last_seen"] or 0}
-            for r in conn.execute("SELECT * FROM users ORDER BY id DESC LIMIT 8")
+            # Named columns, not *: the dashboard shows a name and an avatar, and `SELECT *`
+            # dragged eight settings blobs across to do it.
+            for r in conn.execute(
+                "SELECT id,name,email,phone,avatar,created_at,last_seen "
+                "FROM users ORDER BY id DESC LIMIT 8")
         ]
         signups = []
         for i in range(13, -1, -1):
@@ -3601,32 +4219,31 @@ class Handler(SimpleHTTPRequestHandler):
         What lands in the database is the path — the bytes stay on the filesystem.
         """
         d = self._read_json()
-        raw = d.get("data") or ""
-        if not isinstance(raw, str) or "," not in raw or not raw.startswith("data:"):
-            return self._json(400, {"error": "Expected an image data URL."})
-        try:
-            blob = base64.b64decode(raw.split(",", 1)[1], validate=True)
-        except Exception:
-            return self._json(400, {"error": "That image couldn't be decoded."})
-        if not blob:
-            return self._json(400, {"error": "That image is empty."})
-        if len(blob) > MAX_IMAGE_BYTES:
-            return self._json(413, {"error": "Image is larger than %d MB." % (MAX_IMAGE_BYTES // (1024 * 1024))})
-        ext = None
-        for magic, e, _mime in IMAGE_MAGIC:
-            if blob.startswith(magic):
-                if magic == b"RIFF" and blob[8:12] != b"WEBP":
-                    continue
-                ext = e
-                break
-        if not ext:
-            return self._json(400, {"error": "Only JPEG, PNG, GIF or WebP images are accepted."})
+        blob, ext = decode_image(d.get("data") or "")
+        if blob is None:
+            return self._json(400, {"error": ext})     # `ext` carries the reason on failure
         os.makedirs(MEDIA_DIR, exist_ok=True)
         # Server-generated name: nothing from the request reaches the filesystem path, so a
         # crafted filename has no way to traverse out of the media directory.
-        fname = "%s.%s" % (secrets.token_urlsafe(12).replace("-", "_"), ext)
+        stem = secrets.token_urlsafe(12).replace("-", "_")
+        fname = "%s.%s" % (stem, ext)
         with open(os.path.join(MEDIA_DIR, fname), "wb") as fh:
             fh.write(blob)
+        # The swatch-sized copy, made in the admin's browser because nothing here can resize
+        # an image. Optional: an older panel doesn't send one, and the picker then falls back
+        # to the original exactly as it used to.
+        thumb = d.get("thumb")
+        if isinstance(thumb, str) and thumb.startswith("data:"):
+            tblob, text = decode_image(thumb)
+            if tblob is not None:
+                try:
+                    os.makedirs(THUMB_DIR, exist_ok=True)
+                    with open(os.path.join(THUMB_DIR, stem + ".jpg"), "wb") as fh:
+                        fh.write(tblob)
+                    with _thumbs_lock:
+                        _thumbs["at"] = 0.0     # make the next read pick it up immediately
+                except OSError:
+                    traceback.print_exc()       # a missing thumbnail is not worth failing on
         return self._json(200, {"ok": True, "path": "/media/backgrounds/" + fname,
                                 "bytes": len(blob)})
 

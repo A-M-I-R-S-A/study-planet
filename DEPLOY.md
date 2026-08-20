@@ -180,12 +180,62 @@ still not catastrophic — but it must be fixed before you consider the launch d
 
 ---
 
+## 6b. Keep the app warm (do this — it is the single biggest speed win)
+
+Everything above makes the app *fast*; this is what stops it being *slow anyway*.
+
+Passenger starts a worker on the first request and shuts it down again once the site has
+been quiet for a while. On a site with a handful of users it is quiet almost all the time, so
+almost every visit pays a cold start. Measured against the live site before this was set:
+
+| | cold worker | warm worker |
+|---|---|---|
+| `/api/appearance` (a 1.4 KB reply) | **~1.9 s** | ~150 ms |
+| `/api/quotes` | **~8.6 s** | ~1.7 s |
+
+Same code, same query, same network — the entire difference is process startup. The fix is
+to tell Passenger to keep one worker alive and to stop retiring idle ones.
+
+In **Setup Python App → your app → Environment variables**, or in the app's `.htaccess`:
+
+```apache
+PassengerMinInstances 2
+PassengerMaxPoolSize 6
+PassengerPoolIdleTime 0
+```
+
+- `PassengerMinInstances 2` — always keep two workers up, so nobody waits for a spawn.
+- `PassengerPoolIdleTime 0` — never retire an idle worker (this is the one that matters).
+- `PassengerMaxPoolSize 6` — Passenger runs one request at a time per worker. Measured on
+  the live site, ten concurrent requests took 1075 ms wall against 308 ms for one, because
+  they queued. More workers is what removes that queue; 6 is comfortable inside a shared
+  account's memory, and the memory cost per worker is much lower since responses are no
+  longer buffered whole (see `passenger_wsgi.py`).
+
+If the host does not allow `PassengerPoolIdleTime`, a cron job hitting the site every few
+minutes keeps a worker alive as a fallback:
+
+```bash
+*/5 * * * * curl -s -o /dev/null https://study-planet.ir/api/appearance
+```
+
 ## 7. After launch
 
 - **Change the admin password** from the panel's Admin Account screen too, so it isn't only
   in the env var. There is no role column on `users`, so no normal account can become admin.
 - **Back up** `~/study_data/focus.db` **and** `~/study/media/` together — the database only
-  stores file *paths*, so media must travel with it.
+  stores file *paths*, so media must travel with it. This now includes students' own uploaded
+  backgrounds under `media/backgrounds/u/`, which used to live inside the database and no
+  longer do; a database restored without its media directory will leave those students
+  looking at a missing background.
+- **Background thumbnails** live in `media/backgrounds/thumb/`, named after the original with
+  a `.jpg` extension. The admin panel generates one for every new upload. Anything uploaded
+  before this release has one only if you generated it (see `README.md` → Backgrounds); with
+  no thumbnail the picker falls back to the full-size image, which works but is what made
+  opening Settings cost tens of megabytes.
+- **First start after this release** rewrites any background still stored inline in the
+  database out to a file, and prints one line per run saying how many it moved. It is
+  idempotent — the second start finds nothing to do.
 - **Updating the app:** upload the changed files, then click **Restart** in Setup Python App.
   Passenger also restarts if you `touch ~/study/tmp/restart.txt`.
 - **Logs:** Setup Python App → your app → the log path, or `tail -f ~/study/stderr.log`.

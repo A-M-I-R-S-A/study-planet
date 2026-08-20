@@ -716,6 +716,17 @@
   Cloud.log=function(secs,subjectId,topic,session){if(!Cloud.enabled)return Promise.resolve(null);return fetch("/api/log",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({seconds:secs,subject_id:subjectId,topic:topic||"",session:session})}).then(r=>r.ok?r.json():null).catch(()=>null);};
   Cloud.heartbeat=function(focusing){if(!Cloud.enabled)return;fetch("/api/heartbeat",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({focusing:!!focusing})}).catch(()=>{});};
   Cloud.currentRoom=function(){if(!Cloud.enabled)return Promise.resolve(null);return fetch("/api/rooms/current",{credentials:"same-origin"}).then(r=>r.ok?r.json():null).catch(()=>null);};
+  /* Uploads a chosen background and resolves to the URL the server stored it at.
+     The image goes over the wire exactly once, here. It used to be carried inside the
+     settings object as a base64 data URL, which meant every later preference write -- every
+     nudge of the dim slider -- re-sent the whole picture, and every page load got it back
+     twice (once from /api/me, once from /api/appearance). Now what is stored is a path. */
+  Cloud.uploadBg=function(dataUrl){
+    if(!Cloud.enabled)return Promise.resolve(null);
+    return fetch("/api/background",{method:"POST",credentials:"same-origin",
+      headers:{"Content-Type":"application/json"},body:JSON.stringify({data:dataUrl})})
+      .then(r=>r.ok?r.json():null).catch(()=>null);
+  };
   const _storeSet=store.set;
   store.set=function(k,v){const okk=_storeSet(k,v);if(k==="ff_tasks")Cloud.pushTasks();else if(k==="ff_cfg"||k==="ff_prefs"||k==="ff_bg"||k==="ff_volume")Cloud.pushSettings();return okk;};
 
@@ -951,17 +962,32 @@
       const key=b.kind==="image"?b.value:b.slug;
       if(seen[key])return; seen[key]=1;
       out.push({key:key,type:b.kind==="image"?"image":"preset",
-                css:b.kind==="image"?null:b.value,img:b.kind==="image"?b.value:null,title:b.name});
+                css:b.kind==="image"?null:b.value,img:b.kind==="image"?b.value:null,
+                // The swatch-sized copy the server generated, when there is one. Falls back
+                // to the original so a background uploaded before thumbnails existed still
+                // shows -- it just costs what it always did.
+                thumb:b.kind==="image"?(b.thumb||b.value):null,title:b.name});
     });
     return out;
   }
+  /* Swatches point at the thumbnails, never the originals.
+     Nothing here is fetched during a page load: the settings sheet is display:none until it
+     is opened, and a browser does not load a background-image inside a display:none subtree.
+     Opening it then costs the whole grid at once -- which is the right trade now that the
+     whole grid is ~110KB of thumbnails rather than ~30MB of full-resolution photographs.
+     Deliberately not deferred behind an IntersectionObserver: the panel is small enough that
+     it bought almost nothing, and an observer that fails to fire (a tab that never composites
+     a frame, say) leaves the picker blank, which is a worse failure than a slower one. */
   function buildSwatches(){
     const w=$("#swatches"); w.innerHTML="";
     const eff=effectiveBg();
     bgOptions().forEach(o=>{
       const b=document.createElement("button");
       b.className="swatch"+(eff.type===o.type&&eff.value===o.key?" active":"");
-      if(o.type==="image"){b.style.backgroundImage="url("+o.img+")";b.style.backgroundSize="cover";b.style.backgroundPosition="center";}
+      if(o.type==="image"){
+        b.style.backgroundImage="url("+o.thumb+")";
+        b.style.backgroundSize="cover";b.style.backgroundPosition="center";
+      }
       else b.style.background=o.css;
       b.title=o.title;
       // Picking one is what makes it a personal preference: `chosen` is the flag that stops a
@@ -989,10 +1015,26 @@
         const cv=document.createElement("canvas");cv.width=cw;cv.height=ch;
         cv.getContext("2d").drawImage(img,0,0,cw,ch);
         let url;try{url=cv.toDataURL("image/jpeg",0.82);}catch(_){url=rd.result;}
-        const dim=bg.dim<25?40:bg.dim;bg={type:"image",value:url,dim,blur:bg.blur||0,chosen:true};
-        const saved=store.set("ff_bg",bg);   // saved to localStorage (guest) and pushed to the account (signed in)
-        if(!saved && !Cloud.enabled) alert(T.img_big);
-        $("#dim").value=dim;$("#dimVal").textContent=L(dim)+"%";applyBg();buildSwatches();
+        const dim=bg.dim<25?40:bg.dim;
+        /* Show it straight away from the data URL, so the change is instant, then swap in
+           the stored path once the upload lands. Signed in, the data URL never reaches
+           localStorage or the settings blob: `value` becomes a ~40-byte /media path, which
+           is what stops later preference writes from dragging the image along with them.
+           Guests have no account to upload to and keep the inline copy as before. */
+        bg={type:"image",value:url,dim,blur:bg.blur||0,chosen:true};
+        applyBg();
+        $("#dim").value=dim;$("#dimVal").textContent=L(dim)+"%";
+        if(Cloud.enabled){
+          Cloud.uploadBg(url).then(res=>{
+            if(res&&res.path){bg={type:"image",value:res.path,dim,blur:bg.blur||0,chosen:true};store.set("ff_bg",bg);}
+            else{alert(T.img_big);}          // rejected (too big / not an image): say so
+            applyBg();buildSwatches();
+          });
+        }else{
+          const saved=store.set("ff_bg",bg); // guest: localStorage is the only home it has
+          if(!saved) alert(T.img_big);
+          buildSwatches();
+        }
       };
       img.onerror=()=>alert(T.img_big);
       img.src=rd.result;

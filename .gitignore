@@ -2,6 +2,12 @@
 focus.db
 focus.db-journal
 focus.db-wal
+focus.db-shm
+
+# the quotes pool, cached to disk so a freshly spawned Passenger worker doesn't spend its
+# first request re-fetching (and, from a host that can't reach api-ninjas, timing out)
+quotes_cache.json
+quotes_cache.json.tmp
 
 # throwaway database the "codes to console" dev server writes to
 focus-dev.db
