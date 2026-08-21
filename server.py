@@ -45,7 +45,7 @@ Admin panel (owner only — separate credentials, separate session cookie)
   POST /api/admin/login      {username,password}          -> admin cookie + CSRF token
   /api/admin/*               users, themes, backgrounds, library, settings — 404 to everyone else
 """
-import os, re, json, time, base64, hmac, hashlib, secrets, sqlite3, traceback, threading
+import os, re, sys, json, time, base64, hmac, hashlib, secrets, sqlite3, traceback, threading
 from datetime import datetime, timezone, date, timedelta
 from http import cookies
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -72,6 +72,11 @@ MAX_PW = 128                 # cap password length so PBKDF2 hashing cost stays 
 SECURE_COOKIES = os.environ.get("SECURE_COOKIES", "").lower() in ("1", "true", "yes", "on")
 # One printed line per request. Off in production: see Handler.log_message.
 ACCESS_LOG = os.environ.get("ACCESS_LOG", "").lower() in ("1", "true", "yes", "on")
+# Reuse one SQLite connection per thread instead of opening one per call. Set DB_POOL=0 to
+# turn it off and go back to a connection per call -- slower, but it takes every failure mode
+# that involves a connection outliving a request off the table. Worth reaching for if the
+# site starts returning 500s that only a restart clears.
+DB_POOL = os.environ.get("DB_POOL", "1").lower() not in ("0", "false", "no", "off")
 # Set FORCE_HTTPS=1 in production to redirect plain-HTTP requests to the https:// URL and
 # send HSTS on the secure ones. Off by default because local `python server.py` has no TLS
 # in front of it -- turning this on without a working certificate makes the site unreachable.
@@ -304,6 +309,11 @@ BG_UPLOADS_PER_HOUR = 20
 # will delete it. Long enough that a file written by a request still in flight is never
 # mistaken for an orphan. See sweep_orphan_backgrounds().
 ORPHAN_BG_GRACE = 3600
+# Least time between two database sweeps, across every worker. Passenger runs several and
+# each has its own cleanup thread; without a shared claim they all sweep at once and contend
+# for the write lock. Slightly under the hourly cadence so a run is never skipped by a few
+# seconds of clock drift between workers.
+PURGE_MIN_INTERVAL = 3000
 OTP_TICKET_TTL = 900         # a "this number is verified" ticket is good for 15 minutes
 # Dev switch: deliver codes to the server log *instead of* texting them. It short-circuits
 # the API call entirely rather than shadowing it, so working on the sign-in flow can't text
@@ -512,14 +522,8 @@ def release_pooled():
         _drop_pooled(conn)
 
 
-def db():
-    conn = getattr(_pool, "conn", None)
-    if conn is not None:
-        try:
-            conn.execute("SELECT 1")     # cheap liveness check; a dead handle is replaced
-            return conn
-        except Exception:
-            _drop_pooled(conn)
+def new_conn():
+    """A brand-new, configured connection that nothing else shares. Caller must close it."""
     conn = sqlite3.connect(DB_PATH, timeout=15.0, factory=_Conn)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
@@ -537,12 +541,81 @@ def db():
     # instead of being re-read per query. Negative = KiB, so this is a 16MB ceiling per
     # connection -- and there is now one connection per thread, not one per call.
     conn.execute("PRAGMA cache_size=-16000")
+    return conn
+
+
+def db():
+    """The connection for the request being served on this thread.
+
+    Only ever call this from inside a request. Anything running outside one -- startup,
+    the hourly cleanup thread -- must use background_conn() instead, because the release
+    that undoes an abandoned transaction hangs off the end of a request and nothing else.
+    """
+    if not DB_POOL:
+        # Kill switch. Restores the original behaviour exactly: a fresh connection per call,
+        # really closed by the close() every caller already makes. Slower, and immune to
+        # anything that can go wrong with a connection that outlives one request.
+        return new_conn_unpooled()
+    conn = getattr(_pool, "conn", None)
+    if conn is not None:
+        try:
+            conn.execute("SELECT 1")     # cheap liveness check; a dead handle is replaced
+            return conn
+        except Exception:
+            _drop_pooled(conn)
+    conn = new_conn()
     _pool.conn = conn
     return conn
 
 
+def new_conn_unpooled():
+    """A connection whose close() really closes, for callers that manage their own."""
+    conn = new_conn()
+    conn.close = conn._close_for_real
+    return conn
+
+
+class background_conn(object):
+    """`with background_conn() as conn:` for work that is not serving a request.
+
+    Startup and the hourly cleanup thread must not touch the pool. The pool's safety net --
+    release_pooled(), which rolls back a transaction an exception left open -- is called from
+    Handler._guard()'s finally, i.e. only ever at the end of a *request*. A background thread
+    that took a pooled connection would therefore never be released, and if it failed between
+    a write and its commit it would sit on SQLite's single write lock indefinitely: every
+    later write waits out busy_timeout and then fails, so the whole site returns 500 to
+    anything that writes, forever, until someone restarts the app. That is not hypothetical
+    -- it is what this class was written to fix.
+
+    A real connection, really closed, is the right shape for work that happens once an hour.
+    """
+
+    def __enter__(self):
+        self.conn = new_conn()
+        return self.conn
+
+    def __exit__(self, exc_type, exc, tb):
+        try:
+            if self.conn.in_transaction:
+                self.conn.rollback()
+        except Exception:
+            pass
+        try:
+            self.conn._close_for_real()
+        except Exception:
+            pass
+        return False
+
+
 def init_db():
-    conn = db()
+    # Import-time, not request-time: its own connection, closed when it is done. A pooled one
+    # would be left open on whichever thread happened to import the module, holding a write
+    # lock for the life of the worker if any of the migrations below failed part-way.
+    with background_conn() as conn:
+        _init_db(conn)
+
+
+def _init_db(conn):
     conn.execute("PRAGMA journal_mode=WAL")  # readers don't block the writer (and vice versa)
     conn.executescript(
         """
@@ -721,6 +794,14 @@ def init_db():
           value      TEXT,
           updated_at TEXT NOT NULL
         );
+        /* Bookkeeping the workers keep between themselves -- currently just when the last
+           database sweep ran, so that several Passenger workers don't all run it at once and
+           fight over the write lock. Deliberately NOT app_settings: that table is the admin
+           panel's, and everything in it is shown there. */
+        CREATE TABLE IF NOT EXISTS worker_state(
+          key   TEXT PRIMARY KEY,
+          value TEXT
+        );
         CREATE INDEX IF NOT EXISTS idx_admin_sessions_admin ON admin_sessions(admin_id);
 
         /* ---- library ----
@@ -790,7 +871,7 @@ def init_db():
     conn.commit()
     ensure_indexes(conn)
     migrate_inline_backgrounds(conn)
-    conn.close()
+    # No close() here: background_conn() in init_db() owns this connection and closes it.
 
 
 def migrate_inline_backgrounds(conn):
@@ -1083,6 +1164,92 @@ if FORCE_HTTPS and not TRUST_PROXY:
 _rl_lock = threading.Lock()
 _rl_hits = {}  # key -> [timestamps]; trimmed on access and hourly by purge_expired()
 
+# --- what went wrong, and when -------------------------------------------------------
+# A 500 that clears when you restart the app is the hardest kind of bug to chase, because by
+# the time anyone looks the evidence has been restarted away. These keep the last few
+# failures in the worker that had them, and count them, so /api/admin/diagnostics can answer
+# "what is actually failing, and did it start at some particular moment" without needing
+# somebody to be tailing a log at the time.
+WORKER_STARTED = time.time()
+FAILURE_LOG_MAX = 25
+_fail_lock = threading.Lock()
+_failures = []      # newest last; capped at FAILURE_LOG_MAX
+_counters = {"requests": 0, "failures": 0, "db_failures": 0}
+
+
+def record_failure(method, path, exc):
+    """Log a failed request loudly, and remember it for the diagnostics endpoint."""
+    detail = traceback.format_exc()
+    # One clearly-marked line first, so it is greppable in a log full of other noise.
+    print("  !! %s %s -> %s: %s" % (method, path, type(exc).__name__, exc))
+    print(detail)
+    try:
+        sys.stderr.flush()
+    except Exception:
+        pass
+    with _fail_lock:
+        _counters["failures"] += 1
+        if isinstance(exc, sqlite3.Error):
+            _counters["db_failures"] += 1
+        _failures.append({
+            "at": now_iso(),
+            "method": method,
+            "path": path,
+            "error": type(exc).__name__,
+            "message": str(exc)[:300],
+            "traceback": detail[-2000:],
+        })
+        del _failures[:-FAILURE_LOG_MAX]
+
+
+def worker_diagnostics():
+    """A snapshot of this worker: how long it has been up, and what has gone wrong in it.
+
+    Deliberately per-worker. Passenger runs several, each with its own memory, its own pooled
+    connection and its own failures, so "the site is broken" is often really "one worker is
+    broken" -- and a reading that averaged them would hide exactly that.
+    """
+    with _fail_lock:
+        failures = list(_failures)
+        counters = dict(_counters)
+    pooled = getattr(_pool, "conn", None)
+    out = {
+        "pid": os.getpid(),
+        "uptimeSeconds": int(time.time() - WORKER_STARTED),
+        "startedAt": datetime.fromtimestamp(WORKER_STARTED, timezone.utc).isoformat(),
+        "counters": counters,
+        "pool": {"enabled": DB_POOL, "hasConnection": pooled is not None,
+                 "inTransaction": bool(pooled is not None and pooled.in_transaction)},
+        "threads": threading.active_count(),
+        "failures": failures,
+    }
+    # Can this worker actually write? This is the question behind almost every 500 the app
+    # can produce, and the answer is either "yes" or the reason why not.
+    try:
+        with background_conn() as conn:
+            # A real write, committed, on a row that exists for exactly this purpose. "Can
+            # this worker write?" is the question behind nearly every 500 this app can
+            # produce -- a read-only check would answer a different, easier question.
+            conn.execute("INSERT OR REPLACE INTO worker_state(key,value) VALUES('healthcheck',?)",
+                         (now_iso(),))
+            conn.commit()
+            out["database"] = {
+                "writable": True,
+                "path": DB_PATH,
+                "sizeBytes": os.path.getsize(DB_PATH) if os.path.exists(DB_PATH) else None,
+                "walBytes": (os.path.getsize(DB_PATH + "-wal")
+                             if os.path.exists(DB_PATH + "-wal") else 0),
+                "journalMode": conn.execute("PRAGMA journal_mode").fetchone()[0],
+            }
+    except Exception as exc:
+        out["database"] = {"writable": False, "error": "%s: %s" % (type(exc).__name__, exc)}
+    try:
+        st = os.statvfs(ROOT)
+        out["disk"] = {"freeBytes": st.f_bavail * st.f_frsize}
+    except (AttributeError, OSError):
+        pass    # statvfs is POSIX-only; absent on Windows, and not worth faking
+    return out
+
 
 def rate_ok(key, limit, window):
     """Allow up to `limit` hits per `window` seconds for `key`; False once exceeded."""
@@ -1097,38 +1264,49 @@ def rate_ok(key, limit, window):
         return True
 
 
-def purge_expired():
-    """Delete expired sessions and drop stale rate-limit entries. At startup + hourly."""
-    try:
-        conn = db()
-        now = time.time()
-        conn.execute("DELETE FROM sessions WHERE expires < ?", (now,))
-        # Admin sessions go on both counts: past their absolute cap, or idle too long.
-        conn.execute("DELETE FROM admin_sessions WHERE expires < ? OR last_seen < ?",
-                     (now, now - ADMIN_IDLE_MINUTES * 60))
-        # Spent and expired codes are kept for a while past their five minutes so "that code
-        # was already used" stays answerable, then swept — they are of no use to anyone after.
-        conn.execute("DELETE FROM otp_codes WHERE expires < ?", (now - 3600,))
-        conn.execute("DELETE FROM phone_tickets WHERE expires < ?", (now,))
-        # session_log grows without bound and faster than anything else here: /api/log writes
-        # a row per flush, which is one every 30 seconds for every running timer. Nothing was
-        # ever deleting it. The day totals that the dashboard, the streak and the calendar
-        # actually read live in stat_days and are never touched by this -- session_log is only
-        # needed at per-subject granularity, which the app shows for the current month. A
-        # year is far more than that and keeps the table a few thousand rows per active user
-        # instead of an ever-growing scan behind every subject query.
-        conn.execute("DELETE FROM session_log WHERE day < ?",
-                     ((today_date() - timedelta(days=SESSION_LOG_KEEP_DAYS)).isoformat(),))
+def claim_purge(conn):
+    """True if this worker should do the sweep now, false if another one just did.
+
+    Passenger runs several workers and each starts its own cleanup thread, so without this
+    every one of them runs the same deletes on the same tables at the same time -- at boot,
+    when they all start together, and then on the hour. They contend for SQLite's single
+    write lock, and the loser gets "database is locked" partway through its sequence.
+
+    One UPDATE decides it: whoever's UPDATE actually changes the row holds the claim, and
+    SQLite evaluates that condition under the write lock, so exactly one worker can win.
+    Kept in worker_state rather than app_settings because app_settings is the admin panel's
+    table -- everything in it is shown, and some of it is editable, and this is neither.
+    """
+    now = time.time()
+    cur = conn.execute(
+        "UPDATE worker_state SET value=? WHERE key='last_purge_at' "
+        "AND CAST(COALESCE(NULLIF(value,''),'0') AS REAL) < ?",
+        (repr(now), now - PURGE_MIN_INTERVAL))
+    if cur.rowcount:
         conn.commit()
-        # Fold the write-ahead log back into the database and truncate it. Without this the
-        # -wal file only ever grows to its high-water mark and stays there, and every reader
-        # pays for walking it. Pages freed by the deletes above stay inside the file as free
-        # space for future rows -- reclaiming those to the filesystem would need a full
-        # VACUUM, which rewrites the whole database and is not something to do behind a
-        # request on a shared host.
-        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-        sweep_orphan_backgrounds(conn)
-        conn.close()
+        return True
+    # Nothing updated: either another worker holds a fresh claim, or the row does not exist
+    # yet. INSERT OR IGNORE settles the second case without a race -- a concurrent worker's
+    # identical insert simply changes nothing, and rowcount tells us which of us wrote it.
+    cur = conn.execute(
+        "INSERT OR IGNORE INTO worker_state(key,value) VALUES('last_purge_at',?)",
+        (repr(now),))
+    conn.commit()
+    return bool(cur.rowcount)
+
+
+def purge_expired(force=False):
+    """Delete expired rows, then drop stale rate-limit entries. At startup + hourly.
+
+    Two halves, and only the first is shared. The database sweep is the same work whichever
+    worker does it, so one of them claims it and the rest skip; the rate-limit table is this
+    process's own memory and every worker has to trim its own.
+
+    Runs on the cleanup thread and at import, never inside a request, so it takes its own
+    connection rather than the request pool's -- see background_conn() for why that matters.
+    """
+    try:
+        _purge_database(force)
     except Exception:
         traceback.print_exc()
     now = time.time()
@@ -1139,6 +1317,39 @@ def purge_expired():
                 _rl_hits[k] = hits
             else:
                 del _rl_hits[k]
+
+
+def _purge_database(force=False):
+    with background_conn() as conn:
+        if not (force or claim_purge(conn)):
+            return          # another worker has this covered
+        now = time.time()
+        conn.execute("DELETE FROM sessions WHERE expires < ?", (now,))
+        # Admin sessions go on both counts: past their absolute cap, or idle too long.
+        conn.execute("DELETE FROM admin_sessions WHERE expires < ? OR last_seen < ?",
+                     (now, now - ADMIN_IDLE_MINUTES * 60))
+        # Spent and expired codes are kept a while past their five minutes so "that code
+        # was already used" stays answerable, then swept — of no use to anyone after.
+        conn.execute("DELETE FROM otp_codes WHERE expires < ?", (now - 3600,))
+        conn.execute("DELETE FROM phone_tickets WHERE expires < ?", (now,))
+        # session_log grows without bound and faster than anything else here: /api/log
+        # writes a row per flush, one every 30 seconds for every running timer. Nothing
+        # was ever deleting it. The day totals the dashboard, streak and calendar read
+        # live in stat_days and are untouched by this -- session_log is only needed at
+        # per-subject granularity, which the app shows for the current month. A year is
+        # far more than that and keeps the table a few thousand rows per active user
+        # instead of an ever-growing scan behind every subject query.
+        conn.execute("DELETE FROM session_log WHERE day < ?",
+                     ((today_date() - timedelta(days=SESSION_LOG_KEEP_DAYS)).isoformat(),))
+        conn.commit()
+        # Fold the write-ahead log back into the database and truncate it. Without this
+        # the -wal file only ever grows to its high-water mark and stays there, and every
+        # reader pays for walking it. Pages freed by the deletes above stay inside the
+        # file as free space for future rows -- reclaiming those to the filesystem would
+        # need a full VACUUM, which rewrites the whole database and is not something to
+        # do behind a request on a shared host.
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        sweep_orphan_backgrounds(conn)
 
 
 def sweep_orphan_backgrounds(conn):
@@ -2438,10 +2649,19 @@ class Handler(SimpleHTTPRequestHandler):
         never true. Anything already half-written is left alone: a second send_response() on a
         response that has begun would corrupt it, so the guard only speaks when nothing has.
         """
+        with _fail_lock:
+            _counters["requests"] += 1
         try:
             return fn()
-        except Exception:
-            traceback.print_exc()
+        except Exception as exc:
+            record_failure(self.command, self.path, exc)
+            if isinstance(exc, sqlite3.Error):
+                # Never reuse a connection that just failed at the database layer. "database
+                # is locked", "disk I/O error" and friends are exactly the failures that, on a
+                # connection kept alive between requests, would otherwise repeat for every
+                # request after them -- a site that 500s until someone restarts it. Throwing
+                # the connection away means the damage stops at this request.
+                _drop_pooled()
             if not getattr(self, "_sent", False):
                 try:
                     self._json(500, {"error": "Something went wrong."})
@@ -2582,8 +2802,14 @@ class Handler(SimpleHTTPRequestHandler):
                 if len(seg) == 5 and seg[3] == "tasks" and seg[4].isdigit() and m == "DELETE":
                     return self.room_task_delete(rid, int(seg[4]))
             return self._json(404, {"error": "not found"})
-        except Exception:
-            traceback.print_exc()  # log the detail server-side, don't leak it to the client
+        except Exception as exc:
+            # Same treatment _guard() gives the paths it covers -- this catch is *inside* it,
+            # so without repeating the two lines here an API failure would be recorded
+            # nowhere and, worse, would leave a database connection that has already failed
+            # in the pool for the next request to inherit.
+            record_failure(m, p, exc)
+            if isinstance(exc, sqlite3.Error):
+                _drop_pooled()
             return self._json(500, {"error": "Something went wrong."})
 
     # -- endpoints --
@@ -3633,6 +3859,10 @@ class Handler(SimpleHTTPRequestHandler):
                                     "csrf": adm["_csrf"]})
         if seg == ["overview"] and m == "GET":
             return self.admin_overview()
+        if seg == ["diagnostics"] and m == "GET":
+            # Behind the admin session like everything else here: it names the database path
+            # and carries tracebacks, neither of which is a visitor's business.
+            return self._json(200, worker_diagnostics())
         if seg == ["users"] and m == "GET":
             return self.admin_users()
         if len(seg) == 2 and seg[0] == "users" and seg[1].isdigit():

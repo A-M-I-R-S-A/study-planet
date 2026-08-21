@@ -239,6 +239,44 @@ minutes keeps a worker alive as a fallback:
 - **Updating the app:** upload the changed files, then click **Restart** in Setup Python App.
   Passenger also restarts if you `touch ~/study/tmp/restart.txt`.
 - **Logs:** Setup Python App → your app → the log path, or `tail -f ~/study/stderr.log`.
+  A failed request now prints one greppable line before its traceback:
+  `grep '!!' ~/study/stderr.log | tail -40`.
+
+---
+
+## If the site starts returning 500s
+
+The symptom to recognise is **500s that go away when you restart the Python app and come
+back later**. That means one worker process has got into a bad state and stayed there — a
+restart is clearing it, not fixing it.
+
+**First, look at what the worker says about itself.** Sign in to `/admin`, then open:
+
+```
+https://study-planet.ir/api/admin/diagnostics
+```
+
+It reports, for the worker that answers the request: uptime, request and failure counts,
+whether its pooled database connection is stuck inside a transaction, whether the database
+is writable right now, WAL size, free disk, and the last 25 failures with tracebacks. Because
+Passenger runs several workers, reload it a few times — you may be looking at a healthy one
+while a sick one serves everyone else.
+
+**What to look for:**
+
+| Reading | What it means |
+|---|---|
+| `database.writable: false` | The real problem. The `error` field names it. |
+| `pool.inTransaction: true` | A request abandoned a transaction; it holds the write lock. |
+| `failures[].error: "OperationalError"`, message `database is locked` | Something is sitting on the write lock. |
+| `disk.freeBytes` near zero | SQLite cannot write. A restart will not help. |
+| `counters.db_failures` climbing while `requests` climbs | Ongoing, not a one-off. |
+
+**The emergency lever.** Set `DB_POOL=0` in Setup Python App → Environment variables and
+restart. That turns off connection reuse and goes back to one connection per call — measurably
+slower, but it makes it impossible for any database connection to outlive the request that
+opened it, which removes the whole class of "stuck until restart" failures. It is safe to
+leave on indefinitely while you work out the real cause.
 
 ---
 
